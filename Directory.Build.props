@@ -14,10 +14,10 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(IsLibrary)' == 'true'">
-        <TargetFramework>net10.0</TargetFramework>
+        
     </PropertyGroup>
     <PropertyGroup Condition="'$(IsLibrary)' == 'false'">
-        <TargetFramework>net10.0</TargetFramework>
+        
     </PropertyGroup>
 
     <PropertyGroup>
