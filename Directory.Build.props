@@ -9,10 +9,7 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <IsLibrary
-            Condition="'$(IsLibrary)' == '' AND ($(MSBuildProjectDirectory.Contains('src/libraries')) OR $(MSBuildProjectDirectory.Contains('src\libraries')))">
-            true
-        </IsLibrary>
+        <IsLibrary Condition="'$(IsLibrary)' == '' AND ($(MSBuildProjectDirectory.Contains('src/libraries')) OR $(MSBuildProjectDirectory.Contains('src\libraries')))">true</IsLibrary>
         <IsLibrary Condition="'$(IsLibrary)' == ''">false</IsLibrary>
     </PropertyGroup>
 
@@ -50,5 +47,10 @@
         <Threshold>95</Threshold>
         <ThresholdType>line</ThresholdType>
         <ThresholdStat>total</ThresholdStat>
+
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <OutputType>Exe</OutputType>
+        <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     </PropertyGroup>
 </Project>

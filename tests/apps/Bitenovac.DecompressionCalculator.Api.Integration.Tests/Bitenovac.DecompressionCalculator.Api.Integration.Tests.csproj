@@ -1,12 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>Bitenovac.DecompressionCalculator.Api.Integration.Tests</RootNamespace>
     <TargetFramework>net10.0</TargetFramework>
-    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>Bitenovac.DecompressionCalculator.Api.Integration.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
