@@ -5,25 +5,31 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     </PropertyGroup>
 
     <PropertyGroup>
-        <IsLibrary Condition="'$(IsLibrary)' == '' AND ($(MSBuildProjectDicrectoryContains('src/libraries')) OR $(MSBuildProjectDicrectoryContains('src\libraries')))">true</IsLibrary>
+        <IsLibrary
+                Condition="'$(IsLibrary)' == '' AND
+      ($(MSBuildProjectDirectory.Contains('src/libraries')) OR
+       $(MSBuildProjectDirectory.Contains('src\libraries')))">
+            true
+        </IsLibrary>
         <IsLibrary Condition="'$(IsLibrary)' == ''">false</IsLibrary>
     </PropertyGroup>
 
-    <PropertyGroup Condition="$(IsLibrary)' == 'true'">
-        <TargetFrameworks>net10.0;net11-preview.6</TargetFrameworks>
+    <PropertyGroup Condition="'$(IsLibrary)' == 'true'">
+        <TargetFramework>net10.0</TargetFramework>
     </PropertyGroup>
-    <PropertyGroup Condition="$(IsLibrary)' == 'false'">
+    <PropertyGroup Condition="'$(IsLibrary)' == 'false'">
         <TargetFramework>net10.0</TargetFramework>
     </PropertyGroup>
 
     <PropertyGroup>
         <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
     </PropertyGroup>
-    
-    <PropertyGroup Condition="$(IsLibrary)' == 'true'">
+
+    <PropertyGroup Condition="'$(IsLibrary)' == 'true'">
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <AnalysisLevel>latest-recommended</AnalysisLevel>
         <Deterministic>true</Deterministic>
@@ -35,7 +41,7 @@
         <Company>Bitenovac</Company>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
     </PropertyGroup>
-    
+
     <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
         <IsTestProject>true</IsTestProject>
         <IsPackable>false</IsPackable>
