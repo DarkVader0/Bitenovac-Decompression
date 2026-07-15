@@ -10,9 +10,7 @@
 
     <PropertyGroup>
         <IsLibrary
-                Condition="'$(IsLibrary)' == '' AND
-      ($(MSBuildProjectDirectory.Contains('src/libraries')) OR
-       $(MSBuildProjectDirectory.Contains('src\libraries')))">
+            Condition="'$(IsLibrary)' == '' AND ($(MSBuildProjectDirectory.Contains('src/libraries')) OR $(MSBuildProjectDirectory.Contains('src\libraries')))">
             true
         </IsLibrary>
         <IsLibrary Condition="'$(IsLibrary)' == ''">false</IsLibrary>
@@ -42,8 +40,12 @@
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
     </PropertyGroup>
 
-    <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
-        <IsTestProject>true</IsTestProject>
+    <PropertyGroup>
+        <IsTestProject Condition="'$(IsTestProject)' == '' AND $(MSBuildProjectName.EndsWith('.Tests'))">true</IsTestProject>
+        <IsTestProject Condition="'$(IsTestProject)' == ''">false</IsTestProject>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
         <IsPackable>false</IsPackable>
         <Threshold>95</Threshold>
         <ThresholdType>line</ThresholdType>
