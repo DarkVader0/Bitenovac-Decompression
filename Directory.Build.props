@@ -50,8 +50,6 @@
         <ThresholdType>line</ThresholdType>
         <ThresholdStat>total</ThresholdStat>
 
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <OutputType>Exe</OutputType>
         <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     </PropertyGroup>

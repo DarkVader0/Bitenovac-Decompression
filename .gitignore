@@ -5,6 +5,8 @@
 /**/bin/
 /**/obj/
 
+/**/packages.lock.json
+
 *.user
 
 [Dd]ebug/
