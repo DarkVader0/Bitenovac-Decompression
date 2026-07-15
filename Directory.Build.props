@@ -1,0 +1,46 @@
+﻿<Project>
+    <PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <IsLibrary Condition="'$(IsLibrary)' == '' AND ($(MSBuildProjectDicrectoryContains('src/libraries')) OR $(MSBuildProjectDicrectoryContains('src\libraries')))">true</IsLibrary>
+        <IsLibrary Condition="'$(IsLibrary)' == ''">false</IsLibrary>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="$(IsLibrary)' == 'true'">
+        <TargetFrameworks>net10.0;net11-preview.6</TargetFrameworks>
+    </PropertyGroup>
+    <PropertyGroup Condition="$(IsLibrary)' == 'false'">
+        <TargetFramework>net10.0</TargetFramework>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition="$(IsLibrary)' == 'true'">
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <AnalysisLevel>latest-recommended</AnalysisLevel>
+        <Deterministic>true</Deterministic>
+        <IsPackable>true</IsPackable>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/DarkVader0/Bitenovac-Decompression</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <Authors>Radivoje Milutinovic</Authors>
+        <Company>Bitenovac</Company>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    </PropertyGroup>
+    
+    <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+        <IsTestProject>true</IsTestProject>
+        <IsPackable>false</IsPackable>
+        <Threshold>95</Threshold>
+        <ThresholdType>line</ThresholdType>
+        <ThresholdStat>total</ThresholdStat>
+    </PropertyGroup>
+</Project>
