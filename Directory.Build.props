@@ -14,10 +14,10 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(IsLibrary)' == 'true'">
-        
+
     </PropertyGroup>
     <PropertyGroup Condition="'$(IsLibrary)' == 'false'">
-        
+
     </PropertyGroup>
 
     <PropertyGroup>
