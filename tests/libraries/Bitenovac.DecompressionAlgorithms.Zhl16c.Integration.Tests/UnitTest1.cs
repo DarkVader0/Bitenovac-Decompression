@@ -1,4 +1,4 @@
-namespace Bitenovac.DecompressionAlgorithms.Zhl16.Integration.Tests;
+namespace Bitenovac.DecompressionAlgorithms.Zhl16c.Integration.Tests;
 
 public class UnitTest1
 {

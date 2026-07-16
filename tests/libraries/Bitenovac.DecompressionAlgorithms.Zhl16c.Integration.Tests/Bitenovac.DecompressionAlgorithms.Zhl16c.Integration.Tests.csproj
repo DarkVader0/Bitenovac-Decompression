@@ -3,7 +3,7 @@
   <PropertyGroup>
     
     <IsTestProject>true</IsTestProject>
-    <RootNamespace>Bitenovac.DecompressionAlgorithms.Zhl16.Integration.Tests</RootNamespace>
+    <RootNamespace>Bitenovac.DecompressionAlgorithms.Zhl16c.Integration.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
