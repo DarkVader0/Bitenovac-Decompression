@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <IsLibrary>true</IsLibrary>
-    
   </PropertyGroup>
 
 </Project>
