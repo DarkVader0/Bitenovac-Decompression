@@ -1,5 +1,14 @@
 ﻿namespace Bitenovac.DecompressionAlgorithms.Units;
 
+/// <summary>
+/// Provides the definitional unit conversion factors shared by the unit value types
+/// (<see cref="Depth"/>, <see cref="Pressure"/>, <see cref="Volume"/>).
+/// </summary>
+/// <remarks>
+/// These are exact, definitional conversions between a unit and the canonical internal
+/// representation of each quantity (millimeters, millibars and milliliters). They are
+/// intentionally limited to unit definitions and do not include physical or environmental constrains.
+/// </remarks>
 internal static class UnitConstants
 {
     public const double MmPerMeter = 1000.0;
