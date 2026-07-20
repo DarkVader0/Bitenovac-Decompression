@@ -5,4 +5,8 @@
 
     </PropertyGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Bitenovac.DecompressionAlgorithms.Units\Bitenovac.DecompressionAlgorithms.Units.csproj" />
+    </ItemGroup>
+
 </Project>
