@@ -3,7 +3,7 @@
 public sealed class PressureTests
 {
     private const int Precision = 5;
-    
+
     [Fact]
     public void FromBar_ShouldReturn1000mbar_When1bar()
     {
@@ -12,7 +12,7 @@ public sealed class PressureTests
 
         // Act
         var pressure = Pressure.FromBar(bar);
-        
+
         // Assert
         Assert.Equal(1000, pressure.InMillibar);
     }
@@ -22,10 +22,10 @@ public sealed class PressureTests
     {
         // Arrange
         const double psi = 14.5037738;
-        
+
         // Act
         var pressure = Pressure.FromPsi(psi);
-        
+
         // Assert
         Assert.Equal(1000, pressure.InMillibar, Precision);
     }
@@ -38,11 +38,11 @@ public sealed class PressureTests
 
         // Act
         var pressure = Pressure.FromMillibar(millibar);
-        
+
         // Assert
         Assert.Equal(1000, pressure.InMillibar);
     }
-    
+
     [Fact]
     public void FromAta_ShouldReturn1000mbar_When0point98692327Ata()
     {
@@ -51,11 +51,11 @@ public sealed class PressureTests
 
         // Act
         var pressure = Pressure.FromAta(ata);
-        
+
         // Assert
         Assert.Equal(1000, pressure.InMillibar, Precision);
     }
-    
+
     [Fact]
     public void InBar_ShouldReturn1bar_When1000mbar()
     {
@@ -64,7 +64,7 @@ public sealed class PressureTests
 
         // Act
         var bar = pressure.InBar;
-        
+
         // Assert
         Assert.Equal(1, bar);
     }
@@ -94,7 +94,7 @@ public sealed class PressureTests
         // Assert
         Assert.Equal(0.98692327, ata, Precision);
     }
-    
+
     [Fact]
     public void Equals_ShouldReturnTrue_WhenPressuresAreEqual()
     {
@@ -104,7 +104,7 @@ public sealed class PressureTests
 
         // Act
         var areEqual = pressure1.Equals(pressure2);
-        
+
         // Assert
         Assert.True(areEqual);
     }
@@ -118,7 +118,7 @@ public sealed class PressureTests
 
         // Act
         var areEqual = pressure1.Equals(pressure2);
-        
+
         // Assert
         Assert.False(areEqual);
     }
@@ -131,7 +131,7 @@ public sealed class PressureTests
 
         // Act
         var areEqual = pressure.Equals(null);
-        
+
         // Assert
         Assert.False(areEqual);
     }
@@ -145,11 +145,11 @@ public sealed class PressureTests
 
         // Act
         var areEqual = pressure.Equals(differentTypeObject);
-        
+
         // Assert
         Assert.False(areEqual);
     }
-    
+
     [Fact]
     public void op_Equality_ShouldReturnTrue_WhenPressuresAreEqual()
     {
@@ -177,7 +177,7 @@ public sealed class PressureTests
         // Assert
         Assert.False(areEqual);
     }
-    
+
     [Fact]
     public void op_Inequality_ShouldReturnTrue_WhenPressuresAreNotEqual()
     {
@@ -235,7 +235,7 @@ public sealed class PressureTests
         // Assert
         Assert.NotEqual(hashCode1, hashCode2);
     }
-    
+
     [Fact]
     public void CompareTo_ShouldReturnZero_WhenPressuresAreEqual()
     {
@@ -277,7 +277,7 @@ public sealed class PressureTests
         // Assert
         Assert.True(comparisonResult > 0);
     }
-    
+
     [Fact]
     public void op_Minus_ShouldReturnCorrectPressure_WhenSubtractingTwoPressures()
     {
@@ -305,7 +305,7 @@ public sealed class PressureTests
         // Assert
         Assert.Equal(3, resultPressure.InBar);
     }
-    
+
     [Fact]
     public void op_Multiply_Scalar_ShouldReturnCorrectPressure_WhenMultiplyingPressureByScalar()
     {
@@ -326,10 +326,10 @@ public sealed class PressureTests
         // Arrange
         var pressure = Pressure.FromBar(4);
         const double scalar = 2;
-        
+
         // Act
         var resultPressure = pressure / scalar;
-        
+
         // Assert
         Assert.Equal(2, resultPressure.InBar);
     }
@@ -340,201 +340,201 @@ public sealed class PressureTests
         // Arrange
         var pressure1 = Pressure.FromBar(4);
         var pressure2 = Pressure.FromBar(2);
-        
+
         // Act
         var resultScalar = pressure1 / pressure2;
-        
+
         // Assert
         Assert.Equal(2, resultScalar);
     }
 
     [Fact]
-public void Zero_ShouldReturn0Millibar()
-{
-    // Arrange
+    public void Zero_ShouldReturn0Millibar()
+    {
+        // Arrange
 
-    // Act
-    var pressure = Pressure.Zero;
+        // Act
+        var pressure = Pressure.Zero;
 
-    // Assert
-    Assert.Equal(0, pressure.InMillibar);
-}
+        // Assert
+        Assert.Equal(0, pressure.InMillibar);
+    }
 
-[Fact]
-public void Equals_ShouldReturnTrue_WhenComparedWithSameInstance()
-{
-    // Arrange
-    var pressure = Pressure.FromMillibar(1000);
+    [Fact]
+    public void Equals_ShouldReturnTrue_WhenComparedWithSameInstance()
+    {
+        // Arrange
+        var pressure = Pressure.FromMillibar(1000);
 
-    // Act
-    var areEqual = pressure.Equals(pressure);
+        // Act
+        var areEqual = pressure.Equals(pressure);
 
-    // Assert
-    Assert.True(areEqual);
-}
+        // Assert
+        Assert.True(areEqual);
+    }
 
-[Fact]
-public void Equals_ShouldReturnTrue_WhenComparedWithEqualObject()
-{
-    // Arrange
-    var pressure = Pressure.FromMillibar(1000);
-    object equalObject = Pressure.FromBar(1);
+    [Fact]
+    public void Equals_ShouldReturnTrue_WhenComparedWithEqualObject()
+    {
+        // Arrange
+        var pressure = Pressure.FromMillibar(1000);
+        object equalObject = Pressure.FromBar(1);
 
-    // Act
-    var areEqual = pressure.Equals(equalObject);
+        // Act
+        var areEqual = pressure.Equals(equalObject);
 
-    // Assert
-    Assert.True(areEqual);
-}
+        // Assert
+        Assert.True(areEqual);
+    }
 
-[Fact]
-public void op_LessThan_ShouldReturnTrue_WhenPressure1IsLessThanPressure2()
-{
-    // Arrange
-    var pressure1 = Pressure.FromBar(1);
-    var pressure2 = Pressure.FromBar(2);
+    [Fact]
+    public void op_LessThan_ShouldReturnTrue_WhenPressure1IsLessThanPressure2()
+    {
+        // Arrange
+        var pressure1 = Pressure.FromBar(1);
+        var pressure2 = Pressure.FromBar(2);
 
-    // Act
-    var isLessThan = pressure1 < pressure2;
+        // Act
+        var isLessThan = pressure1 < pressure2;
 
-    // Assert
-    Assert.True(isLessThan);
-}
+        // Assert
+        Assert.True(isLessThan);
+    }
 
-[Fact]
-public void op_LessThan_ShouldReturnFalse_WhenPressure1IsGreaterThanPressure2()
-{
-    // Arrange
-    var pressure1 = Pressure.FromBar(2);
-    var pressure2 = Pressure.FromBar(1);
+    [Fact]
+    public void op_LessThan_ShouldReturnFalse_WhenPressure1IsGreaterThanPressure2()
+    {
+        // Arrange
+        var pressure1 = Pressure.FromBar(2);
+        var pressure2 = Pressure.FromBar(1);
 
-    // Act
-    var isLessThan = pressure1 < pressure2;
+        // Act
+        var isLessThan = pressure1 < pressure2;
 
-    // Assert
-    Assert.False(isLessThan);
-}
+        // Assert
+        Assert.False(isLessThan);
+    }
 
-[Fact]
-public void op_LessThanOrEqual_ShouldReturnTrue_WhenPressuresAreEqual()
-{
-    // Arrange
-    var pressure1 = Pressure.FromMillibar(1000);
-    var pressure2 = Pressure.FromBar(1);
+    [Fact]
+    public void op_LessThanOrEqual_ShouldReturnTrue_WhenPressuresAreEqual()
+    {
+        // Arrange
+        var pressure1 = Pressure.FromMillibar(1000);
+        var pressure2 = Pressure.FromBar(1);
 
-    // Act
-    var isLessThanOrEqual = pressure1 <= pressure2;
+        // Act
+        var isLessThanOrEqual = pressure1 <= pressure2;
 
-    // Assert
-    Assert.True(isLessThanOrEqual);
-}
+        // Assert
+        Assert.True(isLessThanOrEqual);
+    }
 
-[Fact]
-public void op_LessThanOrEqual_ShouldReturnTrue_WhenPressure1IsLessThanPressure2()
-{
-    // Arrange
-    var pressure1 = Pressure.FromBar(1);
-    var pressure2 = Pressure.FromBar(2);
+    [Fact]
+    public void op_LessThanOrEqual_ShouldReturnTrue_WhenPressure1IsLessThanPressure2()
+    {
+        // Arrange
+        var pressure1 = Pressure.FromBar(1);
+        var pressure2 = Pressure.FromBar(2);
 
-    // Act
-    var isLessThanOrEqual = pressure1 <= pressure2;
+        // Act
+        var isLessThanOrEqual = pressure1 <= pressure2;
 
-    // Assert
-    Assert.True(isLessThanOrEqual);
-}
+        // Assert
+        Assert.True(isLessThanOrEqual);
+    }
 
-[Fact]
-public void op_GreaterThan_ShouldReturnTrue_WhenPressure1IsGreaterThanPressure2()
-{
-    // Arrange
-    var pressure1 = Pressure.FromBar(2);
-    var pressure2 = Pressure.FromBar(1);
+    [Fact]
+    public void op_GreaterThan_ShouldReturnTrue_WhenPressure1IsGreaterThanPressure2()
+    {
+        // Arrange
+        var pressure1 = Pressure.FromBar(2);
+        var pressure2 = Pressure.FromBar(1);
 
-    // Act
-    var isGreaterThan = pressure1 > pressure2;
+        // Act
+        var isGreaterThan = pressure1 > pressure2;
 
-    // Assert
-    Assert.True(isGreaterThan);
-}
+        // Assert
+        Assert.True(isGreaterThan);
+    }
 
-[Fact]
-public void op_GreaterThan_ShouldReturnFalse_WhenPressure1IsLessThanPressure2()
-{
-    // Arrange
-    var pressure1 = Pressure.FromBar(1);
-    var pressure2 = Pressure.FromBar(2);
+    [Fact]
+    public void op_GreaterThan_ShouldReturnFalse_WhenPressure1IsLessThanPressure2()
+    {
+        // Arrange
+        var pressure1 = Pressure.FromBar(1);
+        var pressure2 = Pressure.FromBar(2);
 
-    // Act
-    var isGreaterThan = pressure1 > pressure2;
+        // Act
+        var isGreaterThan = pressure1 > pressure2;
 
-    // Assert
-    Assert.False(isGreaterThan);
-}
+        // Assert
+        Assert.False(isGreaterThan);
+    }
 
-[Fact]
-public void op_GreaterThanOrEqual_ShouldReturnTrue_WhenPressuresAreEqual()
-{
-    // Arrange
-    var pressure1 = Pressure.FromMillibar(1000);
-    var pressure2 = Pressure.FromBar(1);
+    [Fact]
+    public void op_GreaterThanOrEqual_ShouldReturnTrue_WhenPressuresAreEqual()
+    {
+        // Arrange
+        var pressure1 = Pressure.FromMillibar(1000);
+        var pressure2 = Pressure.FromBar(1);
 
-    // Act
-    var isGreaterThanOrEqual = pressure1 >= pressure2;
+        // Act
+        var isGreaterThanOrEqual = pressure1 >= pressure2;
 
-    // Assert
-    Assert.True(isGreaterThanOrEqual);
-}
+        // Assert
+        Assert.True(isGreaterThanOrEqual);
+    }
 
-[Fact]
-public void op_GreaterThanOrEqual_ShouldReturnTrue_WhenPressure1IsGreaterThanPressure2()
-{
-    // Arrange
-    var pressure1 = Pressure.FromBar(2);
-    var pressure2 = Pressure.FromBar(1);
+    [Fact]
+    public void op_GreaterThanOrEqual_ShouldReturnTrue_WhenPressure1IsGreaterThanPressure2()
+    {
+        // Arrange
+        var pressure1 = Pressure.FromBar(2);
+        var pressure2 = Pressure.FromBar(1);
 
-    // Act
-    var isGreaterThanOrEqual = pressure1 >= pressure2;
+        // Act
+        var isGreaterThanOrEqual = pressure1 >= pressure2;
 
-    // Assert
-    Assert.True(isGreaterThanOrEqual);
-}
+        // Assert
+        Assert.True(isGreaterThanOrEqual);
+    }
 
-[Fact]
-public void FromBar_ShouldReturnOriginalBar_WhenConvertedBackToBar()
-{
-    // Arrange
-    const double expectedBar = 3.5;
+    [Fact]
+    public void FromBar_ShouldReturnOriginalBar_WhenConvertedBackToBar()
+    {
+        // Arrange
+        const double expectedBar = 3.5;
 
-    // Act
-    var actualBar = Pressure.FromBar(expectedBar).InBar;
+        // Act
+        var actualBar = Pressure.FromBar(expectedBar).InBar;
 
-    // Assert
-    Assert.Equal(expectedBar, actualBar);
-}
+        // Assert
+        Assert.Equal(expectedBar, actualBar);
+    }
 
-[Fact]
-public void FromPsi_ShouldReturnOriginalPsi_WhenConvertedBackToPsi()
-{
-    // Arrange
-    const double expectedPsi = 125.75;
+    [Fact]
+    public void FromPsi_ShouldReturnOriginalPsi_WhenConvertedBackToPsi()
+    {
+        // Arrange
+        const double expectedPsi = 125.75;
 
-    // Act
-    var actualPsi = Pressure.FromPsi(expectedPsi).InPsi;
+        // Act
+        var actualPsi = Pressure.FromPsi(expectedPsi).InPsi;
 
-    // Assert
-    Assert.Equal(expectedPsi, actualPsi, Precision);
-}
+        // Assert
+        Assert.Equal(expectedPsi, actualPsi, Precision);
+    }
 
-[Fact]
-public void FromAta_ShouldReturnOriginalAta_WhenConvertedBackToAta()
-{
-    // Arrange
-    const double expectedAta = 2.4;
+    [Fact]
+    public void FromAta_ShouldReturnOriginalAta_WhenConvertedBackToAta()
+    {
+        // Arrange
+        const double expectedAta = 2.4;
 
-    // Act
-    var actualAta = Pressure.FromAta(expectedAta).InAta;
+        // Act
+        var actualAta = Pressure.FromAta(expectedAta).InAta;
 
-    // Assert
-    Assert.Equal(expectedAta, actualAta, Precision);
-}
+        // Assert
+        Assert.Equal(expectedAta, actualAta, Precision);
+    }
 }

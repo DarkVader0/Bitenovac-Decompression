@@ -1,17 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    
-    <IsTestProject>true</IsTestProject>
-    <RootNamespace>Bitenovac.DecompressionCalculator.Api.Integration.Tests</RootNamespace>
-  </PropertyGroup>
+    <PropertyGroup>
 
-  <ItemGroup>
-    <Using Include="Xunit" />
-  </ItemGroup>
+        <IsTestProject>true</IsTestProject>
+        <RootNamespace>Bitenovac.DecompressionCalculator.Api.Integration.Tests</RootNamespace>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="xunit.v3.mtp-v2"/>
-  </ItemGroup>
+    <ItemGroup>
+        <Using Include="Xunit"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.v3.mtp-v2"/>
+    </ItemGroup>
 
 </Project>

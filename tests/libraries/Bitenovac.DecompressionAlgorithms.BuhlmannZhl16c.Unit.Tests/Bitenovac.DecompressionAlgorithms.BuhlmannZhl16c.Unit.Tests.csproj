@@ -1,16 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <IsTestProject>true</IsTestProject>
-    <RootNamespace>Bitenovac.DecompressionAlgorithms.Zhl16c.Unit.Tests</RootNamespace>
-  </PropertyGroup>
+    <PropertyGroup>
+        <IsTestProject>true</IsTestProject>
+        <RootNamespace>Bitenovac.DecompressionAlgorithms.Zhl16c.Unit.Tests</RootNamespace>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <Using Include="Xunit" />
-  </ItemGroup>
+    <ItemGroup>
+        <Using Include="Xunit"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="xunit.v3.mtp-v2"/>
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="xunit.v3.mtp-v2"/>
+    </ItemGroup>
 
 </Project>

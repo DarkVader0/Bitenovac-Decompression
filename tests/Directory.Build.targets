@@ -1,7 +1,6 @@
 ﻿<Project>
     <ItemGroup Condition="'$(IsTestProject)' == 'true'">
-        <Content Include="$(MSBuildThisFileDirectory)xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
-        <PackageReference Include="coverlet.MTP"
-                          PrivateAssets="all" />
+        <Content Include="$(MSBuildThisFileDirectory)xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest"/>
+        <PackageReference Include="coverlet.MTP" PrivateAssets="all"/>
     </ItemGroup>
 </Project>

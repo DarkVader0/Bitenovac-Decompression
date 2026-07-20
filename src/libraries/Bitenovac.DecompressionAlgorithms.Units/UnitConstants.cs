@@ -2,7 +2,7 @@
 
 /// <summary>
 /// Provides the definitional unit conversion factors shared by the unit value types
-/// (<see cref="Depth"/>, <see cref="Pressure"/>, <see cref="Volume"/>).
+/// (<see cref="Depth" />, <see cref="Pressure" />, <see cref="Volume" />).
 /// </summary>
 /// <remarks>
 /// These are exact, definitional conversions between a unit and the canonical internal
