@@ -1,5 +1,4 @@
 ﻿using Bitenovac.DecompressionAlgorithms.Core.Planning;
-using Bitenovac.DecompressionAlgorithms.Core.Results;
 
 namespace Bitenovac.DecompressionAlgorithms.Core.Abstractions;
 
