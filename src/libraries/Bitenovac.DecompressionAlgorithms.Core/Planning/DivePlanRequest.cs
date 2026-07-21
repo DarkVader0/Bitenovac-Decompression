@@ -8,7 +8,7 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 /// the plan is computed.
 /// </summary>
 /// <remarks>Instances are immutable; the cylinders are copied on construction.</remarks>
-public readonly struct DivePlanRequest
+public sealed class DivePlanRequest
 {
     private readonly Cylinder[] _cylinders;
 

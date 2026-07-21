@@ -13,10 +13,8 @@ public sealed class DiveProfile
 
     /// <summary>Initializes a new instance of the <see cref="DiveProfile" /> class.</summary>
     /// <param name="segments">The ordered segments that make up the dive.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="segments" /> is <see langword="null" />.</exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="segments" /> is empty or contains a <see langword="null" />
-    /// segment.
+    /// <paramref name="segments" /> is empty.
     /// </exception>
     public DiveProfile(IEnumerable<DiveSegment> segments)
     {

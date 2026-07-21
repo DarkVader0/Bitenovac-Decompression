@@ -12,10 +12,12 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Gas;
 /// mixture (for example, 21/35), but it is stored internally as integer permille (parts
 /// per thousand) of oxygen and helium. This canonical integer representation makes
 /// equality and hashing exact and independent of the arithmetic path used to produce the
-/// value, avoiding the pitfalls of comparing floating-point fractions. Instances are
-/// immutable and validated at construction so that the content is non-negative and sums
-/// to no more than one hundred percent. Construct instances using <see cref="FromPercent" />
-/// or the <see cref="Air" /> and <see cref="Oxygen" /> presets.
+/// value. A mixture must contain some oxygen, so it is validated on construction that the
+/// oxygen content is greater than zero and that the oxygen and helium content sum to no
+/// more than one hundred percent. Construct instances using <see cref="FromPercent" /> or
+/// the <see cref="Air" /> and <see cref="Oxygen" /> presets. Note that the
+/// <see langword="default" /> value bypasses this validation and represents no oxygen; it
+/// is not a breathable mixture and must not be used as one.
 /// </remarks>
 public readonly struct GasMixture : IEquatable<GasMixture>
 {
@@ -36,18 +38,19 @@ public readonly struct GasMixture : IEquatable<GasMixture>
     }
 
     /// <summary>Creates a gas mixture from its oxygen and helium content expressed in percent.</summary>
-    /// <param name="percentO2">The oxygen content, in percent (0 to 100).</param>
+    /// <param name="percentO2">The oxygen content, in percent (greater than 0, up to 100).</param>
     /// <param name="percentHe">The helium content, in percent (0 to 100).</param>
     /// <returns>A gas mixture with the specified composition.</returns>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// A content value is outside the range 0 to 100, or the oxygen and helium content sum to more than 100 percent.
+    /// <paramref name="percentO2" /> is not greater than zero or exceeds 100, <paramref name="percentHe" /> is outside the
+    /// range 0 to 100, or the oxygen and helium content sum to more than 100 percent.
     /// </exception>
     public static GasMixture FromPercent(double percentO2, double percentHe)
     {
-        if (percentO2 is < 0.0 or > 100.0)
+        if (percentO2 is <= 0.0 or > 100.0)
         {
             throw new ArgumentOutOfRangeException(nameof(percentO2), percentO2,
-                "The oxygen content must be between 0 and 100 percent.");
+                "The oxygen content must be greater than 0 and at most 100 percent.");
         }
 
         if (percentHe is < 0.0 or > 100.0)

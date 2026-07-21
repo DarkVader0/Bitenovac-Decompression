@@ -55,5 +55,15 @@ public readonly struct Cylinder
     /// the pressures are expressed.
     /// </remarks>
     /// <returns>The free gas volume available at the start of the dive.</returns>
-    public Volume StartGasVolume(Pressure surfacePressure) => Size * (StartPressure / surfacePressure);
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="surfacePressure" /> is not greater than zero.</exception>
+    public Volume StartGasVolume(Pressure surfacePressure)
+    {
+        if (surfacePressure.InMillibar <= 0.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(surfacePressure), surfacePressure.InMillibar,
+                "The surface pressure must be greater than zero.");
+        }
+
+        return Size * (StartPressure / surfacePressure);
+    }
 }
