@@ -32,8 +32,8 @@ public sealed class DecoPlan
     /// <see langword="null" />.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="expandedSegments" /> is empty, or either collection contains a null
-    /// element.
+    /// <paramref name="expandedSegments" /> is empty, or <paramref name="gasUsage" /> contains a
+    /// <see langword="null" /> entry.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="totalRuntime" /> is negative, <paramref name="centralNervousSystemFraction" /> is negative, or
@@ -55,12 +55,12 @@ public sealed class DecoPlan
         {
             throw new ArgumentException("At least one segment must be supplied.", nameof(expandedSegments));
         }
-        // if (Array.Exists(segments, static segment => segment is null))
-        //     throw new ArgumentException("The segments must not contain a null segment.", nameof(expandedSegments));
 
         var usage = gasUsage.ToArray();
-        // if (Array.Exists(usage, static item => item is null))
-        //     throw new ArgumentException("The gas usage must not contain a null entry.", nameof(gasUsage));
+        if (Array.Exists(usage, static item => item is null))
+        {
+            throw new ArgumentException("The gas usage must not contain a null entry.", nameof(gasUsage));
+        }
 
         if (totalRuntime < TimeSpan.Zero)
         {
