@@ -41,12 +41,18 @@ public readonly struct Cylinder
     public CylinderPurpose Purpose { get; }
 
     /// <summary>
-    /// Gets the total volume of gas the cylinder holds at its start pressure, measured
-    /// at surface (one bar) conditions.
+    /// Gets the total volume of free gas the cylinder holds at its start pressure,
+    /// referenced to the given surface pressure.
     /// </summary>
+    /// <param name="surfacePressure">
+    /// The surface (reference) pressure against which the free gas volume is measured,
+    /// typically the atmospheric pressure of the dive environment.
+    /// </param>
     /// <remarks>
-    /// This is the free gas capacity, obtained by multiplying the water capacity by the
-    /// start pressure expressed in bar. It assumes ideal-gas behaviour.
+    /// The free gas volume is the water capacity multiplied by the ratio of the start
+    /// pressure to the surface pressure, and therefore assumes ideal-gas behavior. The
+    /// pressure ratio is dimensionless, so the result is independent of the unit in which
+    /// the pressures are expressed.
     /// </remarks>
     /// <returns>The free gas volume available at the start of the dive.</returns>
     public Volume StartGasVolume(Pressure surfacePressure) => Size * (StartPressure / surfacePressure);

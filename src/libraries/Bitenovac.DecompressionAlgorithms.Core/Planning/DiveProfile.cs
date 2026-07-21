@@ -28,11 +28,6 @@ public readonly struct DiveProfile
         {
             throw new ArgumentException("A dive profile must contain at least one segment.", nameof(segments));
         }
-
-        if (Array.IndexOf(_segments, null) >= 0)
-        {
-            throw new ArgumentException("A dive profile must not contain a null segment.", nameof(segments));
-        }
     }
 
     /// <summary>Gets the ordered segments that make up the dive.</summary>
