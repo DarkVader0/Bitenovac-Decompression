@@ -87,15 +87,17 @@ public sealed class DivePlanner
                 currentDepthMeter = targetDepthMeter;
             }
 
-            if (target.Duration > TimeSpan.Zero)
+            if (target.Duration <= TimeSpan.Zero)
             {
-                var bottomCylinder = SelectBottomGas(cylinders, targetDepthMeter, settings);
-                var bottom = new DiveSegment(Depth.FromMeter(targetDepthMeter), target.Duration,
-                    bottomCylinder.Gas, SegmentKind.Bottom);
-                segments.Add(bottom);
-                state = _algorithm.LoadSegment(state, bottom);
-                currentDepthMeter = targetDepthMeter;
+                continue;
             }
+
+            var bottomCylinder = SelectBottomGas(cylinders, targetDepthMeter, settings);
+            var bottom = new DiveSegment(Depth.FromMeter(targetDepthMeter), target.Duration,
+                bottomCylinder.Gas, SegmentKind.Bottom);
+            segments.Add(bottom);
+            state = _algorithm.LoadSegment(state, bottom);
+            currentDepthMeter = targetDepthMeter;
         }
 
         // The model computes the final ascent to the surface, including the decompression

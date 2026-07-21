@@ -1,7 +1,7 @@
 ﻿using Bitenovac.DecompressionAlgorithms.Core.Equipment;
 using Bitenovac.DecompressionAlgorithms.Units;
 
-namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
+namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 
 /// <summary>
 /// Represents the outcome of gas consumption for a single cylinder over the course of a

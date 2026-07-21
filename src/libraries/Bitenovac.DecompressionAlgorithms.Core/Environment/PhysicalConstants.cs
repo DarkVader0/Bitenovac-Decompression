@@ -12,7 +12,7 @@
 /// obtained from density × gravity × depth-in-meters and then scaled from pascals to
 /// millibars (1 millibar = 100 pascals).
 /// </remarks>
-internal static class PhysicalConstants
+public static class PhysicalConstants
 {
     /// <summary>Standard gravitational acceleration (m/s²).</summary>
     public const double GravityMetersPerSecondSquared = 9.80665;
