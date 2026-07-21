@@ -23,7 +23,8 @@ public sealed class ReserveGasResult
         var statuses = cylinderStatuses.ToArray();
         if (Array.Exists(statuses, static status => status is null))
         {
-            throw new ArgumentException("The cylinder statuses must not contain a null entry.", nameof(cylinderStatuses));
+            throw new ArgumentException("The cylinder statuses must not contain a null entry.",
+                nameof(cylinderStatuses));
         }
 
         _cylinderStatuses = statuses;

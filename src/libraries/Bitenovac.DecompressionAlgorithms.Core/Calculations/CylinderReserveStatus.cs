@@ -17,7 +17,10 @@ public sealed class CylinderReserveStatus
     /// <summary>Initializes a new instance of the <see cref="CylinderReserveStatus" /> class.</summary>
     /// <param name="cylinder">The cylinder to which this assessment relates.</param>
     /// <param name="requiredReserve">The volume of gas, measured at surface conditions, that must remain as a reserve.</param>
-    /// <param name="projectedRemaining">The volume of gas, measured at surface conditions, projected to remain at the end of the dive.</param>
+    /// <param name="projectedRemaining">
+    /// The volume of gas, measured at surface conditions, projected to remain at the end of
+    /// the dive.
+    /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// <paramref name="requiredReserve" /> or <paramref name="projectedRemaining" /> is negative.
     /// </exception>

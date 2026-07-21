@@ -1,5 +1,6 @@
-﻿using Bitenovac.DecompressionAlgorithms.Core.Equipment;
-using Bitenovac.DecompressionAlgorithms.Core.Environment;
+﻿using Bitenovac.DecompressionAlgorithms.Core.Environment;
+using Bitenovac.DecompressionAlgorithms.Core.Equipment;
+using Bitenovac.DecompressionAlgorithms.Core.Gas;
 using Bitenovac.DecompressionAlgorithms.Core.Planning;
 using Bitenovac.DecompressionAlgorithms.Units;
 
@@ -20,8 +21,11 @@ public static class GasConsumption
     /// Computes the gas consumed from each supplied cylinder over the given expanded dive
     /// profile. Each segment's gas is drawn from the cylinder holding the matching mixture,
     /// consuming a free-gas volume equal to the surface air consumption rate scaled by the
-    /// ambient pressure at the segment's depth and the segment's duration. Bottom segments
-    /// use the bottom consumption rate and all other segments use the decompression rate.
+    /// ambient pressure at the segment's depth and the segment's duration. Only
+    /// decompression stops are breathed at the decompression rate; every other segment,
+    /// including descents, bottom time, working ascents between levels, and gas switches, is
+    /// breathed at the higher bottom rate, since the diver is moving or working rather than
+    /// holding a stop.
     /// </summary>
     /// <param name="segments">The fully expanded, ordered dive segments.</param>
     /// <param name="cylinders">The cylinders available to the diver.</param>
@@ -63,9 +67,13 @@ public static class GasConsumption
                     "A segment's breathing gas does not match any supplied cylinder.");
             }
 
-            var sacLitersPerMinute = segment.Kind == SegmentKind.Bottom
-                ? settings.BottomSacLitersPerMinute
-                : settings.DecoSacLitersPerMinute;
+            // Only decompression stops are breathed at the decompression rate; descent,
+            // bottom, working ascents between levels, and gas switches are all breathed at
+            // the higher bottom rate, since the diver is moving or working rather than
+            // holding a stop.
+            var sacLitersPerMinute = segment.Kind == SegmentKind.Stop
+                ? settings.DecoSacLitersPerMinute
+                : settings.BottomSacLitersPerMinute;
 
             // Free-gas volume (at surface conditions) = SAC × ambient-pressure-ratio × time.
             var ambientRatio = AmbientPressure(segment.Depth, settings).InMillibar
@@ -91,7 +99,7 @@ public static class GasConsumption
     /// <param name="cylinders">The cylinders to search.</param>
     /// <param name="gas">The breathing gas to match.</param>
     /// <returns>The zero-based index of the matching cylinder, or -1 if none matches.</returns>
-    private static int FindCylinderIndex(IReadOnlyList<Cylinder> cylinders, Gas.GasMixture gas)
+    private static int FindCylinderIndex(IReadOnlyList<Cylinder> cylinders, GasMixture gas)
     {
         for (var i = 0; i < cylinders.Count; i++)
         {
