@@ -50,6 +50,7 @@ internal static class PhysicalConstants
     /// <summary>Gets the water density, in kilograms per cubic meter, for a given salinity.</summary>
     /// <param name="salinity">The salinity model of the water.</param>
     /// <returns>The corresponding water density in kilograms per cubic meter.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="salinity" /> is not a defined <see cref="Salinity" /> value.</exception>
     public static double WaterDensity(Salinity salinity) => salinity switch
     {
         Salinity.Fresh => FreshWaterDensity,

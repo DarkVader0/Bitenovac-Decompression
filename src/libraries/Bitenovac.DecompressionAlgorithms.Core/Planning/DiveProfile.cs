@@ -7,7 +7,7 @@
 /// in unchanged.
 /// </summary>
 /// <remarks>Instances are immutable; the segment sequence is copied on construction.</remarks>
-public readonly struct DiveProfile
+public sealed class DiveProfile
 {
     private readonly DiveSegment[] _segments;
 

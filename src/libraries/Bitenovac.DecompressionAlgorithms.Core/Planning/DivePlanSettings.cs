@@ -16,7 +16,7 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 /// that a plan is never computed from an incompletely specified configuration. Each value
 /// is validated on construction.
 /// </remarks>
-public readonly struct DivePlanSettings
+public sealed class DivePlanSettings
 {
     /// <summary>Initializes a new instance of the <see cref="DivePlanSettings" /> class.</summary>
     /// <param name="surfacePressure">The atmospheric pressure at the surface.</param>
