@@ -18,13 +18,26 @@ public sealed class DecoPlan
     /// <param name="expandedSegments">The fully expanded sequence of dive segments.</param>
     /// <param name="gasUsage">The gas consumed from each cylinder over the dive.</param>
     /// <param name="totalRuntime">The total runtime of the dive, from leaving the surface to returning to it.</param>
-    /// <param name="reserveGas">The minimum reserve gas volume required to safely abort the dive, measured at surface conditions.</param>
-    /// <param name="centralNervousSystemFraction">The accrued central nervous system oxygen toxicity, as a fraction of the single-exposure limit.</param>
+    /// <param name="reserveGas">
+    /// The minimum reserve gas volume required to safely abort the dive, measured at surface
+    /// conditions.
+    /// </param>
+    /// <param name="centralNervousSystemFraction">
+    /// The accrued central nervous system oxygen toxicity, as a fraction of the
+    /// single-exposure limit.
+    /// </param>
     /// <param name="oxygenToleranceUnits">The accrued pulmonary oxygen toxicity, in oxygen tolerance units.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="expandedSegments" /> or <paramref name="gasUsage" /> is <see langword="null" />.</exception>
-    /// <exception cref="ArgumentException"><paramref name="expandedSegments" /> is empty, or either collection contains a null element.</exception>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="expandedSegments" /> or <paramref name="gasUsage" /> is
+    /// <see langword="null" />.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="expandedSegments" /> is empty, or either collection contains a null
+    /// element.
+    /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="totalRuntime" /> is negative, <paramref name="centralNervousSystemFraction" /> is negative, or <paramref name="oxygenToleranceUnits" /> is negative.
+    /// <paramref name="totalRuntime" /> is negative, <paramref name="centralNervousSystemFraction" /> is negative, or
+    /// <paramref name="oxygenToleranceUnits" /> is negative.
     /// </exception>
     public DecoPlan(
         IEnumerable<DiveSegment> expandedSegments,
@@ -39,7 +52,9 @@ public sealed class DecoPlan
 
         var segments = expandedSegments.ToArray();
         if (segments.Length == 0)
+        {
             throw new ArgumentException("At least one segment must be supplied.", nameof(expandedSegments));
+        }
         // if (Array.Exists(segments, static segment => segment is null))
         //     throw new ArgumentException("The segments must not contain a null segment.", nameof(expandedSegments));
 
@@ -48,14 +63,22 @@ public sealed class DecoPlan
         //     throw new ArgumentException("The gas usage must not contain a null entry.", nameof(gasUsage));
 
         if (totalRuntime < TimeSpan.Zero)
+        {
             throw new ArgumentOutOfRangeException(nameof(totalRuntime), totalRuntime,
                 "The total runtime must not be negative.");
+        }
+
         if (centralNervousSystemFraction < 0.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(centralNervousSystemFraction), centralNervousSystemFraction,
                 "The central nervous system fraction must not be negative.");
+        }
+
         if (oxygenToleranceUnits < 0.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(oxygenToleranceUnits), oxygenToleranceUnits,
                 "The oxygen tolerance units must not be negative.");
+        }
 
         _expandedSegments = segments;
         _gasUsage = usage;

@@ -11,11 +11,13 @@ public enum DiveMode
     /// exhales to the surrounding water; the inspired gas equals the cylinder mix.
     /// </summary>
     OC,
+
     /// <summary>
     /// Closed-circuit rebreather. Exhaled gas is recirculated and oxygen is
     /// injected to hold a target partial pressure of oxygen (the setpoint).
     /// </summary>
     CCR,
+
     /// <summary>
     /// Passive semi-closed rebreather. A fixed fraction of the breathing loop
     /// gas is vented and replaced from the diluent according to a dump ratio.

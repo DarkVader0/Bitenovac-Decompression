@@ -1,6 +1,4 @@
-﻿using Bitenovac.DecompressionAlgorithms.Units;
-
-namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
+﻿namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
 /// <summary>
 /// Represents an ordered sequence of <see cref="DiveSegment" /> phases that make up a
@@ -16,7 +14,10 @@ public readonly struct DiveProfile
     /// <summary>Initializes a new instance of the <see cref="DiveProfile" /> class.</summary>
     /// <param name="segments">The ordered segments that make up the dive.</param>
     /// <exception cref="ArgumentNullException"><paramref name="segments" /> is <see langword="null" />.</exception>
-    /// <exception cref="ArgumentException"><paramref name="segments" /> is empty or contains a <see langword="null" /> segment.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="segments" /> is empty or contains a <see langword="null" />
+    /// segment.
+    /// </exception>
     public DiveProfile(IEnumerable<DiveSegment> segments)
     {
         ArgumentNullException.ThrowIfNull(segments);
@@ -24,9 +25,14 @@ public readonly struct DiveProfile
         _segments = segments.ToArray();
 
         if (_segments.Length == 0)
+        {
             throw new ArgumentException("A dive profile must contain at least one segment.", nameof(segments));
+        }
+
         if (Array.IndexOf(_segments, null) >= 0)
+        {
             throw new ArgumentException("A dive profile must not contain a null segment.", nameof(segments));
+        }
     }
 
     /// <summary>Gets the ordered segments that make up the dive.</summary>

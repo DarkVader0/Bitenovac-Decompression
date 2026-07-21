@@ -36,12 +36,20 @@ public readonly struct GasMixture : IEquatable<GasMixture>
     public static GasMixture FromPercent(double percentO2, double percentHe)
     {
         if (percentO2 is < 0.0 or > 100.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(percentO2), percentO2, null);
+        }
+
         if (percentHe is < 0.0 or > 100.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(percentHe), percentHe, null);
+        }
+
         if (percentO2 + percentHe > 100.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(percentHe),
                 "The oxygen and helium content must not sum to more than 100 percent.");
+        }
 
         return new GasMixture(percentO2 / 100.0, percentHe / 100.0);
     }

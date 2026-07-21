@@ -18,11 +18,15 @@ public readonly struct DivePlanRequest
     /// <param name="settings">The settings that govern how the plan is computed.</param>
     /// <exception cref="ArgumentNullException">Any argument is <see langword="null" />.</exception>
     /// <exception cref="ArgumentException"><paramref name="cylinders" /> is empty or contains a null cylinder.</exception>
-    public DivePlanRequest(DiveProfile profile, IEnumerable<Cylinder> cylinders, DivePlanSettings settings)
+    public DivePlanRequest(DiveProfile profile,
+        IEnumerable<Cylinder> cylinders,
+        DivePlanSettings settings)
     {
         var cylinderArray = cylinders.ToArray();
         if (cylinderArray.Length == 0)
+        {
             throw new ArgumentException("At least one cylinder must be supplied.", nameof(cylinders));
+        }
         // if (Array.Exists(cylinderArray, static cylinder => cylinder is default))
         //     throw new ArgumentException("The cylinders must not contain a null cylinder.", nameof(cylinders));
 

@@ -17,19 +17,30 @@ public sealed class CylinderGasUsage
     /// <param name="gasUsed">The volume of free gas consumed from the cylinder over the dive, measured at surface conditions.</param>
     /// <param name="endPressure">The pressure remaining in the cylinder at the end of the dive.</param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="gasUsed" /> is negative, or <paramref name="endPressure" /> is negative or exceeds the cylinder's start pressure.
+    /// <paramref name="gasUsed" /> is negative, or <paramref name="endPressure" /> is negative or exceeds the cylinder's start
+    /// pressure.
     /// </exception>
-    public CylinderGasUsage(Cylinder cylinder, Volume gasUsed, Pressure endPressure)
+    public CylinderGasUsage(Cylinder cylinder,
+        Volume gasUsed,
+        Pressure endPressure)
     {
         if (gasUsed.InLiter < 0.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(gasUsed), gasUsed.InLiter,
                 "The gas used must not be negative.");
+        }
+
         if (endPressure.InBar < 0.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(endPressure), endPressure.InBar,
                 "The end pressure must not be negative.");
+        }
+
         if (endPressure.InBar > cylinder.StartPressure.InBar)
+        {
             throw new ArgumentOutOfRangeException(nameof(endPressure), endPressure.InBar,
                 "The end pressure must not exceed the cylinder's start pressure.");
+        }
 
         Cylinder = cylinder;
         GasUsed = gasUsed;
@@ -44,7 +55,7 @@ public sealed class CylinderGasUsage
 
     /// <summary>Gets the pressure remaining in the cylinder at the end of the dive.</summary>
     public Pressure EndPressure { get; }
-    
+
     /// <summary>Gets the pressure in the cylinder at the start of the dive.</summary>
     public Pressure StartPressure => Cylinder.StartPressure;
 

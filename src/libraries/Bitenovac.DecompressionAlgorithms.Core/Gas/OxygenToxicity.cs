@@ -36,12 +36,16 @@ public static class OxygenToxicity
     public static double CentralNervousSystemFraction(Pressure partialPressureOfOxygen, TimeSpan duration)
     {
         if (duration < TimeSpan.Zero)
+        {
             throw new ArgumentOutOfRangeException(nameof(duration), duration,
                 "The duration must not be negative.");
+        }
 
         var po2Bar = partialPressureOfOxygen.InBar;
         if (po2Bar <= CnsThresholdBar)
+        {
             return 0.0;
+        }
 
         // The single-exposure time limit, in minutes, is a function of the partial
         // pressure of oxygen. The accrued fraction is the exposure time divided by that
@@ -64,12 +68,16 @@ public static class OxygenToxicity
     public static double OxygenToleranceUnits(Pressure partialPressureOfOxygen, TimeSpan duration)
     {
         if (duration < TimeSpan.Zero)
+        {
             throw new ArgumentOutOfRangeException(nameof(duration), duration,
                 "The duration must not be negative.");
+        }
 
         var po2Bar = partialPressureOfOxygen.InBar;
         if (po2Bar <= CnsThresholdBar)
+        {
             return 0.0;
+        }
 
         // OTU = t * ((0.5 / (po2 - 0.5)) ^ -0.83), with time in minutes.
         var factor = Math.Pow(0.5 / (po2Bar - 0.5), OtuExponent);
@@ -87,19 +95,19 @@ public static class OxygenToxicity
     private static double SingleExposureLimitMinutes(double po2Bar) =>
         // Piecewise linear segments of the NOAA single-exposure oxygen exposure limits,
         po2Bar switch
-        // expressed as (partial pressure in bar, limit in minutes) breakpoints.
-        {
-            <= 0.6 => 720.0,
-            <= 0.7 => 570.0,
-            <= 0.8 => 450.0,
-            <= 0.9 => 360.0,
-            <= 1.0 => 300.0,
-            <= 1.1 => 240.0,
-            <= 1.2 => 210.0,
-            <= 1.3 => 180.0,
-            <= 1.4 => 150.0,
-            <= 1.5 => 120.0,
-            <= 1.6 => 45.0,
-            _ => 45.0,
-        };
+            // expressed as (partial pressure in bar, limit in minutes) breakpoints.
+            {
+                <= 0.6 => 720.0,
+                <= 0.7 => 570.0,
+                <= 0.8 => 450.0,
+                <= 0.9 => 360.0,
+                <= 1.0 => 300.0,
+                <= 1.1 => 240.0,
+                <= 1.2 => 210.0,
+                <= 1.3 => 180.0,
+                <= 1.4 => 150.0,
+                <= 1.5 => 120.0,
+                <= 1.6 => 45.0,
+                _ => 45.0
+            };
 }

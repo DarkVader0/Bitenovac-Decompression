@@ -77,7 +77,7 @@ internal static class PhysicalConstants
     /// <returns>The atmospheric pressure at that altitude, in millibars.</returns>
     public static double AtmosphericPressureAtAltitudeMillibar(double altitudeMeters)
     {
-        var baseTerm = 1.0 - (TemperatureLapseRate * altitudeMeters / SeaLevelTemperatureKelvin);
+        var baseTerm = 1.0 - TemperatureLapseRate * altitudeMeters / SeaLevelTemperatureKelvin;
         var exponent = GravityMetersPerSecondSquared * MolarMassOfAir
                        / (UniversalGasConstant * TemperatureLapseRate);
         return SeaLevelPressureMillibar * Math.Pow(baseTerm, exponent);

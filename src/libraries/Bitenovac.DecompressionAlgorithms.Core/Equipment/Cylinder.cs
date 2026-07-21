@@ -17,7 +17,10 @@ public readonly struct Cylinder
     /// <param name="size">The water (internal) capacity of the cylinder.</param>
     /// <param name="startPressure">The pressure to which the cylinder is filled at the start of the dive.</param>
     /// <param name="purpose">The intended role of the cylinder within the dive plan.</param>
-    public Cylinder(GasMixture gas, Volume size, Pressure startPressure, CylinderPurpose purpose)
+    public Cylinder(GasMixture gas,
+        Volume size,
+        Pressure startPressure,
+        CylinderPurpose purpose)
     {
         Gas = gas;
         Size = size;

@@ -22,10 +22,22 @@ public readonly struct DivePlanSettings
     /// <param name="surfacePressure">The atmospheric pressure at the surface.</param>
     /// <param name="salinity">The salinity of the water in which the dive takes place.</param>
     /// <param name="descentRateMetersPerMinute">The rate of descent, in meters per minute.</param>
-    /// <param name="ascentRateBelow75PercentMetersPerMinute">The ascent rate while deeper than 75% of the average depth, in meters per minute.</param>
-    /// <param name="ascentRate75To50PercentMetersPerMinute">The ascent rate from 75% down to 50% of the average depth, in meters per minute.</param>
-    /// <param name="ascentRate50PercentToStopsMetersPerMinute">The ascent rate from 50% of the average depth down to the final six meters, in meters per minute.</param>
-    /// <param name="ascentRateLastSixMetersMetersPerMinute">The ascent rate for the final six meters to the surface, in meters per minute.</param>
+    /// <param name="ascentRateBelow75PercentMetersPerMinute">
+    /// The ascent rate while deeper than 75% of the average depth, in
+    /// meters per minute.
+    /// </param>
+    /// <param name="ascentRate75To50PercentMetersPerMinute">
+    /// The ascent rate from 75% down to 50% of the average depth, in
+    /// meters per minute.
+    /// </param>
+    /// <param name="ascentRate50PercentToStopsMetersPerMinute">
+    /// The ascent rate from 50% of the average depth down to the final
+    /// six meters, in meters per minute.
+    /// </param>
+    /// <param name="ascentRateLastSixMetersMetersPerMinute">
+    /// The ascent rate for the final six meters to the surface, in meters
+    /// per minute.
+    /// </param>
     /// <param name="bottomSacLitersPerMinute">The surface air consumption rate on the bottom, in liters per minute.</param>
     /// <param name="decoSacLitersPerMinute">The surface air consumption rate during decompression, in liters per minute.</param>
     /// <param name="sacFactor">The multiplier applied to consumption when computing the minimum gas requirement.</param>
@@ -68,40 +80,68 @@ public readonly struct DivePlanSettings
         bool oxygenIsNarcotic)
     {
         RequirePositive(descentRateMetersPerMinute, nameof(descentRateMetersPerMinute), "rate");
-        RequirePositive(ascentRateBelow75PercentMetersPerMinute, nameof(ascentRateBelow75PercentMetersPerMinute), "rate");
+        RequirePositive(ascentRateBelow75PercentMetersPerMinute, nameof(ascentRateBelow75PercentMetersPerMinute),
+            "rate");
         RequirePositive(ascentRate75To50PercentMetersPerMinute, nameof(ascentRate75To50PercentMetersPerMinute), "rate");
-        RequirePositive(ascentRate50PercentToStopsMetersPerMinute, nameof(ascentRate50PercentToStopsMetersPerMinute), "rate");
+        RequirePositive(ascentRate50PercentToStopsMetersPerMinute, nameof(ascentRate50PercentToStopsMetersPerMinute),
+            "rate");
         RequirePositive(ascentRateLastSixMetersMetersPerMinute, nameof(ascentRateLastSixMetersMetersPerMinute), "rate");
         RequirePositive(bottomSacLitersPerMinute, nameof(bottomSacLitersPerMinute), "consumption rate");
         RequirePositive(decoSacLitersPerMinute, nameof(decoSacLitersPerMinute), "consumption rate");
 
         if (sacFactor < 1.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(sacFactor), sacFactor,
                 "The surface air consumption factor must be at least one.");
+        }
+
         if (bottomPo2.InMillibar <= 0.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(bottomPo2), bottomPo2.InMillibar,
                 "The bottom partial pressure of oxygen must be greater than zero.");
+        }
+
         if (decoPo2.InMillibar <= 0.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(decoPo2), decoPo2.InMillibar,
                 "The decompression partial pressure of oxygen must be greater than zero.");
+        }
+
         if (reservePressure.InBar < 0.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(reservePressure), reservePressure.InBar,
                 "The reserve pressure must not be negative.");
+        }
+
         if (reserveStressFactor < 1.0)
+        {
             throw new ArgumentOutOfRangeException(nameof(reserveStressFactor), reserveStressFactor,
                 "The reserve stress factor must be at least one.");
+        }
+
         if (reserveTeamSize < 1)
+        {
             throw new ArgumentOutOfRangeException(nameof(reserveTeamSize), reserveTeamSize,
                 "The reserve team size must be at least one.");
+        }
+
         if (stopTimeIncrement <= TimeSpan.Zero)
+        {
             throw new ArgumentOutOfRangeException(nameof(stopTimeIncrement), stopTimeIncrement,
                 "The stop time increment must be greater than zero.");
+        }
+
         if (problemSolvingTime < TimeSpan.Zero)
+        {
             throw new ArgumentOutOfRangeException(nameof(problemSolvingTime), problemSolvingTime,
                 "The problem solving time must not be negative.");
+        }
+
         if (minimumGasSwitchDuration < TimeSpan.Zero)
+        {
             throw new ArgumentOutOfRangeException(nameof(minimumGasSwitchDuration), minimumGasSwitchDuration,
                 "The minimum gas switch duration must not be negative.");
+        }
 
         SurfacePressure = surfacePressure;
         Salinity = salinity;
@@ -197,10 +237,14 @@ public readonly struct DivePlanSettings
     /// <summary>Gets a value indicating whether oxygen is treated as narcotic when computing the best mix.</summary>
     public bool OxygenIsNarcotic { get; }
 
-    private static void RequirePositive(double value, string parameterName, string noun)
+    private static void RequirePositive(double value,
+        string parameterName,
+        string noun)
     {
         if (value <= 0.0)
+        {
             throw new ArgumentOutOfRangeException(parameterName, value,
                 $"The {noun} must be greater than zero.");
+        }
     }
 }

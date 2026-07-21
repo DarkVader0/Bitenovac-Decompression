@@ -17,7 +17,10 @@ public readonly struct DiveSegment
     /// <param name="duration">The length of time the segment lasts.</param>
     /// <param name="gas">The breathing gas used during the segment.</param>
     /// <param name="kind">The role of the segment within the dive.</param>
-    public DiveSegment(Depth depth, TimeSpan duration, GasMixture gas, SegmentKind kind)
+    public DiveSegment(Depth depth,
+        TimeSpan duration,
+        GasMixture gas,
+        SegmentKind kind)
     {
         Depth = depth;
         Duration = duration;
