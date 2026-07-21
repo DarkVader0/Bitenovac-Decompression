@@ -1,113 +1,161 @@
-﻿using Bitenovac.DecompressionAlgorithms.Units;
+﻿using System.Runtime.CompilerServices;
 
 namespace Bitenovac.DecompressionAlgorithms.Core.Gas;
 
 /// <summary>
-/// Provides calculations of oxygen toxicity exposure, being the central nervous system
-/// (CNS) toxicity as a percentage of the recommended single-exposure limit and the
+/// Provides calculations of oxygen toxicity exposure: the central nervous system (CNS)
+/// toxicity expressed as a percentage of the recommended single-exposure limit, and the
 /// pulmonary oxygen toxicity expressed in oxygen tolerance units (OTU). Both quantities
-/// depend only on the partial pressure of oxygen and the time of exposure, and so are
+/// depend only on the partial pressure of oxygen and the time of exposure and so are
 /// independent of the decompression model in use.
 /// </summary>
+/// <remarks>
+/// Partial pressures are supplied in millibars and durations in seconds, matching the
+/// integer canonical units used throughout planning. The central nervous system rate is
+/// the two-line exponential fit to the logarithm of the NOAA single-exposure table used
+/// by common dive-planning software. The pulmonary (OTU) calculation evaluates the exact
+/// time-integral of Baker's oxygen tolerance relation over a segment during which the
+/// partial pressure of oxygen changes linearly, which is more precise than a fixed-mean
+/// evaluation or a truncated polynomial approximation.
+/// </remarks>
 public static class OxygenToxicity
 {
     /// <summary>
-    /// The partial pressure of oxygen, in bar, below which no central nervous system
-    /// toxicity is accrued.
+    /// The partial pressure of oxygen, in millibars, at or below which no oxygen toxicity
+    /// is accrued.
     /// </summary>
-    private const double CnsThresholdBar = 0.5;
+    private const double ThresholdMbar = 500.0;
 
-    /// <summary>The exponent applied in the pulmonary oxygen toxicity (OTU) formula.</summary>
-    private const double OtuExponent = -0.83;
+    /// <summary>The exponent applied in Baker's pulmonary oxygen tolerance relation.</summary>
+    private const double OtuExponent = 0.83;
+
+    /// <summary>
+    /// Returns the instantaneous central nervous system oxygen toxicity rate, as a
+    /// fraction of the single-exposure limit accrued per second, for a given partial
+    /// pressure of oxygen.
+    /// </summary>
+    /// <param name="po2Mbar">The partial pressure of oxygen, in millibars.</param>
+    /// <returns>
+    /// The fraction of the single-exposure limit accrued per second. A partial pressure at
+    /// or below the toxicity threshold accrues nothing and returns zero.
+    /// </returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double CnsRatePerSecond(int po2Mbar)
+    {
+        if (po2Mbar <= ThresholdMbar)
+        {
+            return 0.0;
+        }
+
+        // Two lines fitted to the logarithm of the NOAA single-exposure CNS table.
+        return po2Mbar <= 1500
+            ? Math.Exp(-11.7853 + 0.00193873 * po2Mbar)
+            : Math.Exp(-23.6349 + 0.00980829 * po2Mbar);
+    }
 
     /// <summary>
     /// Returns the central nervous system oxygen toxicity accrued by breathing a gas at a
-    /// given partial pressure of oxygen for a given time, expressed as a fraction of the
+    /// fixed partial pressure of oxygen for a given time, expressed as a percentage of the
     /// recommended single-exposure limit.
     /// </summary>
-    /// <param name="partialPressureOfOxygen">The partial pressure of oxygen breathed.</param>
-    /// <param name="duration">The length of time for which the gas is breathed.</param>
+    /// <param name="po2Mbar">The partial pressure of oxygen, in millibars.</param>
+    /// <param name="durationSec">The duration of the exposure, in seconds.</param>
     /// <returns>
-    /// The fraction of the single-exposure central nervous system limit accrued, where a
-    /// value of one represents one hundred percent of the limit. A partial pressure at or
-    /// below the toxicity threshold accrues no exposure and returns zero.
+    /// The percentage of the single-exposure central nervous system limit accrued, where a
+    /// value of one hundred represents the whole limit.
     /// </returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="duration" /> is negative.</exception>
-    public static double CentralNervousSystemFraction(Pressure partialPressureOfOxygen, TimeSpan duration)
-    {
-        if (duration < TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(duration), duration,
-                "The duration must not be negative.");
-        }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double CalculateCns(int po2Mbar, int durationSec) => CnsRatePerSecond(po2Mbar) * durationSec * 100.0;
 
-        var po2Bar = partialPressureOfOxygen.InBar;
-        if (po2Bar <= CnsThresholdBar)
+    /// <summary>
+    /// Returns the central nervous system oxygen toxicity accrued over a segment during
+    /// which the partial pressure of oxygen changes linearly from the start to the end
+    /// value, expressed as a percentage of the recommended single-exposure limit. The mean
+    /// partial pressure of the segment is used, which is very close to the additive result
+    /// for small increments of partial pressure.
+    /// </summary>
+    /// <param name="startPo2Mbar">The partial pressure of oxygen at the start of the segment, in millibars.</param>
+    /// <param name="endPo2Mbar">The partial pressure of oxygen at the end of the segment, in millibars.</param>
+    /// <param name="durationSec">The duration of the segment, in seconds.</param>
+    /// <returns>The percentage of the single-exposure central nervous system limit accrued over the segment.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double CalculateCnsTransition(int startPo2Mbar,
+        int endPo2Mbar,
+        int durationSec)
+    {
+        var meanPo2Mbar = (startPo2Mbar + endPo2Mbar) / 2;
+        return CalculateCns(meanPo2Mbar, durationSec);
+    }
+
+    /// <summary>
+    /// Returns the pulmonary oxygen toxicity, in oxygen tolerance units (OTU), accrued by
+    /// breathing a gas at a fixed partial pressure of oxygen for a given time.
+    /// </summary>
+    /// <param name="po2Mbar">The partial pressure of oxygen, in millibars.</param>
+    /// <param name="durationSec">The duration of the exposure, in seconds.</param>
+    /// <returns>
+    /// The oxygen tolerance units accrued. A partial pressure at or below the threshold
+    /// accrues nothing and returns zero.
+    /// </returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double CalculateOtu(int po2Mbar, int durationSec) =>
+        CalculateOtuTransition(po2Mbar, po2Mbar, durationSec);
+
+    /// <summary>
+    /// Returns the pulmonary oxygen toxicity, in oxygen tolerance units (OTU), accrued over
+    /// a segment during which the partial pressure of oxygen changes linearly from the
+    /// start to the end value. This evaluates the exact time-integral of Baker's oxygen
+    /// tolerance relation over the linear ramp, and is therefore more precise than either a
+    /// fixed-mean evaluation or a truncated polynomial approximation.
+    /// </summary>
+    /// <param name="startPo2Mbar">The partial pressure of oxygen at the start of the segment, in millibars.</param>
+    /// <param name="endPo2Mbar">The partial pressure of oxygen at the end of the segment, in millibars.</param>
+    /// <param name="durationSec">The duration of the segment, in seconds.</param>
+    /// <returns>The oxygen tolerance units accrued over the segment.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static double CalculateOtuTransition(int startPo2Mbar,
+        int endPo2Mbar,
+        int durationSec)
+    {
+        double po2i = startPo2Mbar;
+        double po2f = endPo2Mbar;
+        double t = durationSec;
+
+        // If the whole segment is at or below the threshold, no OTU accrues.
+        if (po2i <= ThresholdMbar && po2f <= ThresholdMbar)
         {
             return 0.0;
         }
 
-        // The single-exposure time limit, in minutes, is a function of the partial
-        // pressure of oxygen. The accrued fraction is the exposure time divided by that
-        // limit.
-        var limitMinutes = SingleExposureLimitMinutes(po2Bar);
-        return duration.TotalMinutes / limitMinutes;
-    }
-
-    /// <summary>
-    /// Returns the pulmonary oxygen toxicity accrued by breathing a gas at a given partial
-    /// pressure of oxygen for a given time, expressed in oxygen tolerance units (OTU).
-    /// </summary>
-    /// <param name="partialPressureOfOxygen">The partial pressure of oxygen breathed.</param>
-    /// <param name="duration">The length of time for which the gas is breathed.</param>
-    /// <returns>
-    /// The oxygen tolerance units accrued. A partial pressure at or below the threshold of
-    /// one half bar accrues no units and returns zero.
-    /// </returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="duration" /> is negative.</exception>
-    public static double OxygenToleranceUnits(Pressure partialPressureOfOxygen, TimeSpan duration)
-    {
-        if (duration < TimeSpan.Zero)
+        // Clip the segment to the portion strictly above the threshold, so that the ramp
+        // used for the integral covers only the toxic part of the exposure.
+        if (po2i < ThresholdMbar)
         {
-            throw new ArgumentOutOfRangeException(nameof(duration), duration,
-                "The duration must not be negative.");
+            t *= (po2f - ThresholdMbar) / (po2f - po2i);
+            po2i = ThresholdMbar;
+        }
+        else if (po2f < ThresholdMbar)
+        {
+            t *= (po2i - ThresholdMbar) / (po2i - po2f);
+            po2f = ThresholdMbar;
         }
 
-        var po2Bar = partialPressureOfOxygen.InBar;
-        if (po2Bar <= CnsThresholdBar)
+        var durationMin = t / 60.0;
+
+        // Normalised toxicity variable x = (po2 - 0.5 bar) / 0.5 bar, evaluated in bar.
+        var xi = (po2i / 1000.0 - 0.5) / 0.5;
+        var xf = (po2f / 1000.0 - 0.5) / 0.5;
+
+        // Exact integral of x^k over a linear ramp from xi to xf is
+        //   (xf^(k+1) - xi^(k+1)) / ((k + 1) * (xf - xi)).
+        // When the endpoints coincide the ramp is flat and the integral is simply x^k.
+        if (Math.Abs(xf - xi) < 1e-12)
         {
-            return 0.0;
+            return durationMin * Math.Pow(xi, OtuExponent);
         }
 
-        // OTU = t * ((0.5 / (po2 - 0.5)) ^ -0.83), with time in minutes.
-        var factor = Math.Pow(0.5 / (po2Bar - 0.5), OtuExponent);
-        return duration.TotalMinutes * factor;
+        var k1 = OtuExponent + 1.0;
+        var integralMean = (Math.Pow(xf, k1) - Math.Pow(xi, k1)) / (k1 * (xf - xi));
+        return durationMin * integralMean;
     }
-
-    /// <summary>
-    /// Returns the recommended single-exposure central nervous system time limit, in
-    /// minutes, for a given partial pressure of oxygen expressed in bar. The limit is
-    /// derived from the piecewise linear representation of the widely published exposure
-    /// table.
-    /// </summary>
-    /// <param name="po2Bar">The partial pressure of oxygen, in bar, strictly above the toxicity threshold.</param>
-    /// <returns>The single-exposure limit, in minutes.</returns>
-    private static double SingleExposureLimitMinutes(double po2Bar) =>
-        // Piecewise linear segments of the NOAA single-exposure oxygen exposure limits,
-        po2Bar switch
-            // expressed as (partial pressure in bar, limit in minutes) breakpoints.
-            {
-                <= 0.6 => 720.0,
-                <= 0.7 => 570.0,
-                <= 0.8 => 450.0,
-                <= 0.9 => 360.0,
-                <= 1.0 => 300.0,
-                <= 1.1 => 240.0,
-                <= 1.2 => 210.0,
-                <= 1.3 => 180.0,
-                <= 1.4 => 150.0,
-                <= 1.5 => 120.0,
-                <= 1.6 => 45.0,
-                _ => 45.0
-            };
 }
