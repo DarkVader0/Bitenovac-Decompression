@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Bitenovac.DecompressionAlgorithms.Units;
 
-namespace Bitenovac.DecompressionAlgorithms.Core.Gas;
+namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
 /// <summary>
 /// Represents a breathing gas mixture defined by its content of oxygen and helium,

@@ -1,5 +1,4 @@
-﻿using Bitenovac.DecompressionAlgorithms.Core.Gas;
-using Bitenovac.DecompressionAlgorithms.Units;
+﻿using Bitenovac.DecompressionAlgorithms.Units;
 
 namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 

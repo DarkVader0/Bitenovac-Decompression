@@ -1,6 +1,6 @@
 ﻿using Bitenovac.DecompressionAlgorithms.Units;
 
-namespace Bitenovac.DecompressionAlgorithms.Core.Gas;
+namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 
 /// <summary>
 /// Provides calculations of oxygen toxicity exposure: the central nervous system (CNS)

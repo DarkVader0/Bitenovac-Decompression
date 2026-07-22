@@ -2,9 +2,10 @@
 using Bitenovac.DecompressionAlgorithms.Core.Calculations;
 using Bitenovac.DecompressionAlgorithms.Core.Environment;
 using Bitenovac.DecompressionAlgorithms.Core.Equipment;
+using Bitenovac.DecompressionAlgorithms.Core.Planning;
 using Bitenovac.DecompressionAlgorithms.Units;
 
-namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
+namespace Bitenovac.DecompressionAlgorithms.Core;
 
 /// <summary>
 /// Plans a dive by combining a decompression model with the shared, model-agnostic
