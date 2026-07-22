@@ -40,7 +40,6 @@ public sealed class DivePlanSettings
     /// </param>
     /// <param name="bottomSacLitersPerMinute">The surface air consumption rate on the bottom, in liters per minute.</param>
     /// <param name="decoSacLitersPerMinute">The surface air consumption rate during decompression, in liters per minute.</param>
-    /// <param name="sacFactor">The multiplier applied to consumption when computing the minimum gas requirement.</param>
     /// <param name="bottomPo2">The maximum partial pressure of oxygen permitted on the bottom gas.</param>
     /// <param name="decoPo2">The maximum partial pressure of oxygen permitted on decompression gas.</param>
     /// <param name="reservePressure">The cylinder pressure that must remain unused as a reserve.</param>
@@ -64,7 +63,6 @@ public sealed class DivePlanSettings
         double ascentRateLastSixMetersMetersPerMinute,
         double bottomSacLitersPerMinute,
         double decoSacLitersPerMinute,
-        double sacFactor,
         Pressure bottomPo2,
         Pressure decoPo2,
         Pressure reservePressure,
@@ -88,12 +86,6 @@ public sealed class DivePlanSettings
         RequirePositive(ascentRateLastSixMetersMetersPerMinute, nameof(ascentRateLastSixMetersMetersPerMinute), "rate");
         RequirePositive(bottomSacLitersPerMinute, nameof(bottomSacLitersPerMinute), "consumption rate");
         RequirePositive(decoSacLitersPerMinute, nameof(decoSacLitersPerMinute), "consumption rate");
-
-        if (sacFactor < 1.0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(sacFactor), sacFactor,
-                "The surface air consumption factor must be at least one.");
-        }
 
         if (bottomPo2.InMillibar <= 0.0)
         {
@@ -152,7 +144,6 @@ public sealed class DivePlanSettings
         AscentRateLastSixMetersMetersPerMinute = ascentRateLastSixMetersMetersPerMinute;
         BottomSacLitersPerMinute = bottomSacLitersPerMinute;
         DecoSacLitersPerMinute = decoSacLitersPerMinute;
-        SacFactor = sacFactor;
         BottomPo2 = bottomPo2;
         DecoPo2 = decoPo2;
         ReservePressure = reservePressure;
@@ -194,9 +185,6 @@ public sealed class DivePlanSettings
 
     /// <summary>Gets the surface air consumption rate during decompression, in liters per minute.</summary>
     public double DecoSacLitersPerMinute { get; }
-
-    /// <summary>Gets the multiplier applied to consumption when computing the minimum gas requirement.</summary>
-    public double SacFactor { get; }
 
     /// <summary>Gets the maximum partial pressure of oxygen permitted on the bottom gas.</summary>
     public Pressure BottomPo2 { get; }
