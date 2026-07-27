@@ -14,7 +14,7 @@ public sealed class DivePlannerTests
     private static DivePlanRequest CreateRequest(IEnumerable<DiveSegment> profile,
         IEnumerable<Cylinder>? cylinders = null) =>
         new(new DiveProfile(profile),
-            cylinders ?? [TestFactory.CreateCylinder(GasMixture.Air, 12, 200)],
+            cylinders ?? [TestFactory.CreateCylinder(GasMixture.Air)],
             TestFactory.CreateSettings());
 
     [Fact]
@@ -329,7 +329,7 @@ public sealed class DivePlannerTests
         // Arrange
         var cylinders = new[]
         {
-            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.Air),
             TestFactory.CreateCylinder(Nitrox50, 11, 200, CylinderPurpose.DecoGas)
         };
         var planner = new DivePlanner(new FakeAlgorithm());
@@ -348,7 +348,7 @@ public sealed class DivePlannerTests
         // Arrange
         var cylinders = new[]
         {
-            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.Air),
             TestFactory.CreateCylinder(Nitrox50, 11, 200, CylinderPurpose.DecoGas)
         };
         var planner = new DivePlanner(new FakeAlgorithm());
@@ -367,7 +367,7 @@ public sealed class DivePlannerTests
         // Arrange
         var cylinders = new[]
         {
-            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.Air),
             TestFactory.CreateCylinder(Nitrox50, 11, 200, CylinderPurpose.DecoGas)
         };
         var planner = new DivePlanner(new FakeAlgorithm());

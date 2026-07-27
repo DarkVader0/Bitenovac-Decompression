@@ -73,7 +73,7 @@ public sealed class ReserveGasTests
         var segments = new[] { TestFactory.CreateSegment(0, 1) };
         var cylinders = new[]
         {
-            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.Air),
             TestFactory.CreateCylinder(DecoGas, 11, 200, CylinderPurpose.DecoGas)
         };
 
@@ -93,7 +93,7 @@ public sealed class ReserveGasTests
         var segments = new[] { TestFactory.CreateSegment(0, 1) };
         var cylinders = new[]
         {
-            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.Air),
             TestFactory.CreateCylinder(DecoGas, 11, 200, CylinderPurpose.DecoGas)
         };
 
@@ -111,7 +111,7 @@ public sealed class ReserveGasTests
         var segments = new[] { TestFactory.CreateSegment(0, 1) };
         var cylinders = new[]
         {
-            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.Air),
             TestFactory.CreateCylinder(DecoGas, 11, 200, CylinderPurpose.DecoGas)
         };
 
@@ -131,7 +131,7 @@ public sealed class ReserveGasTests
             TestFactory.CreateSegment(30, 10),
             TestFactory.CreateSegment(0, 1, kind: SegmentKind.Ascent)
         };
-        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200) };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air) };
 
         // Act
         var result = ReserveGas.Calculate(segments, cylinders, TestFactory.CreateSettings());
@@ -149,7 +149,7 @@ public sealed class ReserveGasTests
             TestFactory.CreateSegment(30, 10),
             TestFactory.CreateSegment(0, 1, kind: SegmentKind.Ascent)
         };
-        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200) };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air) };
 
         // Act
         var result = ReserveGas.Calculate(segments, cylinders, TestFactory.CreateSettings());
@@ -167,7 +167,7 @@ public sealed class ReserveGasTests
             TestFactory.CreateSegment(4, 10),
             TestFactory.CreateSegment(0, 1, kind: SegmentKind.Ascent)
         };
-        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200) };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air) };
 
         // Act
         var result = ReserveGas.Calculate(segments, cylinders, TestFactory.CreateSettings());
@@ -185,7 +185,7 @@ public sealed class ReserveGasTests
             TestFactory.CreateSegment(30, 10),
             TestFactory.CreateSegment(10, 5, kind: SegmentKind.Ascent)
         };
-        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200) };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air) };
 
         // Act
         var result = ReserveGas.Calculate(segments, cylinders, TestFactory.CreateSettings());
@@ -199,7 +199,7 @@ public sealed class ReserveGasTests
     {
         // Arrange
         var segments = new[] { TestFactory.CreateSegment(30, 10) };
-        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200) };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air) };
 
         // Act
         var result = ReserveGas.Calculate(segments, cylinders, TestFactory.CreateSettings());
@@ -215,7 +215,7 @@ public sealed class ReserveGasTests
         var segments = new[] { TestFactory.CreateSegment(0, 1, DecoGas, SegmentKind.Stop) };
         var cylinders = new[]
         {
-            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.Air),
             TestFactory.CreateCylinder(DecoGas, 11, 200, CylinderPurpose.DecoGas)
         };
 
@@ -252,7 +252,7 @@ public sealed class ReserveGasTests
             TestFactory.CreateSegment(30, 10),
             TestFactory.CreateSegment(0, 1, kind: SegmentKind.Ascent)
         };
-        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200) };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air) };
 
         // Act
         var result = ReserveGas.Calculate(segments, cylinders, TestFactory.CreateSettings());
@@ -307,7 +307,7 @@ public sealed class ReserveGasTests
             TestFactory.CreateSegment(30, 10),
             TestFactory.CreateSegment(0, 1, kind: SegmentKind.Ascent)
         };
-        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200) };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air) };
         var forPair = ReserveGas.Calculate(segments, cylinders, TestFactory.CreateSettings(reserveTeamSize: 2));
 
         // Act
@@ -327,7 +327,7 @@ public sealed class ReserveGasTests
             TestFactory.CreateSegment(30, 10),
             TestFactory.CreateSegment(0, 1, kind: SegmentKind.Ascent)
         };
-        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200) };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air) };
         var calm = ReserveGas.Calculate(segments, cylinders, TestFactory.CreateSettings(reserveStressFactor: 1.0));
 
         // Act

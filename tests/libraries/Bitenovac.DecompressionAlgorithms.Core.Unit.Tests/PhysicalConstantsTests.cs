@@ -119,7 +119,8 @@ public sealed class PhysicalConstantsTests
     }
 
     [Fact]
-    public void AtmosphericPressureAtAltitudeMillibar_ShouldReturnTheBarometricValue_WhenTheAltitudeIsOneThousandMeters()
+    public void
+        AtmosphericPressureAtAltitudeMillibar_ShouldReturnTheBarometricValue_WhenTheAltitudeIsOneThousandMeters()
     {
         // Arrange
 

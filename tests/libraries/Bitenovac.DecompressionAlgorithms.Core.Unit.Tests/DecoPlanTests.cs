@@ -129,7 +129,8 @@ public sealed class DecoPlanTests
         const double centralNervousSystemFraction = -0.01;
 
         // Act
-        Action act = () => new DecoPlan([CreateSegment()], [], TimeSpan.Zero, CreateReserveGas(), centralNervousSystemFraction, 0, []);
+        Action act = () => new DecoPlan([CreateSegment()], [], TimeSpan.Zero, CreateReserveGas(),
+            centralNervousSystemFraction, 0, []);
 
         // Assert
         Assert.Throws<ArgumentOutOfRangeException>(act);
@@ -142,7 +143,8 @@ public sealed class DecoPlanTests
         const double oxygenToleranceUnits = -0.01;
 
         // Act
-        Action act = () => new DecoPlan([CreateSegment()], [], TimeSpan.Zero, CreateReserveGas(), 0, oxygenToleranceUnits, []);
+        Action act = () =>
+            new DecoPlan([CreateSegment()], [], TimeSpan.Zero, CreateReserveGas(), 0, oxygenToleranceUnits, []);
 
         // Assert
         Assert.Throws<ArgumentOutOfRangeException>(act);

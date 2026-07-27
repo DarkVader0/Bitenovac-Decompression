@@ -73,7 +73,7 @@ public sealed class DivePlanSettingsTests
         // Arrange
 
         // Act
-        Action act = () => CreateSettings(descentRateMetersPerMinute: rate);
+        Action act = () => CreateSettings(rate);
 
         // Assert
         Assert.Throws<ArgumentOutOfRangeException>(act);

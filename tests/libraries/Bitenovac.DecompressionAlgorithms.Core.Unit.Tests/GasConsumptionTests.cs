@@ -202,7 +202,7 @@ public sealed class GasConsumptionTests
         };
         var cylinders = new[]
         {
-            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.Air),
             TestFactory.CreateCylinder(decoGas, 11, 200, CylinderPurpose.DecoGas)
         };
 
@@ -221,7 +221,7 @@ public sealed class GasConsumptionTests
         var segments = new[] { TestFactory.CreateSegment(0, 12) };
         var cylinders = new[]
         {
-            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.Air),
             TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), 11, 200, CylinderPurpose.DecoGas)
         };
 
@@ -255,7 +255,7 @@ public sealed class GasConsumptionTests
         var segments = new[] { TestFactory.CreateSegment(0, 12) };
         var cylinders = new[]
         {
-            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.Air),
             TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), 11, 0, CylinderPurpose.DecoGas)
         };
 

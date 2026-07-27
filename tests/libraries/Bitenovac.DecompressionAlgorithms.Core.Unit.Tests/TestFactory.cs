@@ -45,11 +45,11 @@ internal static class TestFactory
             TimeSpan.FromMinutes(1),
             TimeSpan.FromMinutes(1),
             TimeSpan.FromSeconds(30),
-            safetyStop: true,
-            lastStopAtSixMeters: false,
-            switchAtRequiredStop: false,
-            oxygenBreaks: false,
-            oxygenIsNarcotic: false);
+            true,
+            false,
+            false,
+            false,
+            false);
 
     public static Cylinder CreateCylinder(
         GasMixture? gas = null,
