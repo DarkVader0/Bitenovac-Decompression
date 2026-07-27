@@ -1,8 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-
-        <IsTestProject>true</IsTestProject>
         <RootNamespace>Bitenovac.DecompressionCalculator.Api.Unit.Tests</RootNamespace>
     </PropertyGroup>
 

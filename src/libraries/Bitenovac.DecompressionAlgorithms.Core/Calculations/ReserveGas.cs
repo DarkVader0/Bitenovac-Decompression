@@ -221,23 +221,18 @@ public static class ReserveGas
         }
 
         // Split the ascent at the final band boundary so each portion uses its own rate.
-        // Portion below the final band (deeper than six meters) uses the to-stops rate;
-        // the portion within the final six meters uses the last-six-meters rate.
+        // The portion below the final band (deeper than six meters) uses the to-stops rate;
+        // the portion within the final six meters uses the last-six-meters rate. An ascent
+        // that lies wholly within one band leaves the other portion empty, which the
+        // portion calculation reports as no gas rather than a negative volume.
         var lowerBound = Math.Max(shallowestMeter, LastBandCeilingMeter);
-        var litersPerDiver = 0.0;
-
-        if (deepestMeter > lowerBound)
-        {
-            litersPerDiver += PortionLitersPerDiver(deepestMeter, lowerBound,
-                settings.AscentRate50PercentToStopsMetersPerMinute, settings);
-        }
-
         var finalBandTop = Math.Min(deepestMeter, LastBandCeilingMeter);
-        if (finalBandTop > shallowestMeter)
-        {
-            litersPerDiver += PortionLitersPerDiver(finalBandTop, shallowestMeter,
+
+        var litersPerDiver =
+            PortionLitersPerDiver(deepestMeter, lowerBound,
+                settings.AscentRate50PercentToStopsMetersPerMinute, settings)
+            + PortionLitersPerDiver(finalBandTop, shallowestMeter,
                 settings.AscentRateLastSixMetersMetersPerMinute, settings);
-        }
 
         return litersPerDiver * settings.ReserveTeamSize * 1000.0;
     }
@@ -251,7 +246,11 @@ public static class ReserveGas
     /// <param name="toMeter">The depth, in meters, at which the portion ends.</param>
     /// <param name="ascentRateMetersPerMinute">The ascent rate applied over the portion, in meters per minute.</param>
     /// <param name="settings">The settings that supply the consumption rate, stress factor, and environment.</param>
-    /// <returns>The free-gas volume for one diver over the portion, in liters at surface conditions.</returns>
+    /// <returns>
+    /// The free-gas volume for one diver over the portion, in liters at surface conditions.
+    /// A portion that is empty, because the ascent does not reach into the band to which it
+    /// applies, consumes nothing and returns zero.
+    /// </returns>
     private static double PortionLitersPerDiver(double fromMeter,
         double toMeter,
         double ascentRateMetersPerMinute,

@@ -15,10 +15,12 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 /// Strongly-typed overloads that accept a <see cref="Pressure" /> and a
 /// <see cref="TimeSpan" /> are provided for callers elsewhere in the system. The central
 /// nervous system rate is the two-line exponential fit to the logarithm of the NOAA
-/// single-exposure table used by common dive-planning software. The pulmonary (OTU)
-/// calculation evaluates the exact time-integral of Baker's oxygen tolerance relation over
-/// a segment during which the partial pressure of oxygen changes linearly, which is more
-/// precise than a fixed-mean evaluation or a truncated polynomial approximation.
+/// single-exposure table used by common dive-planning software. Both the central nervous
+/// system and the pulmonary (OTU) calculations evaluate the exact time-integral of their
+/// relation over a segment during which the partial pressure of oxygen changes linearly,
+/// which is more precise than a fixed-mean evaluation or a truncated polynomial
+/// approximation. Evaluating either relation at the mean partial pressure of a segment
+/// understates the exposure, because both are convex in the partial pressure.
 /// </remarks>
 public static class OxygenToxicity
 {
@@ -30,6 +32,24 @@ public static class OxygenToxicity
 
     /// <summary>The exponent applied in Baker's pulmonary oxygen tolerance relation.</summary>
     private const double OtuExponent = 0.83;
+
+    /// <summary>
+    /// The partial pressure of oxygen, in millibars, at which the two-line fit to the NOAA
+    /// single-exposure table changes from its lower to its upper branch.
+    /// </summary>
+    private const int BranchMbar = 1500;
+
+    /// <summary>The intercept of the lower branch of the central nervous system fit.</summary>
+    private const double LowerBranchIntercept = -11.7853;
+
+    /// <summary>The slope of the lower branch of the central nervous system fit, per millibar.</summary>
+    private const double LowerBranchSlope = 0.00193873;
+
+    /// <summary>The intercept of the upper branch of the central nervous system fit.</summary>
+    private const double UpperBranchIntercept = -23.6349;
+
+    /// <summary>The slope of the upper branch of the central nervous system fit, per millibar.</summary>
+    private const double UpperBranchSlope = 0.00980829;
 
     /// <summary>
     /// Returns the instantaneous central nervous system oxygen toxicity rate, as a
@@ -49,9 +69,9 @@ public static class OxygenToxicity
         }
 
         // Two lines fitted to the logarithm of the NOAA single-exposure CNS table.
-        return po2Mbar <= 1500
-            ? Math.Exp(-11.7853 + 0.00193873 * po2Mbar)
-            : Math.Exp(-23.6349 + 0.00980829 * po2Mbar);
+        return po2Mbar <= BranchMbar
+            ? Math.Exp(LowerBranchIntercept + LowerBranchSlope * po2Mbar)
+            : Math.Exp(UpperBranchIntercept + UpperBranchSlope * po2Mbar);
     }
 
     /// <summary>
@@ -71,9 +91,13 @@ public static class OxygenToxicity
     /// <summary>
     /// Returns the central nervous system oxygen toxicity accrued over a segment during
     /// which the partial pressure of oxygen changes linearly from the start to the end
-    /// value, expressed as a percentage of the recommended single-exposure limit. The mean
-    /// partial pressure of the segment is used, which is very close to the additive result
-    /// for small increments of partial pressure.
+    /// value, expressed as a percentage of the recommended single-exposure limit. This
+    /// evaluates the exact time-integral of the rate over the linear ramp, and is therefore
+    /// more precise than evaluating the rate at the mean partial pressure of the segment:
+    /// the rate is exponential in the partial pressure, so a mean evaluation always
+    /// understates the exposure. The portion of the ramp at or below the toxicity threshold
+    /// contributes nothing, and the change of branch in the underlying fit is integrated
+    /// across exactly.
     /// </summary>
     /// <param name="startPo2Mbar">The partial pressure of oxygen at the start of the segment, in millibars.</param>
     /// <param name="endPo2Mbar">The partial pressure of oxygen at the end of the segment, in millibars.</param>
@@ -83,9 +107,75 @@ public static class OxygenToxicity
         int endPo2Mbar,
         int durationSec)
     {
-        var meanPo2Mbar = (startPo2Mbar + endPo2Mbar) / 2;
-        return CalculateCns(meanPo2Mbar, durationSec);
+        // A flat segment has no ramp to integrate over, and the exposure is simply the rate
+        // at that partial pressure held for the duration.
+        if (startPo2Mbar == endPo2Mbar)
+        {
+            return CalculateCns(startPo2Mbar, durationSec);
+        }
+
+        // The exposure depends only on the span the ramp covers, not on its direction.
+        var lowerMbar = Math.Min(startPo2Mbar, endPo2Mbar);
+        var upperMbar = Math.Max(startPo2Mbar, endPo2Mbar);
+
+        if (upperMbar <= ThresholdMbar)
+        {
+            return 0.0;
+        }
+
+        // The mean rate over the segment is the integral of the rate across the toxic part
+        // of the ramp divided by the full span, since the part at or below the threshold
+        // accrues nothing. The partial pressure moves linearly in time, so the mean over
+        // the partial pressure is also the mean over time.
+        var meanRate = RateIntegral(Math.Max(lowerMbar, ThresholdMbar), upperMbar)
+                       / (upperMbar - lowerMbar);
+
+        return meanRate * durationSec * 100.0;
     }
+
+    /// <summary>
+    /// Returns the integral of the central nervous system rate with respect to the partial
+    /// pressure of oxygen, over a range that lies entirely above the toxicity threshold.
+    /// The range is split at the branch point of the underlying fit so that each branch is
+    /// integrated over the part of the range to which it applies.
+    /// </summary>
+    /// <param name="fromMbar">The lower bound of the range, in millibars, at or above the toxicity threshold.</param>
+    /// <param name="toMbar">The upper bound of the range, in millibars.</param>
+    /// <returns>The integral of the rate over the range, in fraction of the limit per second times millibars.</returns>
+    private static double RateIntegral(double fromMbar, double toMbar)
+    {
+        var integral = 0.0;
+
+        if (fromMbar < BranchMbar)
+        {
+            integral += BranchIntegral(LowerBranchIntercept, LowerBranchSlope,
+                fromMbar, Math.Min(toMbar, BranchMbar));
+        }
+
+        if (toMbar > BranchMbar)
+        {
+            integral += BranchIntegral(UpperBranchIntercept, UpperBranchSlope,
+                Math.Max(fromMbar, BranchMbar), toMbar);
+        }
+
+        return integral;
+    }
+
+    /// <summary>
+    /// Returns the integral of a single exponential branch of the fit with respect to the
+    /// partial pressure of oxygen, being the antiderivative of exp(intercept + slope × p)
+    /// evaluated between the bounds.
+    /// </summary>
+    /// <param name="intercept">The intercept of the branch.</param>
+    /// <param name="slope">The slope of the branch, per millibar.</param>
+    /// <param name="fromMbar">The lower bound of the range, in millibars.</param>
+    /// <param name="toMbar">The upper bound of the range, in millibars.</param>
+    /// <returns>The integral of the branch over the range.</returns>
+    private static double BranchIntegral(double intercept,
+        double slope,
+        double fromMbar,
+        double toMbar) =>
+        (Math.Exp(intercept + slope * toMbar) - Math.Exp(intercept + slope * fromMbar)) / slope;
 
     /// <summary>
     /// Returns the pulmonary oxygen toxicity, in oxygen tolerance units (OTU), accrued by

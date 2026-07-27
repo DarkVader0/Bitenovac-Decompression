@@ -1,0 +1,301 @@
+using Bitenovac.DecompressionAlgorithms.Core.Calculations;
+using Bitenovac.DecompressionAlgorithms.Core.Environment;
+using Bitenovac.DecompressionAlgorithms.Core.Equipment;
+using Bitenovac.DecompressionAlgorithms.Core.Planning;
+
+namespace Bitenovac.DecompressionAlgorithms.Core.Unit.Tests;
+
+public sealed class GasConsumptionTests
+{
+    private const int Precision = 5;
+
+    [Fact]
+    public void Calculate_ShouldThrowArgumentNullException_WhenSegmentsIsNull()
+    {
+        // Arrange
+        IReadOnlyList<DiveSegment> segments = null!;
+        var cylinders = new[] { TestFactory.CreateCylinder() };
+
+        // Act
+        Action act = () => GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Throws<ArgumentNullException>(act);
+    }
+
+    [Fact]
+    public void Calculate_ShouldThrowArgumentNullException_WhenCylindersIsNull()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(10, 10) };
+        IReadOnlyList<Cylinder> cylinders = null!;
+
+        // Act
+        Action act = () => GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Throws<ArgumentNullException>(act);
+    }
+
+    [Fact]
+    public void Calculate_ShouldThrowArgumentNullException_WhenSettingsIsNull()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(10, 10) };
+        var cylinders = new[] { TestFactory.CreateCylinder() };
+
+        // Act
+        Action act = () => GasConsumption.Calculate(segments, cylinders, null!);
+
+        // Assert
+        Assert.Throws<ArgumentNullException>(act);
+    }
+
+    [Fact]
+    public void Calculate_ShouldThrowArgumentException_WhenCylindersIsEmpty()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(10, 10) };
+        var cylinders = Array.Empty<Cylinder>();
+
+        // Act
+        Action act = () => GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Throws<ArgumentException>(act);
+    }
+
+    [Fact]
+    public void Calculate_ShouldThrowInvalidOperationException_WhenASegmentGasMatchesNoCylinder()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(10, 10, GasMixture.FromPercent(50, 0)) };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air) };
+
+        // Act
+        Action act = () => GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Throws<InvalidOperationException>(act);
+    }
+
+    [Fact]
+    public void Calculate_ShouldThrowInvalidOperationException_WhenTheDemandExceedsWhatTheCylinderHolds()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(0, 1) };
+        var cylinders = new[] { TestFactory.CreateCylinder(sizeLiter: 1, startPressureBar: 10) };
+
+        // Act
+        Action act = () => GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Throws<InvalidOperationException>(act);
+    }
+
+    [Fact]
+    public void Calculate_ShouldReturnOneUsagePerCylinder_InTheOrderTheCylindersWereSupplied()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(0, 1) };
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(GasMixture.Air, startPressureBar: 200),
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), startPressureBar: 100)
+        };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Equal(2, usage.Count);
+        Assert.Equal(200, usage[0].StartPressure.InBar, Precision);
+        Assert.Equal(100, usage[1].StartPressure.InBar, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldConsumeTheSurfaceRate_WhenTheSegmentIsHeldAtTheSurface()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(0, 12) };
+        var cylinders = new[] { TestFactory.CreateCylinder(sizeLiter: 12, startPressureBar: 200) };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Equal(240, usage[0].GasUsed.InLiter, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldReduceThePressureInProportionToTheGasConsumed_WhenGasIsBreathed()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(0, 12) };
+        var cylinders = new[] { TestFactory.CreateCylinder(sizeLiter: 12, startPressureBar: 200) };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Equal(180, usage[0].EndPressure.InBar, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldScaleTheConsumptionByTheAmbientPressure_WhenTheSegmentIsAtDepth()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(10, 10) };
+        var cylinders = new[] { TestFactory.CreateCylinder(sizeLiter: 12, startPressureBar: 200) };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Equal(396.133, usage[0].GasUsed.InLiter, Precision);
+        Assert.Equal(166.98892, usage[0].EndPressure.InBar, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldUseTheDecompressionRate_WhenTheSegmentIsADecompressionStop()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(0, 10, kind: SegmentKind.Stop) };
+        var cylinders = new[] { TestFactory.CreateCylinder(sizeLiter: 12, startPressureBar: 200) };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders,
+            TestFactory.CreateSettings(bottomSacLitersPerMinute: 20, decoSacLitersPerMinute: 15));
+
+        // Assert
+        Assert.Equal(150, usage[0].GasUsed.InLiter, Precision);
+    }
+
+    [Theory]
+    [InlineData(SegmentKind.Descent)]
+    [InlineData(SegmentKind.Bottom)]
+    [InlineData(SegmentKind.Ascent)]
+    [InlineData(SegmentKind.GasSwitch)]
+    public void Calculate_ShouldUseTheBottomRate_WhenTheSegmentIsNotADecompressionStop(SegmentKind kind)
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(0, 10, kind: kind) };
+        var cylinders = new[] { TestFactory.CreateCylinder(sizeLiter: 12, startPressureBar: 200) };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders,
+            TestFactory.CreateSettings(bottomSacLitersPerMinute: 20, decoSacLitersPerMinute: 15));
+
+        // Assert
+        Assert.Equal(200, usage[0].GasUsed.InLiter, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldDrawFromTheMatchingCylinderOnly_WhenSeveralGasesAreCarried()
+    {
+        // Arrange
+        var decoGas = GasMixture.FromPercent(50, 0);
+        var segments = new[]
+        {
+            TestFactory.CreateSegment(0, 12),
+            TestFactory.CreateSegment(0, 6, decoGas, SegmentKind.Stop)
+        };
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(decoGas, 11, 200, CylinderPurpose.DecoGas)
+        };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Equal(240, usage[0].GasUsed.InLiter, Precision);
+        Assert.Equal(90, usage[1].GasUsed.InLiter, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldLeaveTheCylinderUntouched_WhenItsGasIsNeverBreathed()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(0, 12) };
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), 11, 200, CylinderPurpose.DecoGas)
+        };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Equal(0, usage[1].GasUsed.InLiter, Precision);
+        Assert.Equal(200, usage[1].EndPressure.InBar, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldReturnZeroUsage_WhenThereAreNoSegments()
+    {
+        // Arrange
+        var segments = Array.Empty<DiveSegment>();
+        var cylinders = new[] { TestFactory.CreateCylinder(sizeLiter: 12, startPressureBar: 200) };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Equal(0, usage[0].GasUsed.InLiter, Precision);
+        Assert.Equal(200, usage[0].EndPressure.InBar, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldReportZeroEndPressure_WhenTheCylinderHoldsNoGasToBeginWith()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(0, 12) };
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(GasMixture.Air, 12, 200),
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), 11, 0, CylinderPurpose.DecoGas)
+        };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Equal(0, usage[1].GasUsed.InLiter, Precision);
+        Assert.Equal(0, usage[1].EndPressure.InBar, Precision);
+        Assert.True(usage[1].IsExhausted);
+    }
+
+    [Fact]
+    public void Calculate_ShouldReportTheCylinderAsExhausted_WhenTheWholeSupplyIsBreathed()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(0, 0.5) };
+        var cylinders = new[] { TestFactory.CreateCylinder(sizeLiter: 1, startPressureBar: 10) };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.True(usage[0].IsExhausted);
+    }
+
+    [Fact]
+    public void Calculate_ShouldConsumeMoreGas_WhenTheWaterIsSaltRatherThanFresh()
+    {
+        // Arrange
+        var segments = new[] { TestFactory.CreateSegment(30, 10) };
+        var cylinders = new[] { TestFactory.CreateCylinder(sizeLiter: 12, startPressureBar: 200) };
+        var inFresh = GasConsumption.Calculate(segments, cylinders,
+            TestFactory.CreateSettings(salinity: Salinity.Fresh));
+
+        // Act
+        var inSalt = GasConsumption.Calculate(segments, cylinders,
+            TestFactory.CreateSettings(salinity: Salinity.Salt));
+
+        // Assert
+        Assert.True(inSalt[0].GasUsed.InLiter > inFresh[0].GasUsed.InLiter);
+    }
+}
