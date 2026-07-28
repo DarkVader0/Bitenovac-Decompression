@@ -51,11 +51,11 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     private const double PureOxygenFraction = 0.999;
     private const double MaximumStopMinutes = 1440.0;
     private static readonly TimeSpan SafetyStopDuration = TimeSpan.FromMinutes(3);
+    private readonly SegmentBuffer _finalAscent = [];
+    private readonly double _gradientFactorHigh;
 
     private readonly double _gradientFactorLow;
-    private readonly double _gradientFactorHigh;
     private readonly BuhlmannState _state = new();
-    private readonly SegmentBuffer _finalAscent = [];
 
     /// <summary>Initializes a new instance of the <see cref="BuhlmannZhl16cAlgorithm" /> class.</summary>
     /// <param name="gradientFactorLow">The gradient factor applied at the first decompression stop, in (0, 1].</param>
@@ -229,7 +229,7 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         SetEnvironment(priorDive.Settings);
         ResetDiveTracking();
         ReplayWorkingPhase(priorDive.Profile, priorDive.Cylinders, priorDive.Settings);
-        PlanFinalAscent(_state, priorDive.Cylinders, priorDive.Settings, output: null);
+        PlanFinalAscent(_state, priorDive.Cylinders, priorDive.Settings, null);
 
         LoadConstantDepth(_state, 0.0, priorDive.SurfaceGas, priorDive.SurfaceInterval.TotalMinutes);
         _state.CurrentGas = priorDive.SurfaceGas;
@@ -322,7 +322,10 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     /// Loads the tissues at a constant depth with the instantaneous exponential:
     /// <c>P(t) = Palv + (P0 − Palv)·e^(−k·t)</c> with <c>k = ln 2 / halfTime</c>.
     /// </summary>
-    private static void LoadConstantDepth(BuhlmannState state, double depthMeter, GasMixture gas, double minutes)
+    private static void LoadConstantDepth(BuhlmannState state,
+        double depthMeter,
+        GasMixture gas,
+        double minutes)
     {
         var ambient = state.SurfacePressureMillibar + state.MillibarPerMeter * depthMeter;
         var alveolar = ambient - WaterVaporPressureMillibar;
@@ -375,8 +378,8 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         {
             var k = Ln2 / halfTimes[i];
             pressures[i] = alveolarStart + alveolarRate * (minutes - 1.0 / k)
-                                         - (alveolarStart - pressures[i] - alveolarRate / k)
-                                         * Math.Exp(-k * minutes);
+                           - (alveolarStart - pressures[i] - alveolarRate / k)
+                           * Math.Exp(-k * minutes);
         }
     }
 

@@ -1,7 +1,6 @@
 using Bitenovac.DecompressionAlgorithms.BuhlmannZhl16c;
 using Bitenovac.DecompressionAlgorithms.Core;
 using Bitenovac.DecompressionAlgorithms.Core.Planning;
-using Bitenovac.DecompressionAlgorithms.Units;
 
 namespace Bitenovac.DecompressionAlgorithms.Zhl16c.Integration.Tests;
 
@@ -9,7 +8,8 @@ public sealed class DivePlannerZhl16cTests
 {
     private const int Precision = 6;
 
-    private static DecoPlan Plan(DivePlanRequest request, double gradientFactorLow = 0.3,
+    private static DecoPlan Plan(DivePlanRequest request,
+        double gradientFactorLow = 0.3,
         double gradientFactorHigh = 0.7) =>
         new DivePlanner(new BuhlmannZhl16cAlgorithm(gradientFactorLow, gradientFactorHigh)).CreatePlan(request);
 

@@ -1,3 +1,4 @@
+using System.Collections;
 using Bitenovac.DecompressionAlgorithms.BuhlmannZhl16c;
 using Bitenovac.DecompressionAlgorithms.Core.Planning;
 using Bitenovac.DecompressionAlgorithms.Units;
@@ -150,7 +151,7 @@ public sealed class SegmentBufferTests
         var buffer = new SegmentBuffer();
 
         // Act
-        Action act = () => buffer.CopyTo(null!, 0);
+        var act = () => buffer.CopyTo(null!, 0);
 
         // Assert
         Assert.Throws<ArgumentNullException>(act);
@@ -164,7 +165,7 @@ public sealed class SegmentBufferTests
         buffer.Add(CreateSegment(10));
 
         // Act
-        Action act = () => buffer.CopyTo(new DiveSegment[4], -1);
+        var act = () => buffer.CopyTo(new DiveSegment[4], -1);
 
         // Assert
         Assert.Throws<ArgumentOutOfRangeException>(act);
@@ -179,7 +180,7 @@ public sealed class SegmentBufferTests
         buffer.Add(CreateSegment(20));
 
         // Act
-        Action act = () => buffer.CopyTo(new DiveSegment[2], 1);
+        var act = () => buffer.CopyTo(new DiveSegment[2], 1);
 
         // Assert
         Assert.Throws<ArgumentException>(act);
@@ -209,7 +210,7 @@ public sealed class SegmentBufferTests
         var buffer = new SegmentBuffer();
         var segment = CreateSegment(10);
         buffer.Add(segment);
-        System.Collections.IEnumerable enumerable = buffer;
+        IEnumerable enumerable = buffer;
 
         // Act
         var enumerated = enumerable.Cast<DiveSegment>().ToList();
@@ -256,7 +257,7 @@ public sealed class SegmentBufferTests
         ICollection<DiveSegment> buffer = new SegmentBuffer();
 
         // Act
-        Action act = () => buffer.Add(CreateSegment(10));
+        var act = () => buffer.Add(CreateSegment(10));
 
         // Assert
         Assert.Throws<NotSupportedException>(act);
@@ -269,7 +270,7 @@ public sealed class SegmentBufferTests
         ICollection<DiveSegment> buffer = new SegmentBuffer();
 
         // Act
-        Action act = buffer.Clear;
+        var act = buffer.Clear;
 
         // Assert
         Assert.Throws<NotSupportedException>(act);

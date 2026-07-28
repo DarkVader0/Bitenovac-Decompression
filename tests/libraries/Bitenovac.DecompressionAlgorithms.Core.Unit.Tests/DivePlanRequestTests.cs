@@ -193,7 +193,7 @@ public sealed class DivePlanRequestTests
     public void Constructor_ShouldThrowArgumentException_WhenPriorDivesContainsNullEntry()
     {
         // Arrange
-        var priorDives = new PriorDive?[] { CreatePriorDive(), null };
+        var priorDives = new[] { CreatePriorDive(), null };
 
         // Act
         Action act = () => new DivePlanRequest(CreateProfile(), [CreateCylinder()], CreateSettings(), priorDives!);

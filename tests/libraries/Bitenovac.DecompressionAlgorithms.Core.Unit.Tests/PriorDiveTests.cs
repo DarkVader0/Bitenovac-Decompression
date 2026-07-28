@@ -1,6 +1,5 @@
 using Bitenovac.DecompressionAlgorithms.Core.Equipment;
 using Bitenovac.DecompressionAlgorithms.Core.Planning;
-using Bitenovac.DecompressionAlgorithms.Units;
 
 namespace Bitenovac.DecompressionAlgorithms.Core.Unit.Tests;
 

@@ -50,16 +50,16 @@ public sealed class DivePlannerZhl16cKnownValueTests
             TimeSpan.FromMinutes(4),
             TimeSpan.FromMinutes(20),
             TimeSpan.FromMinutes(5),
-            safetyStop: false,
-            lastStopAtSixMeters: true,
-            switchAtRequiredStop: false,
-            oxygenBreaks: false,
-            oxygenIsNarcotic: false);
+            false,
+            true,
+            false,
+            false,
+            false);
 
     private static Cylinder[] CreateCylinders() =>
     [
-        new Cylinder(GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(400), CylinderPurpose.BottomGas),
-        new Cylinder(GasMixture.FromPercent(50, 0), Volume.FromLiter(11.1), Pressure.FromBar(200),
+        new(GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(400), CylinderPurpose.BottomGas),
+        new(GasMixture.FromPercent(50, 0), Volume.FromLiter(11.1), Pressure.FromBar(200),
             CylinderPurpose.DecoGas)
     ];
 

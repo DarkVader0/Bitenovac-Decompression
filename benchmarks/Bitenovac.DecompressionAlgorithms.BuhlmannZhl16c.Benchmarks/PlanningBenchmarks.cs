@@ -1,6 +1,5 @@
 using BenchmarkDotNet.Attributes;
 using Bitenovac.DecompressionAlgorithms.BuhlmannZhl16c;
-using Bitenovac.DecompressionAlgorithms.Core.Abstractions;
 using Bitenovac.DecompressionAlgorithms.Core.Environment;
 using Bitenovac.DecompressionAlgorithms.Core.Equipment;
 using Bitenovac.DecompressionAlgorithms.Core.Planning;
@@ -19,13 +18,13 @@ namespace Bitenovac.DecompressionAlgorithms.Zhl16c.Benchmarks;
 public class PlanningBenchmarks
 {
     private BuhlmannZhl16cAlgorithm _algorithm = null!;
+    private DiveSegment _decoBottom;
+    private DiveSegment _decoDescent;
     private DivePlanRequest _decoRequest = null!;
+    private DiveSegment _noDecoBottom;
+    private DiveSegment _noDecoDescent;
     private DivePlanRequest _noDecoRequest = null!;
     private DivePlanRequest _repetitiveRequest = null!;
-    private DiveSegment _decoDescent;
-    private DiveSegment _decoBottom;
-    private DiveSegment _noDecoDescent;
-    private DiveSegment _noDecoBottom;
 
     [GlobalSetup]
     public void Setup()
@@ -68,7 +67,9 @@ public class PlanningBenchmarks
     [Benchmark]
     public int PlanRepetitiveDecoDive() => Plan(_repetitiveRequest, _decoDescent, _decoBottom);
 
-    private int Plan(DivePlanRequest request, in DiveSegment descent, in DiveSegment bottom)
+    private int Plan(DivePlanRequest request,
+        in DiveSegment descent,
+        in DiveSegment bottom)
     {
         var state = _algorithm.BeginDive(request);
         state = _algorithm.LoadSegment(state, descent);

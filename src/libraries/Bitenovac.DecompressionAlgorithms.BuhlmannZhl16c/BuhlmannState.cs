@@ -26,27 +26,27 @@ internal struct TissuePressuresMillibar
 /// </summary>
 internal sealed class BuhlmannState : IDecompressionState
 {
-    /// <summary>The dissolved nitrogen pressure of each compartment, in millibars.</summary>
-    public TissuePressuresMillibar Nitrogen;
-
-    /// <summary>The dissolved helium pressure of each compartment, in millibars.</summary>
-    public TissuePressuresMillibar Helium;
-
-    /// <summary>The surface pressure of the current dive's environment, in millibars.</summary>
-    public double SurfacePressureMillibar;
-
-    /// <summary>The hydrostatic pressure of one meter of the current dive's water, in millibars.</summary>
-    public double MillibarPerMeter;
-
     /// <summary>The diver's current depth, in meters.</summary>
     public double CurrentDepthMeter;
 
     /// <summary>The gas currently being breathed.</summary>
     public GasMixture CurrentGas;
 
+    /// <summary>The integral of depth over time for the dive in progress, in meter-minutes.</summary>
+    public double DepthTimeIntegralMeterMinutes;
+
+    /// <summary>The dissolved helium pressure of each compartment, in millibars.</summary>
+    public TissuePressuresMillibar Helium;
+
+    /// <summary>The hydrostatic pressure of one meter of the current dive's water, in millibars.</summary>
+    public double MillibarPerMeter;
+
+    /// <summary>The dissolved nitrogen pressure of each compartment, in millibars.</summary>
+    public TissuePressuresMillibar Nitrogen;
+
     /// <summary>The elapsed time of the dive in progress, in minutes.</summary>
     public double RuntimeMinutes;
 
-    /// <summary>The integral of depth over time for the dive in progress, in meter-minutes.</summary>
-    public double DepthTimeIntegralMeterMinutes;
+    /// <summary>The surface pressure of the current dive's environment, in millibars.</summary>
+    public double SurfacePressureMillibar;
 }

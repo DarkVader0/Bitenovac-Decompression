@@ -38,7 +38,10 @@ public sealed class BuhlmannZhl16cAlgorithmTests
         (TestFactory.SurfacePressureMillibar - TestFactory.WaterVaporPressureMillibar) * GasMixture.Air.FractionN2;
 
     /// <summary>The instantaneous exponential: P(t) = Palv + (P0 - Palv) * e^(-ln2 * t / halfTime).</summary>
-    private static double Haldane(double initial, double alveolar, double halfTimeMinutes, double minutes) =>
+    private static double Haldane(double initial,
+        double alveolar,
+        double halfTimeMinutes,
+        double minutes) =>
         alveolar + (initial - alveolar) * Math.Exp(-Math.Log(2.0) * minutes / halfTimeMinutes);
 
     [Theory]
@@ -189,7 +192,7 @@ public sealed class BuhlmannZhl16cAlgorithmTests
         {
             var k = Math.Log(2.0) / NitrogenHalfTimeMinutes[i];
             var expected = alveolarStart + rate * (minutes - 1.0 / k)
-                                         - (alveolarStart - initial - rate / k) * Math.Exp(-k * minutes);
+                           - (alveolarStart - initial - rate / k) * Math.Exp(-k * minutes);
             Assert.Equal(expected, state.Nitrogen[i], Precision);
         }
     }
@@ -350,7 +353,7 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     {
         // Arrange
         var algorithm = new BuhlmannZhl16cAlgorithm(0.85, 0.85);
-        var request = TestFactory.CreateRequest(12, 10, settings: TestFactory.CreateSettings(safetyStop: true));
+        var request = TestFactory.CreateRequest(12, 10, settings: TestFactory.CreateSettings(true));
         var state = algorithm.BeginDive(request);
         algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(12), TimeSpan.FromMinutes(10), GasMixture.Air,
             SegmentKind.Bottom));
@@ -845,8 +848,8 @@ public sealed class BuhlmannZhl16cAlgorithmTests
         // Regular stops at six meters and shallower are breathed on pure oxygen, so a stop
         // on the richest non-oxygen gas at those depths can only be an oxygen break.
         Assert.Contains(ascent, segment => segment.Kind == SegmentKind.Stop
-            && segment.Depth.InMeter <= 6.0 + 1e-9
-            && segment.Gas == nitrox50);
+                                           && segment.Depth.InMeter <= 6.0 + 1e-9
+                                           && segment.Gas == nitrox50);
         Assert.Equal(0.0, ascent[^1].Depth.InMeter, Precision);
     }
 
