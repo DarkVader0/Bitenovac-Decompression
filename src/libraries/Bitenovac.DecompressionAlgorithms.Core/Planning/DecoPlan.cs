@@ -1,4 +1,7 @@
-﻿using Bitenovac.DecompressionAlgorithms.Core.Calculations;
+﻿using System.Globalization;
+using System.Text;
+using Bitenovac.DecompressionAlgorithms.Core.Calculations;
+using Bitenovac.DecompressionAlgorithms.Units;
 
 namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
@@ -126,4 +129,84 @@ public sealed class DecoPlan
     /// no planned inter-level ascent would incur a decompression obligation.
     /// </summary>
     public bool IsValid => _violations.Length == 0;
+
+    /// <summary>
+    /// Returns a human-readable summary of the plan: a header with the validity and total
+    /// runtime, a schedule table with one line per phase showing the kind, depth, duration,
+    /// runtime, and breathing gas, followed by the oxygen exposure, the per-cylinder gas
+    /// usage, and the reserve assessment. Durations and runtimes are rounded to whole
+    /// minutes for display. Consecutive ascent segments are merged into a single line
+    /// ending at the depth where the ascent pauses, so intermediate stop depths that are
+    /// passed without holding do not appear. The output is formatted with the invariant
+    /// culture.
+    /// </summary>
+    /// <returns>The multi-line summary of the plan.</returns>
+    public override string ToString()
+    {
+        var builder = new StringBuilder();
+        builder.Append(CultureInfo.InvariantCulture, $"Valid: {IsValid}, total runtime: {TotalRuntime}")
+            .AppendLine()
+            .AppendLine();
+
+        static void AppendRow(StringBuilder builder,
+            SegmentKind kind,
+            Depth depth,
+            TimeSpan duration,
+            TimeSpan runtime,
+            GasMixture gas) =>
+            builder.Append(CultureInfo.InvariantCulture,
+                    $"{kind,-9} {depth.InMeter,6:0.##} m  " +
+                    $"{Math.Round(duration.TotalMinutes),4:0} min  " +
+                    $"{Math.Round(runtime.TotalMinutes),4:0} min  {gas}")
+                .AppendLine();
+
+        var runtime = TimeSpan.Zero;
+        var pendingAscent = TimeSpan.Zero;
+        var pendingAscentGas = GasMixture.Air;
+        var pendingAscentDepth = Depth.FromMeter(0);
+        foreach (var segment in _expandedSegments)
+        {
+            runtime += segment.Duration;
+
+            if (segment.Kind == SegmentKind.Ascent)
+            {
+                pendingAscent += segment.Duration;
+                pendingAscentGas = segment.Gas;
+                pendingAscentDepth = segment.Depth;
+                continue;
+            }
+
+            if (pendingAscent > TimeSpan.Zero)
+            {
+                AppendRow(builder, SegmentKind.Ascent, pendingAscentDepth, pendingAscent,
+                    runtime - segment.Duration, pendingAscentGas);
+                pendingAscent = TimeSpan.Zero;
+            }
+
+            AppendRow(builder, segment.Kind, segment.Depth, segment.Duration, runtime, segment.Gas);
+        }
+
+        if (pendingAscent > TimeSpan.Zero)
+        {
+            AppendRow(builder, SegmentKind.Ascent, pendingAscentDepth, pendingAscent, runtime, pendingAscentGas);
+        }
+
+        builder.AppendLine()
+            .Append(CultureInfo.InvariantCulture, $"CNS: {CentralNervousSystemFraction * 100:0.##} %")
+            .AppendLine()
+            .Append(CultureInfo.InvariantCulture, $"OTU: {OxygenToleranceUnits:0.##}")
+            .AppendLine()
+            .AppendLine();
+
+        foreach (var usage in _gasUsage)
+        {
+            builder.Append(CultureInfo.InvariantCulture,
+                    $"Cylinder {usage.Cylinder.Gas}: used {usage.GasUsed.InLiter:0.##} L, " +
+                    $"end pressure {usage.EndPressure.InBar:0.##} bar")
+                .AppendLine();
+        }
+
+        builder.Append(CultureInfo.InvariantCulture, $"Reserve satisfied: {ReserveGas.AllSatisfied}");
+        return builder.ToString();
+    }
 }

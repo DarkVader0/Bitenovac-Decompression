@@ -325,4 +325,62 @@ public sealed class DecoPlanTests
         // Assert
         Assert.False(isValid);
     }
+
+    [Fact]
+    public void ToString_ShouldStartWithValidityAndTotalRuntime_WhenPlanIsValid()
+    {
+        // Arrange
+        var plan = new DecoPlan([CreateSegment()], [], TimeSpan.FromMinutes(30), CreateReserveGas(), 0, 0, []);
+
+        // Act
+        var lines = plan.ToString().Split(System.Environment.NewLine);
+
+        // Assert
+        Assert.Equal("Valid: True, total runtime: 00:30:00", lines[0]);
+    }
+
+    [Fact]
+    public void ToString_ShouldMergeConsecutiveAscentsIntoOneRow_WhenAscentPassesStopDepthsWithoutHolding()
+    {
+        // Arrange
+        var nitrox50 = GasMixture.FromPercent(50, 0);
+        DiveSegment[] segments =
+        [
+            new(Depth.FromMeter(20), TimeSpan.FromMinutes(20), GasMixture.Air, SegmentKind.Bottom),
+            new(Depth.FromMeter(9), TimeSpan.FromMinutes(2), GasMixture.Air, SegmentKind.Ascent),
+            new(Depth.FromMeter(6), TimeSpan.FromMinutes(1), GasMixture.Air, SegmentKind.Ascent),
+            new(Depth.FromMeter(6), TimeSpan.FromMinutes(3), nitrox50, SegmentKind.Stop),
+            new(Depth.FromMeter(0), TimeSpan.FromMinutes(6), nitrox50, SegmentKind.Ascent)
+        ];
+        var plan = new DecoPlan(segments, [], TimeSpan.FromMinutes(32), CreateReserveGas(), 0, 0, []);
+
+        // Act
+        var lines = plan.ToString().Split(System.Environment.NewLine);
+
+        // Assert
+        // The two ascent hops merge into one row ending at the stop depth, and the final
+        // ascent to the surface is emitted after the last stop.
+        Assert.Equal("Bottom        20 m    20 min    20 min  Air", lines[2]);
+        Assert.Equal("Ascent         6 m     3 min    23 min  Air", lines[3]);
+        Assert.Equal("Stop           6 m     3 min    26 min  NX50", lines[4]);
+        Assert.Equal("Ascent         0 m     6 min    32 min  NX50", lines[5]);
+    }
+
+    [Fact]
+    public void ToString_ShouldReportOxygenExposureGasUsageAndReserve_WhenPlanIsComplete()
+    {
+        // Arrange
+        var usage = new CylinderGasUsage(CreateCylinder(), Volume.FromLiter(1234.56), Pressure.FromBar(72.55));
+        var plan = new DecoPlan([CreateSegment()], [usage], TimeSpan.FromMinutes(20), CreateReserveGas(),
+            0.4454, 124.08, []);
+
+        // Act
+        var text = plan.ToString();
+
+        // Assert
+        Assert.Contains("CNS: 44.54 %", text);
+        Assert.Contains("OTU: 124.08", text);
+        Assert.Contains("Cylinder Air: used 1234.56 L, end pressure 72.55 bar", text);
+        Assert.EndsWith("Reserve satisfied: True", text);
+    }
 }

@@ -460,4 +460,82 @@ public sealed class GasMixtureTests
         // Assert
         Assert.NotEqual(hashCode1, hashCode2);
     }
+
+    [Fact]
+    public void ToString_ShouldReturnAir_WhenMixtureIsAir()
+    {
+        // Arrange
+        var gas = GasMixture.Air;
+
+        // Act
+        var name = gas.ToString();
+
+        // Assert
+        Assert.Equal("Air", name);
+    }
+
+    [Fact]
+    public void ToString_ShouldReturnO2_WhenMixtureIsPureOxygen()
+    {
+        // Arrange
+        var gas = GasMixture.Oxygen;
+
+        // Act
+        var name = gas.ToString();
+
+        // Assert
+        Assert.Equal("O2", name);
+    }
+
+    [Fact]
+    public void ToString_ShouldReturnNitroxName_WhenMixtureIsHeliumFree()
+    {
+        // Arrange
+        var gas = GasMixture.FromPercent(50, 0);
+
+        // Act
+        var name = gas.ToString();
+
+        // Assert
+        Assert.Equal("NX50", name);
+    }
+
+    [Fact]
+    public void ToString_ShouldReturnTrimixName_WhenMixtureContainsHelium()
+    {
+        // Arrange
+        var gas = GasMixture.FromPercent(18, 45);
+
+        // Act
+        var name = gas.ToString();
+
+        // Assert
+        Assert.Equal("TX18/45", name);
+    }
+
+    [Fact]
+    public void ToString_ShouldReturnTrimixName_WhenAirLikeOxygenContentContainsHelium()
+    {
+        // Arrange
+        var gas = GasMixture.FromPercent(21, 35);
+
+        // Act
+        var name = gas.ToString();
+
+        // Assert
+        Assert.Equal("TX21/35", name);
+    }
+
+    [Fact]
+    public void ToString_ShouldRoundToNearestWholePercent_WhenContentIsFractional()
+    {
+        // Arrange
+        var gas = GasMixture.FromPercent(49.6, 0);
+
+        // Act
+        var name = gas.ToString();
+
+        // Assert
+        Assert.Equal("NX50", name);
+    }
 }

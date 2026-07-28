@@ -129,6 +129,27 @@ public readonly struct GasMixture : IEquatable<GasMixture>
     /// <returns>A 32-bit signed integer hash code.</returns>
     public override int GetHashCode() => HashCode.Combine(_permilleO2, _permilleHe);
 
+    /// <summary>
+    /// Returns the conventional diver's name of the mixture: "Air" for 21% oxygen without
+    /// helium, "O2" for pure oxygen, "NX" followed by the oxygen percent for other
+    /// helium-free mixtures (for example NX50), and "TX" followed by the oxygen and
+    /// helium percents for mixtures containing helium (for example TX18/45). Percents are
+    /// rounded to the nearest whole number.
+    /// </summary>
+    /// <returns>The conventional name of the mixture.</returns>
+    public override string ToString()
+    {
+        var o2 = (int)Math.Round(PercentO2, MidpointRounding.AwayFromZero);
+        var he = (int)Math.Round(PercentHe, MidpointRounding.AwayFromZero);
+        return (o2, he) switch
+        {
+            (21, 0) => "Air",
+            (100, 0) => "O2",
+            (_, 0) => $"NX{o2}",
+            _ => $"TX{o2}/{he}"
+        };
+    }
+
     /// <summary>Indicates whether two mixtures are equal.</summary>
     /// <param name="left">The first mixture to compare.</param>
     /// <param name="right">The second mixture to compare.</param>
