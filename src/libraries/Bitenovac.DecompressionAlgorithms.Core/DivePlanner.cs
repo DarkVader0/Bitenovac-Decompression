@@ -1,6 +1,5 @@
 ﻿using Bitenovac.DecompressionAlgorithms.Core.Abstractions;
 using Bitenovac.DecompressionAlgorithms.Core.Calculations;
-using Bitenovac.DecompressionAlgorithms.Core.Environment;
 using Bitenovac.DecompressionAlgorithms.Core.Equipment;
 using Bitenovac.DecompressionAlgorithms.Core.Planning;
 using Bitenovac.DecompressionAlgorithms.Units;
@@ -152,8 +151,7 @@ public sealed class DivePlanner
         double depthMeter,
         DivePlanSettings settings)
     {
-        var hydrostaticMillibar = PhysicalConstants.HydrostaticPressureMillibar(settings.Salinity, depthMeter);
-        var ambient = Pressure.FromMillibar(settings.SurfacePressure.InMillibar + hydrostaticMillibar);
+        var ambient = AmbientConditions.PressureAtDepth(settings, Depth.FromMeter(depthMeter));
         return GasSelector.SelectRichestGas(cylinders, ambient, settings.BottomPo2);
     }
 

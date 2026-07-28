@@ -9,7 +9,7 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 /// fully expanded profile returned as a result.
 /// </summary>
 /// <remarks>Instances are immutable.</remarks>
-public readonly struct DiveSegment
+public readonly record struct DiveSegment
 {
     /// <summary>Initializes a new instance of the <see cref="DiveSegment" /> class.</summary>
     /// <param name="depth">The depth at which the segment is held, or the depth reached at its end.</param>

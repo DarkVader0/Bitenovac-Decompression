@@ -51,8 +51,9 @@ public static class GasSelector
         var found = false;
         Cylinder best = default;
 
-        foreach (var cylinder in cylinders)
+        for (var i = 0; i < cylinders.Count; i++)
         {
+            var cylinder = cylinders[i];
             // The gas is permissible only if its oxygen partial pressure at this depth is
             // within the limit.
             if (cylinder.Gas.PartialPressureO2(ambient).InMillibar > maxPo2.InMillibar)

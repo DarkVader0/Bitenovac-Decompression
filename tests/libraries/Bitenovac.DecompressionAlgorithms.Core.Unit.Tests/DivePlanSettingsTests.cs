@@ -24,6 +24,8 @@ public sealed class DivePlanSettingsTests
         TimeSpan? stopTimeIncrement = null,
         TimeSpan? problemSolvingTime = null,
         TimeSpan? minimumGasSwitchDuration = null,
+        TimeSpan? oxygenBreakInterval = null,
+        TimeSpan? oxygenBreakDuration = null,
         bool safetyStop = true,
         bool lastStopAtSixMeters = false,
         bool switchAtRequiredStop = false,
@@ -47,6 +49,8 @@ public sealed class DivePlanSettingsTests
             stopTimeIncrement ?? TimeSpan.FromMinutes(1),
             problemSolvingTime ?? TimeSpan.FromMinutes(1),
             minimumGasSwitchDuration ?? TimeSpan.FromSeconds(30),
+            oxygenBreakInterval ?? TimeSpan.FromMinutes(20),
+            oxygenBreakDuration ?? TimeSpan.FromMinutes(5),
             safetyStop,
             lastStopAtSixMeters,
             switchAtRequiredStop,
@@ -621,5 +625,91 @@ public sealed class DivePlanSettingsTests
 
         // Assert
         Assert.Equal(oxygenIsNarcotic, settings.OxygenIsNarcotic);
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentOutOfRangeException_WhenOxygenBreakIntervalIsZeroAndBreaksAreEnabled()
+    {
+        // Arrange
+
+        // Act
+        Action act = () => CreateSettings(oxygenBreaks: true, oxygenBreakInterval: TimeSpan.Zero);
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentOutOfRangeException_WhenOxygenBreakDurationIsZeroAndBreaksAreEnabled()
+    {
+        // Arrange
+
+        // Act
+        Action act = () => CreateSettings(oxygenBreaks: true, oxygenBreakDuration: TimeSpan.Zero);
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentOutOfRangeException_WhenOxygenBreakIntervalIsNegative()
+    {
+        // Arrange
+
+        // Act
+        Action act = () => CreateSettings(oxygenBreakInterval: TimeSpan.FromMinutes(-1));
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentOutOfRangeException_WhenOxygenBreakDurationIsNegative()
+    {
+        // Arrange
+
+        // Act
+        Action act = () => CreateSettings(oxygenBreakDuration: TimeSpan.FromMinutes(-1));
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void Constructor_ShouldSucceed_WhenOxygenBreakTimesAreZeroAndBreaksAreDisabled()
+    {
+        // Arrange
+
+        // Act
+        var settings = CreateSettings(oxygenBreaks: false,
+            oxygenBreakInterval: TimeSpan.Zero,
+            oxygenBreakDuration: TimeSpan.Zero);
+
+        // Assert
+        Assert.Equal(TimeSpan.Zero, settings.OxygenBreakInterval);
+    }
+
+    [Fact]
+    public void OxygenBreakInterval_ShouldReturnConstructorValue_WhenSet()
+    {
+        // Arrange
+
+        // Act
+        var settings = CreateSettings(oxygenBreakInterval: TimeSpan.FromMinutes(12));
+
+        // Assert
+        Assert.Equal(TimeSpan.FromMinutes(12), settings.OxygenBreakInterval);
+    }
+
+    [Fact]
+    public void OxygenBreakDuration_ShouldReturnConstructorValue_WhenSet()
+    {
+        // Arrange
+
+        // Act
+        var settings = CreateSettings(oxygenBreakDuration: TimeSpan.FromMinutes(6));
+
+        // Assert
+        Assert.Equal(TimeSpan.FromMinutes(6), settings.OxygenBreakDuration);
     }
 }

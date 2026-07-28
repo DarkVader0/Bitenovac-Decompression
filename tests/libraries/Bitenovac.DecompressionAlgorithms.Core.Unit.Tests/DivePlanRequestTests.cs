@@ -32,6 +32,8 @@ public sealed class DivePlanRequestTests
             TimeSpan.FromMinutes(1),
             TimeSpan.FromMinutes(1),
             TimeSpan.FromSeconds(30),
+            TimeSpan.FromMinutes(20),
+            TimeSpan.FromMinutes(5),
             true,
             false,
             false,
@@ -159,4 +161,61 @@ public sealed class DivePlanRequestTests
         // Assert
         Assert.Same(settings, request.Settings);
     }
+
+    [Fact]
+    public void PriorDives_ShouldBeEmpty_WhenNotSupplied()
+    {
+        // Arrange
+
+        // Act
+        var request = new DivePlanRequest(CreateProfile(), [CreateCylinder()], CreateSettings());
+
+        // Assert
+        Assert.Empty(request.PriorDives);
+    }
+
+    [Fact]
+    public void PriorDives_ShouldReturnSuppliedDives_InOrder()
+    {
+        // Arrange
+        var first = CreatePriorDive();
+        var second = CreatePriorDive();
+
+        // Act
+        var request = new DivePlanRequest(CreateProfile(), [CreateCylinder()], CreateSettings(), [first, second]);
+
+        // Assert
+        Assert.Same(first, request.PriorDives[0]);
+        Assert.Same(second, request.PriorDives[1]);
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentException_WhenPriorDivesContainsNullEntry()
+    {
+        // Arrange
+        var priorDives = new PriorDive?[] { CreatePriorDive(), null };
+
+        // Act
+        Action act = () => new DivePlanRequest(CreateProfile(), [CreateCylinder()], CreateSettings(), priorDives!);
+
+        // Assert
+        Assert.Throws<ArgumentException>(act);
+    }
+
+    [Fact]
+    public void PriorDives_ShouldNotReflectChanges_WhenSourceListIsModifiedAfterConstruction()
+    {
+        // Arrange
+        var priorDives = new List<PriorDive> { CreatePriorDive() };
+        var request = new DivePlanRequest(CreateProfile(), [CreateCylinder()], CreateSettings(), priorDives);
+
+        // Act
+        priorDives.Add(CreatePriorDive());
+
+        // Assert
+        Assert.Single(request.PriorDives);
+    }
+
+    private static PriorDive CreatePriorDive() =>
+        new(CreateProfile(), [CreateCylinder()], CreateSettings(), TimeSpan.FromHours(1), GasMixture.Air);
 }

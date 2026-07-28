@@ -48,6 +48,11 @@ public sealed class DivePlanSettings
     /// <param name="stopTimeIncrement">The granularity to which decompression stop times are rounded up.</param>
     /// <param name="problemSolvingTime">The additional time spent at maximum depth after a gas loss event.</param>
     /// <param name="minimumGasSwitchDuration">The minimum time spent switching to a decompression gas.</param>
+    /// <param name="oxygenBreakInterval">
+    /// The length of continuous pure-oxygen breathing after which a break onto a
+    /// less rich gas is taken, when oxygen breaks are enabled.
+    /// </param>
+    /// <param name="oxygenBreakDuration">The length of each oxygen break, when oxygen breaks are enabled.</param>
     /// <param name="safetyStop">Whether a safety stop is added to the ascent.</param>
     /// <param name="lastStopAtSixMeters">Whether the last decompression stop is at six meters rather than three.</param>
     /// <param name="switchAtRequiredStop">Whether a gas switch is only performed once a required stop is reached.</param>
@@ -71,6 +76,8 @@ public sealed class DivePlanSettings
         TimeSpan stopTimeIncrement,
         TimeSpan problemSolvingTime,
         TimeSpan minimumGasSwitchDuration,
+        TimeSpan oxygenBreakInterval,
+        TimeSpan oxygenBreakDuration,
         bool safetyStop,
         bool lastStopAtSixMeters,
         bool switchAtRequiredStop,
@@ -135,6 +142,30 @@ public sealed class DivePlanSettings
                 "The minimum gas switch duration must not be negative.");
         }
 
+        if (oxygenBreaks && oxygenBreakInterval <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(oxygenBreakInterval), oxygenBreakInterval,
+                "The oxygen break interval must be greater than zero when oxygen breaks are enabled.");
+        }
+
+        if (oxygenBreaks && oxygenBreakDuration <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(oxygenBreakDuration), oxygenBreakDuration,
+                "The oxygen break duration must be greater than zero when oxygen breaks are enabled.");
+        }
+
+        if (oxygenBreakInterval < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(oxygenBreakInterval), oxygenBreakInterval,
+                "The oxygen break interval must not be negative.");
+        }
+
+        if (oxygenBreakDuration < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(oxygenBreakDuration), oxygenBreakDuration,
+                "The oxygen break duration must not be negative.");
+        }
+
         SurfacePressure = surfacePressure;
         Salinity = salinity;
         DescentRateMetersPerMinute = descentRateMetersPerMinute;
@@ -152,6 +183,8 @@ public sealed class DivePlanSettings
         StopTimeIncrement = stopTimeIncrement;
         ProblemSolvingTime = problemSolvingTime;
         MinimumGasSwitchDuration = minimumGasSwitchDuration;
+        OxygenBreakInterval = oxygenBreakInterval;
+        OxygenBreakDuration = oxygenBreakDuration;
         SafetyStop = safetyStop;
         LastStopAtSixMeters = lastStopAtSixMeters;
         SwitchAtRequiredStop = switchAtRequiredStop;
@@ -209,6 +242,15 @@ public sealed class DivePlanSettings
 
     /// <summary>Gets the minimum time spent switching to a decompression gas.</summary>
     public TimeSpan MinimumGasSwitchDuration { get; }
+
+    /// <summary>
+    /// Gets the length of continuous pure-oxygen breathing after which a break onto a less
+    /// rich gas is taken, when oxygen breaks are enabled.
+    /// </summary>
+    public TimeSpan OxygenBreakInterval { get; }
+
+    /// <summary>Gets the length of each oxygen break, when oxygen breaks are enabled.</summary>
+    public TimeSpan OxygenBreakDuration { get; }
 
     /// <summary>Gets a value indicating whether a safety stop is added to the ascent.</summary>
     public bool SafetyStop { get; }

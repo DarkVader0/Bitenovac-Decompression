@@ -45,6 +45,8 @@ internal static class TestFactory
             TimeSpan.FromMinutes(1),
             TimeSpan.FromMinutes(1),
             TimeSpan.FromSeconds(30),
+            TimeSpan.FromMinutes(20),
+            TimeSpan.FromMinutes(5),
             true,
             false,
             false,

@@ -2,6 +2,8 @@
 .vs
 .vscode
 
+BenchmarkDotNet.Artifacts/*
+
 /**/bin/
 /**/obj/
 /**/TestResults/
