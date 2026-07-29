@@ -1,4 +1,5 @@
-﻿using Bitenovac.DecompressionAlgorithms.Core.Environment;
+using System.Globalization;
+using Bitenovac.DecompressionAlgorithms.Core.Environment;
 using Bitenovac.DecompressionAlgorithms.Core.Equipment;
 using Bitenovac.DecompressionAlgorithms.Core.Planning;
 using Bitenovac.DecompressionAlgorithms.Units;
@@ -7,28 +8,31 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 
 /// <summary>
 /// Provides the model-agnostic calculation of the gas consumed from each cylinder over a
-/// dive. The volume of gas breathed in a segment is the product of the surface air
-/// consumption rate, the absolute ambient pressure at the segment's depth, and the
-/// segment's duration; this free-gas volume is drawn from the cylinder whose gas matches
-/// the segment's breathing gas. The resulting per-cylinder usage, including the pressure
-/// remaining at the end of the dive, depends only on the expanded profile and the
-/// equipment and is therefore identical for every decompression model.
+/// dive. What the diver draws from the cylinders depends on the breathing apparatus. On
+/// open circuit every breath is taken from the cylinder and vented, so the volume consumed
+/// in a segment is the product of the surface air consumption rate, the absolute ambient
+/// pressure at the segment's depth, and the segment's duration. A closed-circuit loop vents
+/// nothing, so it draws only the oxygen the diver metabolises and the diluent needed to keep
+/// the loop full as the ambient pressure rises during a descent. A passive semi-closed loop
+/// vents a fixed fraction of each breath, so it draws that fraction of the open-circuit
+/// demand from its supply, plus the same descent make-up. The resulting per-cylinder usage,
+/// including the pressure remaining at the end of the dive, depends only on the expanded
+/// profile and the equipment and is therefore identical for every decompression model.
 /// </summary>
 public static class GasConsumption
 {
     /// <summary>
     /// Computes the gas consumed from each supplied cylinder over the given expanded dive
-    /// profile. Each segment's gas is drawn from the cylinder holding the matching mixture,
-    /// consuming a free-gas volume equal to the surface air consumption rate scaled by the
-    /// ambient pressure at the segment's depth and the segment's duration. Only
-    /// decompression stops are breathed at the decompression rate; every other segment,
-    /// including descents, bottom time, working ascents between levels, and gas switches, is
-    /// breathed at the higher bottom rate, since the diver is moving or working rather than
-    /// holding a stop.
+    /// profile. Each segment draws from the cylinder holding its supply gas — preferring the
+    /// diluent supply when the segment is breathed through a rebreather — at the rate its
+    /// breathing apparatus demands. Only decompression stops are breathed at the
+    /// decompression rate; every other segment, including descents, bottom time, working
+    /// ascents between levels, and gas switches, is breathed at the higher bottom rate,
+    /// since the diver is moving or working rather than holding a stop.
     /// </summary>
-    /// <param name="segments">The fully expanded, ordered dive segments.</param>
+    /// <param name="segments">The fully expanded, ordered, depth-contiguous dive segments.</param>
     /// <param name="cylinders">The cylinders available to the diver.</param>
-    /// <param name="settings">The settings that supply the consumption rates and the environment.</param>
+    /// <param name="settings">The settings that supply the consumption rates, the loop parameters, and the environment.</param>
     /// <returns>The gas usage for each cylinder, in the same order as <paramref name="cylinders" />.</returns>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="segments" />, <paramref name="cylinders" />, or <paramref name="settings" /> is
@@ -36,8 +40,9 @@ public static class GasConsumption
     /// </exception>
     /// <exception cref="ArgumentException"><paramref name="cylinders" /> is empty.</exception>
     /// <exception cref="InvalidOperationException">
-    /// A segment's breathing gas does not match any supplied cylinder, or the demand for gas
-    /// exceeds what the matching cylinder holds.
+    /// A segment's supply gas does not match any supplied cylinder, a closed-circuit segment
+    /// has no oxygen cylinder to draw on, or the demand for gas exceeds what the matching
+    /// cylinder holds.
     /// </exception>
     public static IReadOnlyList<CylinderGasUsage> Calculate(
         IReadOnlyList<DiveSegment> segments,
@@ -57,29 +62,15 @@ public static class GasConsumption
         // the supplied cylinder list.
         var consumedMilliliters = new double[cylinders.Count];
 
+        // The depth at which each segment begins is the depth at which the previous one
+        // ended, so that the loop make-up over a descent can be measured. The first segment
+        // begins at the surface.
+        var previousDepthMeter = 0.0;
+
         foreach (var segment in segments)
         {
-            var cylinderIndex = FindCylinderIndex(cylinders, segment.Gas);
-            if (cylinderIndex < 0)
-            {
-                throw new InvalidOperationException(
-                    "A segment's breathing gas does not match any supplied cylinder.");
-            }
-
-            // Only decompression stops are breathed at the decompression rate; descent,
-            // bottom, working ascents between levels, and gas switches are all breathed at
-            // the higher bottom rate, since the diver is moving or working rather than
-            // holding a stop.
-            var sacLitersPerMinute = segment.Kind == SegmentKind.Stop
-                ? settings.DecoSacLitersPerMinute
-                : settings.BottomSacLitersPerMinute;
-
-            // Free-gas volume (at surface conditions) = SAC × ambient-pressure-ratio × time.
-            var ambientRatio = AmbientPressure(segment.Depth, settings).InMillibar
-                               / settings.SurfacePressure.InMillibar;
-            var liters = sacLitersPerMinute * ambientRatio * segment.Duration.TotalMinutes;
-
-            consumedMilliliters[cylinderIndex] += liters * 1000.0;
+            AccumulateSegment(segment, previousDepthMeter, cylinders, settings, consumedMilliliters);
+            previousDepthMeter = segment.Depth.InMeter;
         }
 
         var usage = new CylinderGasUsage[cylinders.Count];
@@ -92,17 +83,140 @@ public static class GasConsumption
     }
 
     /// <summary>
-    /// Returns the index of the first cylinder whose gas equals the given mixture, or a
-    /// negative value if no cylinder holds that mixture.
+    /// Adds the gas one segment draws from each cylinder to the running totals, according to
+    /// the breathing apparatus through which it is breathed.
+    /// </summary>
+    /// <param name="segment">The segment whose demand is being accumulated.</param>
+    /// <param name="startDepthMeter">The depth, in meters, at which the segment begins.</param>
+    /// <param name="cylinders">The cylinders available to the diver.</param>
+    /// <param name="settings">The settings that supply the consumption rates, the loop parameters, and the environment.</param>
+    /// <param name="consumedMilliliters">The running per-cylinder totals, in milliliters, to which the demand is added.</param>
+    /// <exception cref="InvalidOperationException">
+    /// The segment's supply gas does not match any supplied cylinder, or a closed-circuit
+    /// segment has no oxygen cylinder to draw on.
+    /// </exception>
+    private static void AccumulateSegment(in DiveSegment segment,
+        double startDepthMeter,
+        IReadOnlyList<Cylinder> cylinders,
+        DivePlanSettings settings,
+        double[] consumedMilliliters)
+    {
+        var mode = segment.Loop.Mode;
+        var supplyIndex = FindSupplyIndex(cylinders, segment.Gas, mode);
+        if (supplyIndex < 0)
+        {
+            throw new InvalidOperationException(
+                "A segment's supply gas does not match any supplied cylinder.");
+        }
+
+        // Only decompression stops are breathed at the decompression rate; descent, bottom,
+        // working ascents between levels, and gas switches are all breathed at the higher
+        // bottom rate, since the diver is moving or working rather than holding a stop. The
+        // metabolic demand of a rebreather diver is split the same way.
+        var restingAtAStop = segment.Kind == SegmentKind.Stop;
+        var sacLitersPerMinute = restingAtAStop
+            ? settings.DecoSacLitersPerMinute
+            : settings.BottomSacLitersPerMinute;
+
+        var minutes = segment.Duration.TotalMinutes;
+        var endAmbientRatio = AmbientRatio(segment.Depth.InMeter, settings);
+
+        if (mode == DiveMode.OC)
+        {
+            // Free-gas volume (at surface conditions) = SAC × ambient-pressure-ratio × time.
+            consumedMilliliters[supplyIndex] += sacLitersPerMinute * endAmbientRatio * minutes * 1000.0;
+            return;
+        }
+
+        // A rebreather loop is a fixed volume of gas held at ambient pressure, so descending
+        // compresses it and the difference must be made up from the diluent supply. Ascending
+        // vents the excess overboard and draws nothing.
+        var startAmbientRatio = AmbientRatio(startDepthMeter, settings);
+        var makeUpLiters = settings.LoopVolumeLiters * Math.Max(endAmbientRatio - startAmbientRatio, 0.0);
+        consumedMilliliters[supplyIndex] += makeUpLiters * 1000.0;
+
+        if (mode == DiveMode.PSCR)
+        {
+            // The loop vents its dump ratio of every breath and replaces it from the supply.
+            var ventedLiters = segment.Loop.DumpRatio * sacLitersPerMinute * endAmbientRatio * minutes;
+            consumedMilliliters[supplyIndex] += ventedLiters * 1000.0;
+            return;
+        }
+
+        // A closed-circuit loop vents nothing, so the only gas it consumes beyond the descent
+        // make-up is the oxygen the diver metabolises, which is drawn from the oxygen supply
+        // at a rate that does not vary with depth.
+        var metabolicRate = restingAtAStop
+            ? settings.DecoMetabolicOxygenConsumptionLitersPerMinute
+            : settings.BottomMetabolicOxygenConsumptionLitersPerMinute;
+        var oxygenLiters = metabolicRate * minutes;
+        if (oxygenLiters <= 0.0)
+        {
+            return;
+        }
+
+        var oxygenIndex = FindPurposeIndex(cylinders, CylinderPurpose.Oxygen);
+        if (oxygenIndex < 0)
+        {
+            throw new InvalidOperationException(
+                "A closed-circuit segment requires a cylinder carried for the oxygen supply.");
+        }
+
+        consumedMilliliters[oxygenIndex] += oxygenLiters * 1000.0;
+    }
+
+    /// <summary>
+    /// Returns the index of the cylinder supplying the given gas, or a negative value if no
+    /// cylinder holds it. When more than one cylinder holds the same mixture the role
+    /// decides: a segment breathed through a rebreather is supplied from the diluent, and a
+    /// segment breathed open circuit is taken from a stage rather than from the small oxygen
+    /// supply that feeds a rebreather loop.
     /// </summary>
     /// <param name="cylinders">The cylinders to search.</param>
-    /// <param name="gas">The breathing gas to match.</param>
-    /// <returns>The zero-based index of the matching cylinder, or -1 if none matches.</returns>
-    private static int FindCylinderIndex(IReadOnlyList<Cylinder> cylinders, GasMixture gas)
+    /// <param name="gas">The supply gas to match.</param>
+    /// <param name="mode">The breathing apparatus through which the gas is supplied.</param>
+    /// <returns>The zero-based index of the supplying cylinder, or -1 if none matches.</returns>
+    private static int FindSupplyIndex(IReadOnlyList<Cylinder> cylinders, GasMixture gas, DiveMode mode)
     {
+        var preferred = mode == DiveMode.OC ? null : (CylinderPurpose?)CylinderPurpose.Diluent;
+
+        for (var i = 0; i < cylinders.Count; i++)
+        {
+            if (cylinders[i].Gas != gas)
+            {
+                continue;
+            }
+
+            var matchesPreference = preferred is { } purpose
+                ? cylinders[i].Purpose == purpose
+                : cylinders[i].Purpose != CylinderPurpose.Oxygen;
+
+            if (matchesPreference)
+            {
+                return i;
+            }
+        }
+
         for (var i = 0; i < cylinders.Count; i++)
         {
             if (cylinders[i].Gas == gas)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>Returns the index of the first cylinder carried for the given role, or -1 if there is none.</summary>
+    /// <param name="cylinders">The cylinders to search.</param>
+    /// <param name="purpose">The role to match.</param>
+    /// <returns>The zero-based index of the matching cylinder, or -1 if none matches.</returns>
+    private static int FindPurposeIndex(IReadOnlyList<Cylinder> cylinders, CylinderPurpose purpose)
+    {
+        for (var i = 0; i < cylinders.Count; i++)
+        {
+            if (cylinders[i].Purpose == purpose)
             {
                 return i;
             }
@@ -127,8 +241,10 @@ public static class GasConsumption
         var availableMilliliters = cylinder.StartGasVolume(surfacePressure).InMilliliter;
         if (consumedMilliliters > availableMilliliters)
         {
-            throw new InvalidOperationException(
-                "The demand for gas exceeds what the matching cylinder holds.");
+            throw new InvalidOperationException(string.Create(CultureInfo.InvariantCulture,
+                $"The demand for gas exceeds what the matching cylinder holds: the profile draws " +
+                $"{consumedMilliliters / 1000.0:0.##} L of {cylinder.Gas} from a cylinder holding " +
+                $"{availableMilliliters / 1000.0:0.##} L."));
         }
 
         var gasUsed = Volume.FromMilliliter(consumedMilliliters);
@@ -144,15 +260,16 @@ public static class GasConsumption
     }
 
     /// <summary>
-    /// Returns the absolute ambient pressure at a given depth, being the surface pressure
-    /// plus the hydrostatic pressure of the water column for the configured salinity.
+    /// Returns the ratio of the absolute ambient pressure at a given depth to the surface
+    /// pressure, by which a surface-referenced volume is scaled to the volume breathed at
+    /// that depth.
     /// </summary>
-    /// <param name="depth">The depth at which the ambient pressure is required.</param>
+    /// <param name="depthMeter">The depth, in meters, at which the ratio is required.</param>
     /// <param name="settings">The settings that supply the surface pressure and salinity.</param>
-    /// <returns>The absolute ambient pressure at the depth.</returns>
-    private static Pressure AmbientPressure(Depth depth, DivePlanSettings settings)
+    /// <returns>The ambient pressure at the depth as a multiple of the surface pressure.</returns>
+    private static double AmbientRatio(double depthMeter, DivePlanSettings settings)
     {
-        var hydrostaticMillibar = PhysicalConstants.HydrostaticPressureMillibar(settings.Salinity, depth.InMeter);
-        return Pressure.FromMillibar(settings.SurfacePressure.InMillibar + hydrostaticMillibar);
+        var hydrostaticMillibar = PhysicalConstants.HydrostaticPressureMillibar(settings.Salinity, depthMeter);
+        return (settings.SurfacePressure.InMillibar + hydrostaticMillibar) / settings.SurfacePressure.InMillibar;
     }
 }

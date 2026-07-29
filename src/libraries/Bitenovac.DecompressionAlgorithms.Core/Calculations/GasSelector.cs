@@ -26,6 +26,11 @@ public static class GasSelector
     /// <param name="cylinders">The cylinders available to the diver.</param>
     /// <param name="ambient">The absolute ambient pressure at the depth for which a gas is being selected.</param>
     /// <param name="maxPo2">The maximum permitted partial pressure of oxygen at that depth.</param>
+    /// <param name="requiredPurpose">
+    /// When supplied, restricts the choice to cylinders carried for that role, so that a
+    /// rebreather draws only on its diluent supply rather than on the open-circuit stages
+    /// carried alongside it. When omitted, every cylinder is a candidate.
+    /// </param>
     /// <returns>The cylinder holding the richest gas that is breathable within the limit at the given depth.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="cylinders" /> is <see langword="null" />.</exception>
     /// <exception cref="ArgumentException"><paramref name="cylinders" /> is empty.</exception>
@@ -33,7 +38,8 @@ public static class GasSelector
     /// <exception cref="InvalidOperationException">No available gas is breathable within the limit at the given depth.</exception>
     public static Cylinder SelectRichestGas(IReadOnlyList<Cylinder> cylinders,
         Pressure ambient,
-        Pressure maxPo2)
+        Pressure maxPo2,
+        CylinderPurpose? requiredPurpose = null)
     {
         ArgumentNullException.ThrowIfNull(cylinders);
 
@@ -54,6 +60,11 @@ public static class GasSelector
         for (var i = 0; i < cylinders.Count; i++)
         {
             var cylinder = cylinders[i];
+            if (!IsAvailableFor(cylinder, requiredPurpose))
+            {
+                continue;
+            }
+
             // The gas is permissible only if its oxygen partial pressure at this depth is
             // within the limit.
             if (cylinder.Gas.PartialPressureO2(ambient).InMillibar > maxPo2.InMillibar)
@@ -79,6 +90,22 @@ public static class GasSelector
 
         return best;
     }
+
+    /// <summary>
+    /// Determines whether a cylinder may supply a segment breathed through the given
+    /// apparatus. A rebreather is fed from its diluent alone. Open circuit may draw on any
+    /// cylinder except the oxygen supply of a rebreather, which feeds the loop and carries no
+    /// second stage to breathe from.
+    /// </summary>
+    /// <param name="cylinder">The cylinder being considered.</param>
+    /// <param name="requiredPurpose">
+    /// The role the supply must be carried for, or <see langword="null" /> for open circuit.
+    /// </param>
+    /// <returns><see langword="true" /> when the cylinder may supply the segment; otherwise <see langword="false" />.</returns>
+    public static bool IsAvailableFor(Cylinder cylinder, CylinderPurpose? requiredPurpose) =>
+        requiredPurpose is { } purpose
+            ? cylinder.Purpose == purpose
+            : cylinder.Purpose != CylinderPurpose.Oxygen;
 
     /// <summary>
     /// Returns the maximum operating depth of a gas, being the shallowest ambient pressure

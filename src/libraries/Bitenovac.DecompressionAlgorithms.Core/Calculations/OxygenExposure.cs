@@ -44,8 +44,8 @@ public static class OxygenExposure
 
         foreach (var segment in segments)
         {
-            var startPo2Mbar = Po2Mbar(previousDepthMeter, segment.Gas, settings);
-            var endPo2Mbar = Po2Mbar(segment.Depth.InMeter, segment.Gas, settings);
+            var startPo2Mbar = Po2Mbar(previousDepthMeter, segment, settings);
+            var endPo2Mbar = Po2Mbar(segment.Depth.InMeter, segment, settings);
             var durationSec = (int)Math.Round(segment.Duration.TotalSeconds, MidpointRounding.AwayFromZero);
 
             cnsPercent += OxygenToxicity.CalculateCnsTransition(startPo2Mbar, endPo2Mbar, durationSec);
@@ -62,20 +62,22 @@ public static class OxygenExposure
     }
 
     /// <summary>
-    /// Returns the partial pressure of oxygen, in millibars, of the given gas at the given
-    /// depth, being the absolute ambient pressure scaled by the oxygen fraction of the gas.
+    /// Returns the partial pressure of oxygen, in millibars, that the segment's breathing
+    /// apparatus delivers from its supply gas at the given depth. On open circuit this is
+    /// the ambient pressure scaled by the oxygen fraction of the supply; on a rebreather the
+    /// loop sets it.
     /// </summary>
     /// <param name="depthMeter">The depth, in meters, at which the partial pressure is required.</param>
-    /// <param name="gas">The breathing gas.</param>
+    /// <param name="segment">The segment supplying the gas and the breathing apparatus.</param>
     /// <param name="settings">The settings that supply the surface pressure and salinity.</param>
     /// <returns>The partial pressure of oxygen, in millibars, rounded to the nearest millibar.</returns>
     private static int Po2Mbar(double depthMeter,
-        GasMixture gas,
+        in DiveSegment segment,
         DivePlanSettings settings)
     {
         var hydrostaticMillibar = PhysicalConstants.HydrostaticPressureMillibar(settings.Salinity, depthMeter);
         var ambient = Pressure.FromMillibar(settings.SurfacePressure.InMillibar + hydrostaticMillibar);
-        var po2Millibar = gas.PartialPressureO2(ambient).InMillibar;
+        var po2Millibar = segment.Loop.InspiredOxygenPressure(segment.Gas, ambient).InMillibar;
         return (int)Math.Round(po2Millibar, MidpointRounding.AwayFromZero);
     }
 }

@@ -1,4 +1,4 @@
-﻿using Bitenovac.DecompressionAlgorithms.Units;
+using Bitenovac.DecompressionAlgorithms.Units;
 
 namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
@@ -14,17 +14,23 @@ public readonly record struct DiveSegment
     /// <summary>Initializes a new instance of the <see cref="DiveSegment" /> class.</summary>
     /// <param name="depth">The depth at which the segment is held, or the depth reached at its end.</param>
     /// <param name="duration">The length of time the segment lasts.</param>
-    /// <param name="gas">The breathing gas used during the segment.</param>
+    /// <param name="gas">The gas supplied from the cylinder during the segment.</param>
     /// <param name="kind">The role of the segment within the dive.</param>
+    /// <param name="loop">
+    /// The breathing apparatus through which the gas is supplied. Defaults to open circuit,
+    /// in which the diver inspires the supply gas unaltered.
+    /// </param>
     public DiveSegment(Depth depth,
         TimeSpan duration,
         GasMixture gas,
-        SegmentKind kind)
+        SegmentKind kind,
+        BreathingLoop loop = default)
     {
         Depth = depth;
         Duration = duration;
         Gas = gas;
         Kind = kind;
+        Loop = loop;
     }
 
     /// <summary>Gets the depth at which the segment is held, or the depth reached at its end.</summary>
@@ -33,9 +39,16 @@ public readonly record struct DiveSegment
     /// <summary>Gets the length of time the segment lasts.</summary>
     public TimeSpan Duration { get; }
 
-    /// <summary>Gets the breathing gas used during the segment.</summary>
+    /// <summary>
+    /// Gets the gas supplied from the cylinder during the segment. On open circuit this is
+    /// also the gas the diver inspires; on a rebreather the loop alters it, and the inspired
+    /// mixture is obtained from <see cref="Loop" />.
+    /// </summary>
     public GasMixture Gas { get; }
 
     /// <summary>Gets the role of the segment within the dive.</summary>
     public SegmentKind Kind { get; }
+
+    /// <summary>Gets the breathing apparatus through which the gas is supplied.</summary>
+    public BreathingLoop Loop { get; }
 }

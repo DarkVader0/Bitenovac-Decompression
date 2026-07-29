@@ -60,7 +60,7 @@ public sealed class DivePlanner
             {
                 // Descend to the deeper level; a descent never incurs an obligation.
                 var descent = BuildTravel(currentDepthMeter, targetDepthMeter,
-                    settings.DescentRateMetersPerMinute, SegmentKind.Descent, cylinders, settings);
+                    settings.DescentRateMetersPerMinute, SegmentKind.Descent, cylinders, settings, target.Loop);
                 segments.Add(descent);
                 state = _algorithm.LoadSegment(state, descent);
                 currentDepthMeter = targetDepthMeter;
@@ -81,7 +81,8 @@ public sealed class DivePlanner
                 // The working ascent is emitted regardless so that the profile stays
                 // continuous for the shared calculators; the violation records the problem.
                 var ascent = BuildTravel(currentDepthMeter, targetDepthMeter,
-                    settings.AscentRateBelow75PercentMetersPerMinute, SegmentKind.Ascent, cylinders, settings);
+                    settings.AscentRateBelow75PercentMetersPerMinute, SegmentKind.Ascent, cylinders, settings,
+                    target.Loop);
                 segments.Add(ascent);
                 state = _algorithm.LoadSegment(state, ascent);
                 currentDepthMeter = targetDepthMeter;
@@ -92,9 +93,9 @@ public sealed class DivePlanner
                 continue;
             }
 
-            var bottomCylinder = SelectBottomGas(cylinders, targetDepthMeter, settings);
+            var bottomCylinder = SelectBottomGas(cylinders, targetDepthMeter, settings, target.Loop);
             var bottom = new DiveSegment(Depth.FromMeter(targetDepthMeter), target.Duration,
-                bottomCylinder.Gas, SegmentKind.Bottom);
+                bottomCylinder.Gas, SegmentKind.Bottom, target.Loop);
             segments.Add(bottom);
             state = _algorithm.LoadSegment(state, bottom);
             currentDepthMeter = targetDepthMeter;
@@ -125,34 +126,40 @@ public sealed class DivePlanner
     /// <param name="kind">The role of the travel segment within the dive.</param>
     /// <param name="cylinders">The cylinders available to the diver.</param>
     /// <param name="settings">The settings supplying the environment and the bottom oxygen partial pressure limit.</param>
+    /// <param name="loop">The breathing apparatus through which the travel is breathed.</param>
     /// <returns>The travel segment.</returns>
     private static DiveSegment BuildTravel(double fromDepthMeter,
         double toDepthMeter,
         double rateMetersPerMinute,
         SegmentKind kind,
         IReadOnlyList<Cylinder> cylinders,
-        DivePlanSettings settings)
+        DivePlanSettings settings,
+        BreathingLoop loop)
     {
-        var cylinder = SelectBottomGas(cylinders, toDepthMeter, settings);
+        var cylinder = SelectBottomGas(cylinders, toDepthMeter, settings, loop);
         var travelMeters = Math.Abs(toDepthMeter - fromDepthMeter);
         var duration = TimeSpan.FromMinutes(travelMeters / rateMetersPerMinute);
-        return new DiveSegment(Depth.FromMeter(toDepthMeter), duration, cylinder.Gas, kind);
+        return new DiveSegment(Depth.FromMeter(toDepthMeter), duration, cylinder.Gas, kind, loop);
     }
 
     /// <summary>
-    /// Selects the richest breathing gas for a working-phase segment at the given depth,
-    /// within the bottom oxygen partial pressure limit.
+    /// Selects the richest supply gas for a working-phase segment at the given depth, within
+    /// the bottom oxygen partial pressure limit. A rebreather draws only on its diluent
+    /// supply, and the limit is applied to the diluent breathed open circuit, since that is
+    /// the exposure a flush or a bailout at that depth would produce.
     /// </summary>
     /// <param name="cylinders">The cylinders available to the diver.</param>
     /// <param name="depthMeter">The depth, in meters, at which the gas is breathed.</param>
     /// <param name="settings">The settings supplying the environment and the bottom oxygen partial pressure limit.</param>
+    /// <param name="loop">The breathing apparatus through which the gas is supplied.</param>
     /// <returns>The cylinder holding the selected gas.</returns>
     private static Cylinder SelectBottomGas(IReadOnlyList<Cylinder> cylinders,
         double depthMeter,
-        DivePlanSettings settings)
+        DivePlanSettings settings,
+        BreathingLoop loop)
     {
         var ambient = AmbientConditions.PressureAtDepth(settings, Depth.FromMeter(depthMeter));
-        return GasSelector.SelectRichestGas(cylinders, ambient, settings.BottomPo2);
+        return GasSelector.SelectRichestGas(cylinders, ambient, settings.BottomPo2, loop.SupplyPurpose);
     }
 
     /// <summary>Returns the total runtime of the given segments, being the sum of their durations.</summary>

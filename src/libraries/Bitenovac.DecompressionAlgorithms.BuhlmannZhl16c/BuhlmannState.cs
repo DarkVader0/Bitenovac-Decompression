@@ -29,8 +29,11 @@ internal sealed class BuhlmannState : IDecompressionState
     /// <summary>The diver's current depth, in meters.</summary>
     public double CurrentDepthMeter;
 
-    /// <summary>The gas currently being breathed.</summary>
+    /// <summary>The gas currently supplied from the cylinder.</summary>
     public GasMixture CurrentGas;
+
+    /// <summary>The breathing apparatus through which the current gas is supplied.</summary>
+    public BreathingLoop CurrentLoop;
 
     /// <summary>The integral of depth over time for the dive in progress, in meter-minutes.</summary>
     public double DepthTimeIntegralMeterMinutes;

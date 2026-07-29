@@ -24,5 +24,11 @@ public enum CylinderPurpose
     /// <summary>
     /// Reserve open-circuit gas carried to safely abort a rebreather dive.
     /// </summary>
-    Bailout
+    Bailout,
+
+    /// <summary>
+    /// Pure oxygen carried to replenish what the diver metabolises from the breathing
+    /// loop of a rebreather.
+    /// </summary>
+    Oxygen
 }

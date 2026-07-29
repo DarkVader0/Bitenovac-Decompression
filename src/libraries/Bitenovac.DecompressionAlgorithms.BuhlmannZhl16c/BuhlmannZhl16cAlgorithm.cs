@@ -159,7 +159,8 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     /// decompression stops at three-meter intervals with stop times rounded up to the
     /// settings' increment, the gas switches onto the richest permitted decompression gas,
     /// oxygen breaks when the settings enable them, and the safety stop when one is
-    /// configured and no decompression stop is required. The state is advanced to the
+    /// configured and no decompression stop is required. A closed-circuit loop is raised to
+    /// its decompression setpoint for the whole of the ascent. The state is advanced to the
     /// surface as a side effect.
     /// </summary>
     /// <param name="state">The state from which the ascent begins; it is advanced to the surface.</param>
@@ -214,6 +215,7 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         }
 
         _state.CurrentGas = air;
+        _state.CurrentLoop = BreathingLoop.OpenCircuit;
         ResetDiveTracking();
     }
 
@@ -231,8 +233,12 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         ReplayWorkingPhase(priorDive.Profile, priorDive.Cylinders, priorDive.Settings);
         PlanFinalAscent(_state, priorDive.Cylinders, priorDive.Settings, null);
 
-        LoadConstantDepth(_state, 0.0, priorDive.SurfaceGas, priorDive.SurfaceInterval.TotalMinutes);
+        // The surface interval is always breathed open circuit, whatever apparatus the dive
+        // itself used.
+        LoadConstantDepth(_state, 0.0, priorDive.SurfaceGas, BreathingLoop.OpenCircuit,
+            priorDive.SurfaceInterval.TotalMinutes);
         _state.CurrentGas = priorDive.SurfaceGas;
+        _state.CurrentLoop = BreathingLoop.OpenCircuit;
     }
 
     /// <summary>
@@ -259,11 +265,12 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
                 var rate = isDescent
                     ? settings.DescentRateMetersPerMinute
                     : settings.AscentRateBelow75PercentMetersPerMinute;
-                var gas = SelectGasAt(cylinders, settings, targetDepthMeter, settings.BottomPo2);
+                var gas = SelectGasAt(cylinders, settings, targetDepthMeter, settings.BottomPo2, target.Loop);
                 var travel = new DiveSegment(Depth.FromMeter(targetDepthMeter),
                     TimeSpan.FromMinutes(Math.Abs(targetDepthMeter - currentDepthMeter) / rate),
                     gas,
-                    isDescent ? SegmentKind.Descent : SegmentKind.Ascent);
+                    isDescent ? SegmentKind.Descent : SegmentKind.Ascent,
+                    target.Loop);
                 ApplySegment(_state, travel);
                 currentDepthMeter = targetDepthMeter;
             }
@@ -273,20 +280,27 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
                 continue;
             }
 
-            var bottomGas = SelectGasAt(cylinders, settings, targetDepthMeter, settings.BottomPo2);
+            var bottomGas = SelectGasAt(cylinders, settings, targetDepthMeter, settings.BottomPo2, target.Loop);
             var bottom = new DiveSegment(Depth.FromMeter(targetDepthMeter), target.Duration, bottomGas,
-                SegmentKind.Bottom);
+                SegmentKind.Bottom, target.Loop);
             ApplySegment(_state, bottom);
         }
     }
 
+    /// <summary>
+    /// Selects the richest supply gas breathable at the given depth within the given oxygen
+    /// limit. A rebreather draws only on its diluent supply, and the limit is applied to the
+    /// diluent breathed open circuit, since that is the exposure a flush or a bailout at that
+    /// depth would produce.
+    /// </summary>
     private static GasMixture SelectGasAt(IReadOnlyList<Cylinder> cylinders,
         DivePlanSettings settings,
         double depthMeter,
-        Pressure maxPo2)
+        Pressure maxPo2,
+        BreathingLoop loop)
     {
         var ambient = AmbientConditions.PressureAtDepth(settings, Depth.FromMeter(depthMeter));
-        return GasSelector.SelectRichestGas(cylinders, ambient, maxPo2).Gas;
+        return GasSelector.SelectRichestGas(cylinders, ambient, maxPo2, loop.SupplyPurpose).Gas;
     }
 
     /// <summary>
@@ -302,12 +316,12 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         {
             if (segment.Kind is SegmentKind.Descent or SegmentKind.Ascent)
             {
-                LoadTravel(state, state.CurrentDepthMeter, endDepthMeter, segment.Gas, minutes);
+                LoadTravel(state, state.CurrentDepthMeter, endDepthMeter, segment.Gas, segment.Loop, minutes);
                 state.DepthTimeIntegralMeterMinutes += (state.CurrentDepthMeter + endDepthMeter) / 2.0 * minutes;
             }
             else
             {
-                LoadConstantDepth(state, endDepthMeter, segment.Gas, minutes);
+                LoadConstantDepth(state, endDepthMeter, segment.Gas, segment.Loop, minutes);
                 state.DepthTimeIntegralMeterMinutes += endDepthMeter * minutes;
             }
 
@@ -316,21 +330,26 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
 
         state.CurrentDepthMeter = endDepthMeter;
         state.CurrentGas = segment.Gas;
+        state.CurrentLoop = segment.Loop;
     }
 
     /// <summary>
     /// Loads the tissues at a constant depth with the instantaneous exponential:
-    /// <c>P(t) = Palv + (P0 − Palv)·e^(−k·t)</c> with <c>k = ln 2 / halfTime</c>.
+    /// <c>P(t) = Palv + (P0 − Palv)·e^(−k·t)</c> with <c>k = ln 2 / halfTime</c>. The
+    /// alveolar pressures are those of the gas the apparatus delivers, which on a rebreather
+    /// differs from the gas held in the cylinder.
     /// </summary>
     private static void LoadConstantDepth(BuhlmannState state,
         double depthMeter,
         GasMixture gas,
+        BreathingLoop loop,
         double minutes)
     {
         var ambient = state.SurfacePressureMillibar + state.MillibarPerMeter * depthMeter;
         var alveolar = ambient - WaterVaporPressureMillibar;
-        var alveolarNitrogen = alveolar * gas.FractionN2;
-        var alveolarHelium = alveolar * gas.FractionHe;
+        var ambientPressure = Pressure.FromMillibar(ambient);
+        var alveolarNitrogen = alveolar * loop.InspiredNitrogenFraction(gas, ambientPressure);
+        var alveolarHelium = alveolar * loop.InspiredHeliumFraction(gas, ambientPressure);
 
         var nitrogenHalfTimes = Zhl16cCoefficients.NitrogenHalfTimeMinutes;
         var heliumHalfTimes = Zhl16cCoefficients.HeliumHalfTimeMinutes;
@@ -350,22 +369,34 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     /// Loads the tissues over a constant-rate depth change with the Schreiner equation:
     /// <c>P(t) = Palv0 + R·(t − 1/k) − (Palv0 − P0 − R/k)·e^(−k·t)</c>, where
     /// <c>Palv0</c> is the alveolar inert pressure at the start depth and <c>R</c> the
-    /// rate of change of that pressure.
+    /// rate of change of that pressure. The rate is taken from the alveolar pressures at the
+    /// two ends of the travel, so that it also covers a rebreather, on which the inspired
+    /// fractions change with depth while the alveolar pressures remain linear in time.
     /// </summary>
     private static void LoadTravel(BuhlmannState state,
         double fromDepthMeter,
         double toDepthMeter,
         GasMixture gas,
+        BreathingLoop loop,
         double minutes)
     {
         var ambientStart = state.SurfacePressureMillibar + state.MillibarPerMeter * fromDepthMeter;
+        var ambientEnd = state.SurfacePressureMillibar + state.MillibarPerMeter * toDepthMeter;
         var alveolarStart = ambientStart - WaterVaporPressureMillibar;
-        var ambientRate = state.MillibarPerMeter * (toDepthMeter - fromDepthMeter) / minutes;
+        var alveolarEnd = ambientEnd - WaterVaporPressureMillibar;
+
+        var startPressure = Pressure.FromMillibar(ambientStart);
+        var endPressure = Pressure.FromMillibar(ambientEnd);
+
+        var nitrogenStart = alveolarStart * loop.InspiredNitrogenFraction(gas, startPressure);
+        var nitrogenEnd = alveolarEnd * loop.InspiredNitrogenFraction(gas, endPressure);
+        var heliumStart = alveolarStart * loop.InspiredHeliumFraction(gas, startPressure);
+        var heliumEnd = alveolarEnd * loop.InspiredHeliumFraction(gas, endPressure);
 
         LoadTravelGas(ref state.Nitrogen, Zhl16cCoefficients.NitrogenHalfTimeMinutes,
-            alveolarStart * gas.FractionN2, ambientRate * gas.FractionN2, minutes);
+            nitrogenStart, (nitrogenEnd - nitrogenStart) / minutes, minutes);
         LoadTravelGas(ref state.Helium, Zhl16cCoefficients.HeliumHalfTimeMinutes,
-            alveolarStart * gas.FractionHe, ambientRate * gas.FractionHe, minutes);
+            heliumStart, (heliumEnd - heliumStart) / minutes, minutes);
     }
 
     private static void LoadTravelGas(ref TissuePressuresMillibar pressures,
@@ -433,6 +464,11 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
             return;
         }
 
+        // The ascent to the surface is the decompression phase, so a closed-circuit loop is
+        // raised to its decompression setpoint here and every segment emitted below carries
+        // it.
+        state.CurrentLoop = state.CurrentLoop.ForDecompression();
+
         var averageDepthMeter = state.RuntimeMinutes > 0.0
             ? state.DepthTimeIntegralMeterMinutes / state.RuntimeMinutes
             : state.CurrentDepthMeter;
@@ -497,7 +533,7 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         {
             AscendTo(state, SafetyStopDepthMeter, averageDepthMeter, settings, output);
             var safetyStop = new DiveSegment(Depth.FromMeter(SafetyStopDepthMeter), SafetyStopDuration,
-                state.CurrentGas, SegmentKind.Stop);
+                state.CurrentGas, SegmentKind.Stop, state.CurrentLoop);
             ApplySegment(state, safetyStop);
             output?.Add(safetyStop);
         }
@@ -547,8 +583,15 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     {
         var best = -1.0;
 
+        var supplyPurpose = state.CurrentLoop.SupplyPurpose;
+
         for (var i = 0; i < cylinders.Count; i++)
         {
+            if (!GasSelector.IsAvailableFor(cylinders[i], supplyPurpose))
+            {
+                continue;
+            }
+
             var gas = cylinders[i].Gas;
             if (gas.FractionO2 <= state.CurrentGas.FractionO2 + GasFractionTolerance)
             {
@@ -581,7 +624,7 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         DivePlanSettings settings,
         SegmentBuffer? output)
     {
-        var best = SelectGasAt(cylinders, settings, depthMeter, settings.DecoPo2);
+        var best = SelectGasAt(cylinders, settings, depthMeter, settings.DecoPo2, state.CurrentLoop);
         if (best.FractionO2 <= state.CurrentGas.FractionO2 + GasFractionTolerance)
         {
             return;
@@ -590,7 +633,7 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         if (settings.MinimumGasSwitchDuration > TimeSpan.Zero)
         {
             var switchSegment = new DiveSegment(Depth.FromMeter(depthMeter), settings.MinimumGasSwitchDuration,
-                best, SegmentKind.GasSwitch);
+                best, SegmentKind.GasSwitch, state.CurrentLoop);
             ApplySegment(state, switchSegment);
             output?.Add(switchSegment);
         }
@@ -626,13 +669,13 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
                 && state.CurrentGas.FractionO2 >= PureOxygenFraction
                 && oxygenMinutes >= settings.OxygenBreakInterval.TotalMinutes)
             {
-                var breakGas = RichestNonOxygenGas(cylinders, settings, stopMeter);
+                var breakGas = RichestNonOxygenGas(cylinders, settings, stopMeter, state.CurrentLoop);
                 if (breakGas is { } gas)
                 {
                     FlushHeldStop(state, stopDepth, ref heldMinutes, output);
 
                     var breakSegment = new DiveSegment(stopDepth, settings.OxygenBreakDuration, gas,
-                        SegmentKind.Stop);
+                        SegmentKind.Stop, state.CurrentLoop);
                     var oxygenGas = state.CurrentGas;
                     ApplySegment(state, breakSegment);
                     state.CurrentGas = oxygenGas;
@@ -645,7 +688,7 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
             }
 
             var increment = new DiveSegment(stopDepth, settings.StopTimeIncrement, state.CurrentGas,
-                SegmentKind.Stop);
+                SegmentKind.Stop, state.CurrentLoop);
             ApplySegment(state, increment);
             heldMinutes += incrementMinutes;
             oxygenMinutes += incrementMinutes;
@@ -673,7 +716,7 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         }
 
         output?.Add(new DiveSegment(stopDepth, TimeSpan.FromMinutes(heldMinutes), state.CurrentGas,
-            SegmentKind.Stop));
+            SegmentKind.Stop, state.CurrentLoop));
         heldMinutes = 0.0;
     }
 
@@ -684,13 +727,20 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     /// </summary>
     private static GasMixture? RichestNonOxygenGas(IReadOnlyList<Cylinder> cylinders,
         DivePlanSettings settings,
-        double depthMeter)
+        double depthMeter,
+        BreathingLoop loop)
     {
         var ambient = AmbientConditions.PressureAtDepth(settings, Depth.FromMeter(depthMeter));
+        var supplyPurpose = loop.SupplyPurpose;
         GasMixture? best = null;
 
         for (var i = 0; i < cylinders.Count; i++)
         {
+            if (!GasSelector.IsAvailableFor(cylinders[i], supplyPurpose))
+            {
+                continue;
+            }
+
             var gas = cylinders[i].Gas;
             if (gas.FractionO2 >= PureOxygenFraction
                 || gas.PartialPressureO2(ambient).InMillibar > settings.DecoPo2.InMillibar)
@@ -753,7 +803,8 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
             var travel = new DiveSegment(Depth.FromMeter(boundaryMeter),
                 TimeSpan.FromMinutes((depth - boundaryMeter) / rate),
                 state.CurrentGas,
-                SegmentKind.Ascent);
+                SegmentKind.Ascent,
+                state.CurrentLoop);
             ApplySegment(state, travel);
             output?.Add(travel);
         }

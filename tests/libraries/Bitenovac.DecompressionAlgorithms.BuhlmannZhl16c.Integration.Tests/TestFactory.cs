@@ -23,6 +23,9 @@ internal static class TestFactory
             3,
             20,
             15,
+            1,
+            0.6,
+            6,
             Pressure.FromBar(1.4),
             Pressure.FromBar(1.6),
             Pressure.FromBar(50),
@@ -45,4 +48,19 @@ internal static class TestFactory
     public static DiveProfile CreateProfile(params (double DepthMeter, double Minutes)[] levels) =>
         new(levels.Select(static level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
             TimeSpan.FromMinutes(level.Minutes), GasMixture.Air, SegmentKind.Bottom)));
+
+    /// <summary>Builds a profile whose every level is breathed through the same apparatus.</summary>
+    public static DiveProfile CreateProfile(BreathingLoop loop,
+        params (double DepthMeter, double Minutes)[] levels) =>
+        new(levels.Select(level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
+            TimeSpan.FromMinutes(level.Minutes), GasMixture.Air, SegmentKind.Bottom, loop)));
+
+    /// <summary>
+    /// Builds a profile whose levels are breathed through different apparatus, so that a
+    /// bailout onto open circuit part way through a dive can be planned.
+    /// </summary>
+    public static DiveProfile CreateProfile(
+        params (double DepthMeter, double Minutes, BreathingLoop Loop)[] levels) =>
+        new(levels.Select(static level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
+            TimeSpan.FromMinutes(level.Minutes), GasMixture.Air, SegmentKind.Bottom, level.Loop)));
 }

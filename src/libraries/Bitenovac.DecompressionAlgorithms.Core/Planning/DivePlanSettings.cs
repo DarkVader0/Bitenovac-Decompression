@@ -40,6 +40,20 @@ public sealed class DivePlanSettings
     /// </param>
     /// <param name="bottomSacLitersPerMinute">The surface air consumption rate on the bottom, in liters per minute.</param>
     /// <param name="decoSacLitersPerMinute">The surface air consumption rate during decompression, in liters per minute.</param>
+    /// <param name="bottomMetabolicOxygenConsumptionLitersPerMinute">
+    /// The rate at which the diver metabolises oxygen while working, in liters per minute at
+    /// surface conditions. Governs the oxygen drawn from the supply of a rebreather during
+    /// every phase but a decompression stop; unused on open circuit.
+    /// </param>
+    /// <param name="decoMetabolicOxygenConsumptionLitersPerMinute">
+    /// The rate at which the diver metabolises oxygen while resting at a decompression stop,
+    /// in liters per minute at surface conditions; unused on open circuit.
+    /// </param>
+    /// <param name="loopVolumeLiters">
+    /// The volume of the breathing loop of a rebreather, in liters, which must be
+    /// replenished from the diluent as the ambient pressure rises during a descent; unused
+    /// on open circuit.
+    /// </param>
     /// <param name="bottomPo2">The maximum partial pressure of oxygen permitted on the bottom gas.</param>
     /// <param name="decoPo2">The maximum partial pressure of oxygen permitted on decompression gas.</param>
     /// <param name="reservePressure">The cylinder pressure that must remain unused as a reserve.</param>
@@ -68,6 +82,9 @@ public sealed class DivePlanSettings
         double ascentRateLastSixMetersMetersPerMinute,
         double bottomSacLitersPerMinute,
         double decoSacLitersPerMinute,
+        double bottomMetabolicOxygenConsumptionLitersPerMinute,
+        double decoMetabolicOxygenConsumptionLitersPerMinute,
+        double loopVolumeLiters,
         Pressure bottomPo2,
         Pressure decoPo2,
         Pressure reservePressure,
@@ -93,6 +110,26 @@ public sealed class DivePlanSettings
         RequirePositive(ascentRateLastSixMetersMetersPerMinute, nameof(ascentRateLastSixMetersMetersPerMinute), "rate");
         RequirePositive(bottomSacLitersPerMinute, nameof(bottomSacLitersPerMinute), "consumption rate");
         RequirePositive(decoSacLitersPerMinute, nameof(decoSacLitersPerMinute), "consumption rate");
+
+        if (bottomMetabolicOxygenConsumptionLitersPerMinute < 0.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(bottomMetabolicOxygenConsumptionLitersPerMinute),
+                bottomMetabolicOxygenConsumptionLitersPerMinute,
+                "The metabolic oxygen consumption must not be negative.");
+        }
+
+        if (decoMetabolicOxygenConsumptionLitersPerMinute < 0.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(decoMetabolicOxygenConsumptionLitersPerMinute),
+                decoMetabolicOxygenConsumptionLitersPerMinute,
+                "The metabolic oxygen consumption must not be negative.");
+        }
+
+        if (loopVolumeLiters < 0.0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(loopVolumeLiters), loopVolumeLiters,
+                "The loop volume must not be negative.");
+        }
 
         if (bottomPo2.InMillibar <= 0.0)
         {
@@ -175,6 +212,9 @@ public sealed class DivePlanSettings
         AscentRateLastSixMetersMetersPerMinute = ascentRateLastSixMetersMetersPerMinute;
         BottomSacLitersPerMinute = bottomSacLitersPerMinute;
         DecoSacLitersPerMinute = decoSacLitersPerMinute;
+        BottomMetabolicOxygenConsumptionLitersPerMinute = bottomMetabolicOxygenConsumptionLitersPerMinute;
+        DecoMetabolicOxygenConsumptionLitersPerMinute = decoMetabolicOxygenConsumptionLitersPerMinute;
+        LoopVolumeLiters = loopVolumeLiters;
         BottomPo2 = bottomPo2;
         DecoPo2 = decoPo2;
         ReservePressure = reservePressure;
@@ -218,6 +258,26 @@ public sealed class DivePlanSettings
 
     /// <summary>Gets the surface air consumption rate during decompression, in liters per minute.</summary>
     public double DecoSacLitersPerMinute { get; }
+
+    /// <summary>
+    /// Gets the rate at which the diver metabolises oxygen while working, in liters per
+    /// minute at surface conditions. Governs the oxygen drawn from the supply of a rebreather
+    /// during every phase but a decompression stop; unused on open circuit.
+    /// </summary>
+    public double BottomMetabolicOxygenConsumptionLitersPerMinute { get; }
+
+    /// <summary>
+    /// Gets the rate at which the diver metabolises oxygen while resting at a decompression
+    /// stop, in liters per minute at surface conditions; unused on open circuit.
+    /// </summary>
+    public double DecoMetabolicOxygenConsumptionLitersPerMinute { get; }
+
+    /// <summary>
+    /// Gets the volume of the breathing loop of a rebreather, in liters, which must be
+    /// replenished from the diluent as the ambient pressure rises during a descent; unused
+    /// on open circuit.
+    /// </summary>
+    public double LoopVolumeLiters { get; }
 
     /// <summary>Gets the maximum partial pressure of oxygen permitted on the bottom gas.</summary>
     public Pressure BottomPo2 { get; }

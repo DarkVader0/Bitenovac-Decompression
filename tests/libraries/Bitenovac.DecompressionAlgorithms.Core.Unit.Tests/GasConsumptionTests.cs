@@ -2,6 +2,7 @@ using Bitenovac.DecompressionAlgorithms.Core.Calculations;
 using Bitenovac.DecompressionAlgorithms.Core.Environment;
 using Bitenovac.DecompressionAlgorithms.Core.Equipment;
 using Bitenovac.DecompressionAlgorithms.Core.Planning;
+using Bitenovac.DecompressionAlgorithms.Units;
 
 namespace Bitenovac.DecompressionAlgorithms.Core.Unit.Tests;
 
@@ -297,5 +298,97 @@ public sealed class GasConsumptionTests
 
         // Assert
         Assert.True(inSalt[0].GasUsed.InLiter > inFresh[0].GasUsed.InLiter);
+    }
+
+    [Fact]
+    public void Calculate_ShouldDrawTheMetabolicRateOfEachPhase_WhenTheSegmentsAreClosedCircuit()
+    {
+        // Arrange
+        // A closed-circuit loop vents nothing, so the oxygen supply gives up only what the
+        // diver metabolises: ten minutes of work at 1 L/min and twenty minutes of resting at
+        // a stop at 0.6 L/min.
+        var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
+        var segments = new[]
+        {
+            new DiveSegment(Depth.FromMeter(30), TimeSpan.FromMinutes(10), GasMixture.Air, SegmentKind.Bottom, loop),
+            new DiveSegment(Depth.FromMeter(6), TimeSpan.FromMinutes(20), GasMixture.Air, SegmentKind.Stop, loop)
+        };
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Diluent),
+            TestFactory.CreateCylinder(GasMixture.Oxygen, 3, 200, CylinderPurpose.Oxygen)
+        };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders,
+            TestFactory.CreateSettings(bottomMetabolicOxygenConsumptionLitersPerMinute: 1,
+                decoMetabolicOxygenConsumptionLitersPerMinute: 0.6));
+
+        // Assert
+        Assert.Equal(22, usage[1].GasUsed.InLiter, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldDrawDiluentOnlyToRefillTheLoop_WhenTheSegmentsAreClosedCircuit()
+    {
+        // Arrange
+        // The six liter loop is compressed on the way down and must be topped up from the
+        // diluent by 6 x (3.941995 - 1) L; the ascent vents the excess and draws nothing.
+        var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
+        var segments = new[]
+        {
+            new DiveSegment(Depth.FromMeter(30), TimeSpan.FromMinutes(10), GasMixture.Air, SegmentKind.Bottom, loop),
+            new DiveSegment(Depth.FromMeter(6), TimeSpan.FromMinutes(20), GasMixture.Air, SegmentKind.Stop, loop)
+        };
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Diluent),
+            TestFactory.CreateCylinder(GasMixture.Oxygen, 3, 200, CylinderPurpose.Oxygen)
+        };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings(loopVolumeLiters: 6));
+
+        // Assert
+        Assert.Equal(17.65197, usage[0].GasUsed.InLiter, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldThrowInvalidOperationException_WhenAClosedCircuitSegmentHasNoOxygenSupply()
+    {
+        // Arrange
+        var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
+        var segments = new[]
+        {
+            new DiveSegment(Depth.FromMeter(30), TimeSpan.FromMinutes(10), GasMixture.Air, SegmentKind.Bottom, loop)
+        };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Diluent) };
+
+        // Act
+        Action act = () => GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Throws<InvalidOperationException>(act);
+    }
+
+    [Fact]
+    public void Calculate_ShouldDrawTheVentedShareOfEachBreath_WhenTheSegmentsAreSemiClosed()
+    {
+        // Arrange
+        // A loop venting one part in ten draws a tenth of the open-circuit demand from its
+        // supply, being 0.1 x 20 x 3.941995 x 10 L, plus 6 x (3.941995 - 1) L to fill it on
+        // the way down.
+        var loop = BreathingLoop.SemiClosed(0.1, Pressure.FromMillibar(500));
+        var segments = new[]
+        {
+            new DiveSegment(Depth.FromMeter(30), TimeSpan.FromMinutes(10), GasMixture.Air, SegmentKind.Bottom, loop)
+        };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Diluent) };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders, TestFactory.CreateSettings(loopVolumeLiters: 6));
+
+        // Assert
+        Assert.Equal(96.49187, usage[0].GasUsed.InLiter, Precision);
     }
 }

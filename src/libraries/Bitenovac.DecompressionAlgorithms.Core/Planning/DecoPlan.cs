@@ -153,16 +153,19 @@ public sealed class DecoPlan
             Depth depth,
             TimeSpan duration,
             TimeSpan runtime,
-            GasMixture gas) =>
+            GasMixture gas,
+            BreathingLoop loop) =>
             builder.Append(CultureInfo.InvariantCulture,
                     $"{kind,-9} {depth.InMeter,6:0.##} m  " +
                     $"{Math.Round(duration.TotalMinutes),4:0} min  " +
-                    $"{Math.Round(runtime.TotalMinutes),4:0} min  {gas}")
+                    $"{Math.Round(runtime.TotalMinutes),4:0} min  {gas}" +
+                    $"{(loop.Mode == DiveMode.OC ? string.Empty : $" ({loop})")}")
                 .AppendLine();
 
         var runtime = TimeSpan.Zero;
         var pendingAscent = TimeSpan.Zero;
         var pendingAscentGas = GasMixture.Air;
+        var pendingAscentLoop = BreathingLoop.OpenCircuit;
         var pendingAscentDepth = Depth.FromMeter(0);
         foreach (var segment in _expandedSegments)
         {
@@ -172,6 +175,7 @@ public sealed class DecoPlan
             {
                 pendingAscent += segment.Duration;
                 pendingAscentGas = segment.Gas;
+                pendingAscentLoop = segment.Loop;
                 pendingAscentDepth = segment.Depth;
                 continue;
             }
@@ -179,16 +183,17 @@ public sealed class DecoPlan
             if (pendingAscent > TimeSpan.Zero)
             {
                 AppendRow(builder, SegmentKind.Ascent, pendingAscentDepth, pendingAscent,
-                    runtime - segment.Duration, pendingAscentGas);
+                    runtime - segment.Duration, pendingAscentGas, pendingAscentLoop);
                 pendingAscent = TimeSpan.Zero;
             }
 
-            AppendRow(builder, segment.Kind, segment.Depth, segment.Duration, runtime, segment.Gas);
+            AppendRow(builder, segment.Kind, segment.Depth, segment.Duration, runtime, segment.Gas, segment.Loop);
         }
 
         if (pendingAscent > TimeSpan.Zero)
         {
-            AppendRow(builder, SegmentKind.Ascent, pendingAscentDepth, pendingAscent, runtime, pendingAscentGas);
+            AppendRow(builder, SegmentKind.Ascent, pendingAscentDepth, pendingAscent, runtime, pendingAscentGas,
+                pendingAscentLoop);
         }
 
         builder.AppendLine()

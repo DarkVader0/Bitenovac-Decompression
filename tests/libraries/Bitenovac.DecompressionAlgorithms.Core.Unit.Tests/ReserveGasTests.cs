@@ -228,8 +228,8 @@ public sealed class ReserveGasTests
 
     [Theory]
     [InlineData(CylinderPurpose.Diluent)]
-    [InlineData(CylinderPurpose.Bailout)]
-    public void Calculate_ShouldRequireNoReserve_WhenTheCylinderHasAClosedCircuitRole(CylinderPurpose purpose)
+    [InlineData(CylinderPurpose.Oxygen)]
+    public void Calculate_ShouldRequireNoReserve_WhenTheCylinderFeedsARebreatherLoop(CylinderPurpose purpose)
     {
         // Arrange
         var segments = new[] { TestFactory.CreateSegment(0, 12) };
@@ -241,6 +241,50 @@ public sealed class ReserveGasTests
         // Assert
         Assert.Equal(0, result.CylinderStatuses[0].RequiredReserve.InLiter, Precision);
         Assert.Equal(2160, result.CylinderStatuses[0].ProjectedRemaining.InLiter, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldRequireTheEmergencyAscentFromTheDeepestPoint_WhenTheCylinderIsBailout()
+    {
+        // Arrange
+        // The bailout gas is never breathed in the plan, so its band runs from the deepest
+        // point of the dive to the surface: 30 m to 6 m at 6 m/min and 6 m to the surface at
+        // 1 m/min, for a team of two at 20 L/min and a stress factor of 1.5, giving
+        // 2 x (20 x 1.5 x 2.765197 x 4 + 20 x 1.5 x 1.2941995 x 6) L. The gas that remains
+        // excludes the 12 L x 10 bar that the first stage can no longer deliver.
+        var segments = new[] { TestFactory.CreateSegment(30, 10) };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Bailout) };
+
+        // Act
+        var result = ReserveGas.Calculate(segments, cylinders, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Equal(1129.5591, result.CylinderStatuses[0].RequiredReserve.InLiter, Precision);
+        Assert.Equal(1491.601, result.CylinderStatuses[0].ProjectedRemaining.InLiter, Precision);
+    }
+
+    [Fact]
+    public void Calculate_ShouldShortenTheBailoutBand_WhenARicherBailoutGasIsCarried()
+    {
+        // Arrange
+        // The richer gas is breathable from its maximum operating depth upwards, so the
+        // ascent on the leaner gas ends there rather than at the surface.
+        var segments = new[] { TestFactory.CreateSegment(30, 10) };
+        var alone = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Bailout) };
+        var withRicherGas = new[]
+        {
+            TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Bailout),
+            TestFactory.CreateCylinder(DecoGas, 11, 200, CylinderPurpose.Bailout)
+        };
+
+        // Act
+        var aloneResult = ReserveGas.Calculate(segments, alone, TestFactory.CreateSettings());
+        var withRicherGasResult = ReserveGas.Calculate(segments, withRicherGas, TestFactory.CreateSettings());
+
+        // Assert
+        Assert.True(withRicherGasResult.CylinderStatuses[0].RequiredReserve.InLiter
+                    < aloneResult.CylinderStatuses[0].RequiredReserve.InLiter);
+        Assert.True(withRicherGasResult.CylinderStatuses[0].RequiredReserve.InLiter > 0);
     }
 
     [Fact]

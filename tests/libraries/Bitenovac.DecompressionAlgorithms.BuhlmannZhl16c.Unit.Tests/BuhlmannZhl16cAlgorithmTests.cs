@@ -1,5 +1,6 @@
 using Bitenovac.DecompressionAlgorithms.BuhlmannZhl16c;
 using Bitenovac.DecompressionAlgorithms.Core.Abstractions;
+using Bitenovac.DecompressionAlgorithms.Core.Equipment;
 using Bitenovac.DecompressionAlgorithms.Core.Planning;
 using Bitenovac.DecompressionAlgorithms.Units;
 
@@ -869,6 +870,253 @@ public sealed class BuhlmannZhl16cAlgorithmTests
         // Assert
         Assert.All(ascent, segment => Assert.Equal(SegmentKind.Ascent, segment.Kind));
         Assert.Equal(0.0, ascent[^1].Depth.InMeter, Precision);
+    }
+
+    [Fact]
+    public void CalculateFinalAscent_ShouldTakeTheOxygenBreakOnTheBottomGas_WhenItIsTheOnlyGasThatIsNotOxygen()
+    {
+        // Arrange
+        // Only air and oxygen are carried, so the leanest gas on the diver is also the only
+        // one the break can fall back to.
+        var settings = TestFactory.CreateSettings(oxygenBreaks: true,
+            oxygenBreakInterval: TimeSpan.FromMinutes(1), oxygenBreakDuration: TimeSpan.FromMinutes(1));
+        var cylinders = new[] { TestFactory.CreateCylinder(), TestFactory.CreateCylinder(GasMixture.Oxygen) };
+        var algorithm = new BuhlmannZhl16cAlgorithm(0.5, 0.5);
+        var request = TestFactory.CreateRequest(33, 35, cylinders, settings);
+        var state = algorithm.BeginDive(request);
+        algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(33), TimeSpan.FromMinutes(35),
+            GasMixture.Air, SegmentKind.Bottom));
+
+        // Act
+        var ascent = algorithm.CalculateFinalAscent(state, request);
+
+        // Assert
+        // A stop breathed on air at six meters or shallower can only be an oxygen break,
+        // since the regular stops there are breathed on oxygen.
+        Assert.Contains(ascent, segment => segment.Kind == SegmentKind.Stop
+                                           && segment.Depth.InMeter <= 6.0 + 1e-9
+                                           && segment.Gas == GasMixture.Air);
+        Assert.Equal(0.0, ascent[^1].Depth.InMeter, Precision);
+    }
+
+    [Fact]
+    public void CalculateFinalAscent_ShouldNotTakeTheOxygenBreakOnAMixAtThePureOxygenThreshold()
+    {
+        // Arrange
+        // A mix of 99.9% oxygen counts as oxygen, so it cannot serve as a break from oxygen
+        // and the break falls back to the air.
+        var nearlyPureOxygen = GasMixture.FromPercent(99.9, 0);
+        var settings = TestFactory.CreateSettings(oxygenBreaks: true,
+            oxygenBreakInterval: TimeSpan.FromMinutes(1), oxygenBreakDuration: TimeSpan.FromMinutes(1));
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(),
+            TestFactory.CreateCylinder(nearlyPureOxygen),
+            TestFactory.CreateCylinder(GasMixture.Oxygen)
+        };
+        var algorithm = new BuhlmannZhl16cAlgorithm(0.5, 0.5);
+        var request = TestFactory.CreateRequest(33, 35, cylinders, settings);
+        var state = algorithm.BeginDive(request);
+        algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(33), TimeSpan.FromMinutes(35),
+            GasMixture.Air, SegmentKind.Bottom));
+
+        // Act
+        var ascent = algorithm.CalculateFinalAscent(state, request);
+
+        // Assert
+        var breaks = ascent
+            .Where(segment => segment.Kind == SegmentKind.Stop
+                              && segment.Depth.InMeter <= 6.0 + 1e-9
+                              && segment.Gas != GasMixture.Oxygen)
+            .ToList();
+        Assert.NotEmpty(breaks);
+        Assert.All(breaks, oxygenBreak => Assert.Equal(GasMixture.Air, oxygenBreak.Gas));
+    }
+
+    [Fact]
+    public void CalculateFinalAscent_ShouldReturnToOxygenAfterTheBreak_WhenTheStopContinues()
+    {
+        // Arrange
+        var nitrox50 = GasMixture.FromPercent(50, 0);
+        var settings = TestFactory.CreateSettings(oxygenBreaks: true,
+            oxygenBreakInterval: TimeSpan.FromMinutes(1), oxygenBreakDuration: TimeSpan.FromMinutes(1));
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(),
+            TestFactory.CreateCylinder(nitrox50),
+            TestFactory.CreateCylinder(GasMixture.Oxygen)
+        };
+        var algorithm = new BuhlmannZhl16cAlgorithm(0.5, 0.5);
+        var request = TestFactory.CreateRequest(33, 35, cylinders, settings);
+        var state = algorithm.BeginDive(request);
+        algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(33), TimeSpan.FromMinutes(35),
+            GasMixture.Air, SegmentKind.Bottom));
+
+        // Act
+        var ascent = algorithm.CalculateFinalAscent(state, request);
+
+        // Assert
+        var shallowStops = ascent
+            .Where(segment => segment.Kind == SegmentKind.Stop && segment.Depth.InMeter <= 6.0 + 1e-9)
+            .ToList();
+        var firstBreak = shallowStops.FindIndex(stop => stop.Gas == nitrox50);
+        Assert.True(firstBreak >= 0);
+        Assert.True(firstBreak + 1 < shallowStops.Count);
+        Assert.Equal(GasMixture.Oxygen, shallowStops[firstBreak + 1].Gas);
+    }
+
+    [Fact]
+    public void CalculateFinalAscent_ShouldInsertAFurtherOxygenBreak_WhenTheStopOutlastsASecondInterval()
+    {
+        // Arrange
+        // The interval and the break are one minute each, and the six meter stop on this
+        // profile runs far longer than the two intervals a second break requires.
+        var nitrox50 = GasMixture.FromPercent(50, 0);
+        var settings = TestFactory.CreateSettings(lastStopAtSixMeters: true, oxygenBreaks: true,
+            oxygenBreakInterval: TimeSpan.FromMinutes(1), oxygenBreakDuration: TimeSpan.FromMinutes(1));
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(),
+            TestFactory.CreateCylinder(nitrox50),
+            TestFactory.CreateCylinder(GasMixture.Oxygen)
+        };
+        var algorithm = new BuhlmannZhl16cAlgorithm(0.3, 0.7);
+        var request = TestFactory.CreateRequest(45, 30, cylinders, settings);
+        var state = algorithm.BeginDive(request);
+        algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(45), TimeSpan.FromMinutes(30),
+            GasMixture.Air, SegmentKind.Bottom));
+
+        // Act
+        var ascent = algorithm.CalculateFinalAscent(state, request);
+
+        // Assert
+        var breaks = ascent.Count(segment => segment.Kind == SegmentKind.Stop
+                                             && segment.Depth.InMeter <= 6.0 + 1e-9
+                                             && segment.Gas == nitrox50);
+        Assert.True(breaks >= 2);
+    }
+
+    [Fact]
+    public void CalculateFinalAscent_ShouldNotInsertOxygenBreaks_WhenTheyAreDisabled()
+    {
+        // Arrange
+        var nitrox50 = GasMixture.FromPercent(50, 0);
+        var settings = TestFactory.CreateSettings(lastStopAtSixMeters: true);
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(),
+            TestFactory.CreateCylinder(nitrox50),
+            TestFactory.CreateCylinder(GasMixture.Oxygen)
+        };
+        var algorithm = new BuhlmannZhl16cAlgorithm(0.3, 0.7);
+        var request = TestFactory.CreateRequest(45, 30, cylinders, settings);
+        var state = algorithm.BeginDive(request);
+        algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(45), TimeSpan.FromMinutes(30),
+            GasMixture.Air, SegmentKind.Bottom));
+
+        // Act
+        var ascent = algorithm.CalculateFinalAscent(state, request);
+
+        // Assert
+        Assert.All(ascent.Where(segment => segment.Kind == SegmentKind.Stop
+                                           && segment.Depth.InMeter <= 6.0 + 1e-9),
+            stop => Assert.Equal(GasMixture.Oxygen, stop.Gas));
+    }
+
+    [Fact]
+    public void CalculateFinalAscent_ShouldNotInsertOxygenBreaks_WhenBreathingARebreatherLoop()
+    {
+        // Arrange
+        // The loop is breathed on its diluent, never on pure oxygen, so no break is ever due
+        // however rich the loop runs.
+        var settings = TestFactory.CreateSettings(lastStopAtSixMeters: true, oxygenBreaks: true,
+            oxygenBreakInterval: TimeSpan.FromMinutes(1), oxygenBreakDuration: TimeSpan.FromMinutes(1));
+        var cylinders = new[]
+        {
+            new Cylinder(GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(200), CylinderPurpose.Diluent),
+            new Cylinder(GasMixture.Oxygen, Volume.FromLiter(3), Pressure.FromBar(200), CylinderPurpose.Oxygen)
+        };
+        var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
+        var algorithm = new BuhlmannZhl16cAlgorithm(0.3, 0.7);
+        var request = TestFactory.CreateRequest(45, 30, cylinders, settings);
+        var state = algorithm.BeginDive(request);
+        algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(45), TimeSpan.FromMinutes(30),
+            GasMixture.Air, SegmentKind.Bottom, loop));
+
+        // Act
+        var ascent = algorithm.CalculateFinalAscent(state, request);
+
+        // Assert
+        Assert.All(ascent, segment => Assert.Equal(GasMixture.Air, segment.Gas));
+        Assert.Equal(0.0, ascent[^1].Depth.InMeter, Precision);
+    }
+
+    [Fact]
+    public void CalculateFinalAscent_ShouldRaiseTheLoopToTheDecompressionSetpoint_WhenTheAscentBegins()
+    {
+        // Arrange
+        var cylinders = new[]
+        {
+            new Cylinder(GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(200), CylinderPurpose.Diluent),
+            new Cylinder(GasMixture.Oxygen, Volume.FromLiter(3), Pressure.FromBar(200), CylinderPurpose.Oxygen)
+        };
+        var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.0), Pressure.FromBar(1.6));
+        var algorithm = new BuhlmannZhl16cAlgorithm(0.3, 0.7);
+        var request = TestFactory.CreateRequest(45, 30, cylinders);
+        var state = algorithm.BeginDive(request);
+        algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(45), TimeSpan.FromMinutes(30),
+            GasMixture.Air, SegmentKind.Bottom, loop));
+
+        // Act
+        var ascent = algorithm.CalculateFinalAscent(state, request);
+
+        // Assert
+        Assert.NotEmpty(ascent);
+        Assert.All(ascent, segment => Assert.Equal(1600.0, segment.Loop.Setpoint.InMillibar, Precision));
+    }
+
+    [Fact]
+    public void CalculateFinalAscent_ShouldShortenDecompression_WhenTheDecompressionSetpointIsRaised()
+    {
+        // Arrange
+        // A richer loop during the ascent leaves less room for inert gas, so the tissues
+        // offgas faster and the stops are shorter.
+        var cylinders = new[]
+        {
+            new Cylinder(GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(200), CylinderPurpose.Diluent),
+            new Cylinder(GasMixture.Oxygen, Volume.FromLiter(3), Pressure.FromBar(200), CylinderPurpose.Oxygen)
+        };
+
+        static TimeSpan TotalStopTime(IReadOnlyList<DiveSegment> ascent)
+        {
+            var total = TimeSpan.Zero;
+            for (var i = 0; i < ascent.Count; i++)
+            {
+                if (ascent[i].Kind == SegmentKind.Stop)
+                {
+                    total += ascent[i].Duration;
+                }
+            }
+
+            return total;
+        }
+
+        TimeSpan Plan(BreathingLoop loop)
+        {
+            var algorithm = new BuhlmannZhl16cAlgorithm(0.3, 0.7);
+            var request = TestFactory.CreateRequest(45, 30, cylinders);
+            var state = algorithm.BeginDive(request);
+            algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(45), TimeSpan.FromMinutes(30),
+                GasMixture.Air, SegmentKind.Bottom, loop));
+            return TotalStopTime(algorithm.CalculateFinalAscent(state, request));
+        }
+
+        // Act
+        var held = Plan(BreathingLoop.ClosedCircuit(Pressure.FromBar(1.0)));
+        var raised = Plan(BreathingLoop.ClosedCircuit(Pressure.FromBar(1.0), Pressure.FromBar(1.6)));
+
+        // Assert
+        Assert.True(raised < held);
     }
 
     private sealed class FakeDecompressionState : IDecompressionState;

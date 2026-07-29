@@ -12,10 +12,12 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 /// which its gas is breathed up to the next breathable gas (the next gas switch or the
 /// surface); gas below the regulator's intermediate pressure is treated as unusable and is
 /// excluded from what remains. A decompression-gas cylinder must simply retain a fixed
-/// fraction of its capacity, so that no more than the permitted fraction is ever consumed.
-/// Closed-circuit roles are not yet assessed and are reported with a zero requirement.
-/// Whether a reserve is met is an expected planning outcome and is reported through flags
-/// rather than by throwing.
+/// fraction of its capacity, so that no more than the permitted fraction is ever consumed. A
+/// bailout cylinder is assessed like a bottom gas, but over the band of the ascent it is
+/// responsible for, since it is carried against an emergency that the plan never reaches. The
+/// diluent and oxygen supplies of a rebreather are not assessed and are reported with a zero
+/// requirement. Whether a reserve is met is an expected planning outcome and is reported
+/// through flags rather than by throwing.
 /// </summary>
 public static class ReserveGas
 {
@@ -40,7 +42,8 @@ public static class ReserveGas
     /// expanded dive profile. Bottom-gas cylinders are assessed against a worst-case
     /// emergency ascent from the deepest point at which their gas is breathed to the next
     /// breathable gas; decompression-gas cylinders are assessed against a fixed maximum
-    /// usage fraction; closed-circuit roles are reported with a zero requirement.
+    /// usage fraction; bailout cylinders are assessed over the band of the ascent they cover;
+    /// the diluent and oxygen supplies of a rebreather are reported with a zero requirement.
     /// </summary>
     /// <param name="segments">The fully expanded, ordered dive segments.</param>
     /// <param name="cylinders">The cylinders available to the diver.</param>
@@ -72,7 +75,7 @@ public static class ReserveGas
         var statuses = new CylinderReserveStatus[cylinders.Count];
         for (var i = 0; i < cylinders.Count; i++)
         {
-            statuses[i] = AssessCylinder(cylinders[i], usage[i], segments, settings);
+            statuses[i] = AssessCylinder(cylinders[i], usage[i], segments, cylinders, settings);
         }
 
         return new ReserveGasResult(statuses);
@@ -84,11 +87,13 @@ public static class ReserveGas
     /// <param name="cylinder">The cylinder being assessed.</param>
     /// <param name="usage">The gas usage computed for the cylinder over the dive.</param>
     /// <param name="segments">The fully expanded, ordered dive segments.</param>
+    /// <param name="cylinders">The cylinders available to the diver.</param>
     /// <param name="settings">The settings that supply the ascent and reserve parameters.</param>
     /// <returns>The reserve assessment for the cylinder.</returns>
     private static CylinderReserveStatus AssessCylinder(Cylinder cylinder,
         CylinderGasUsage usage,
         IReadOnlyList<DiveSegment> segments,
+        IReadOnlyList<Cylinder> cylinders,
         DivePlanSettings settings)
     {
         var startMilliliters = cylinder.StartGasVolume(settings.SurfacePressure).InMilliliter;
@@ -99,9 +104,107 @@ public static class ReserveGas
             CylinderPurpose.BottomGas => AssessBottomGas(cylinder, startMilliliters, consumedMilliliters, segments,
                 settings),
             CylinderPurpose.DecoGas => AssessDecoGas(cylinder, startMilliliters, consumedMilliliters),
+            CylinderPurpose.Bailout => AssessBailout(cylinder, startMilliliters, consumedMilliliters, segments,
+                cylinders, settings),
             _ => new CylinderReserveStatus(cylinder, Volume.FromMilliliter(0.0),
                 Volume.FromMilliliter(Math.Max(startMilliliters - consumedMilliliters, 0.0)))
         };
+    }
+
+    /// <summary>
+    /// Assesses a bailout cylinder against the band of the ascent it is responsible for. A
+    /// bailout gas is carried against an emergency that has not been planned, so it is never
+    /// breathed in the plan and its band cannot be read from the profile. It instead runs
+    /// from the deeper of the dive's deepest point and the gas's own maximum operating depth,
+    /// up to the depth at which the next richer bailout or decompression gas becomes
+    /// breathable, or to the surface when the gas is the richest carried.
+    /// </summary>
+    /// <param name="cylinder">The bailout cylinder being assessed.</param>
+    /// <param name="startMilliliters">The free-gas volume the cylinder holds at its start pressure, in milliliters.</param>
+    /// <param name="consumedMilliliters">The free-gas volume consumed from the cylinder over the dive, in milliliters.</param>
+    /// <param name="segments">The fully expanded, ordered dive segments.</param>
+    /// <param name="cylinders">The cylinders available to the diver.</param>
+    /// <param name="settings">The settings that supply the ascent and reserve parameters.</param>
+    /// <returns>The reserve assessment for the bailout cylinder.</returns>
+    private static CylinderReserveStatus AssessBailout(Cylinder cylinder,
+        double startMilliliters,
+        double consumedMilliliters,
+        IReadOnlyList<DiveSegment> segments,
+        IReadOnlyList<Cylinder> cylinders,
+        DivePlanSettings settings)
+    {
+        var deepestMeter = Math.Min(DeepestDepthMeter(segments),
+            OperatingDepthMeter(cylinder.Gas, settings.BottomPo2, settings));
+        var shallowestMeter = Math.Min(NextRicherOperatingDepthMeter(cylinder.Gas, cylinders, settings), deepestMeter);
+
+        var requiredMilliliters = EmergencyAscentMilliliters(deepestMeter, shallowestMeter, settings);
+
+        var unusableMilliliters = FreeGasMilliliters(cylinder, UnusableFirstStagePressure, settings.SurfacePressure);
+        var remainingMilliliters = Math.Max(startMilliliters - consumedMilliliters - unusableMilliliters, 0.0);
+
+        return new CylinderReserveStatus(cylinder,
+            Volume.FromMilliliter(requiredMilliliters),
+            Volume.FromMilliliter(remainingMilliliters));
+    }
+
+    /// <summary>Returns the deepest depth, in meters, reached anywhere in the profile.</summary>
+    /// <param name="segments">The fully expanded, ordered dive segments.</param>
+    /// <returns>The deepest depth in meters, or zero when the profile is empty.</returns>
+    private static double DeepestDepthMeter(IReadOnlyList<DiveSegment> segments)
+    {
+        var deepestMeter = 0.0;
+        foreach (var segment in segments)
+        {
+            deepestMeter = Math.Max(deepestMeter, segment.Depth.InMeter);
+        }
+
+        return deepestMeter;
+    }
+
+    /// <summary>
+    /// Returns the depth, in meters, at which the richest gas carried for decompression or
+    /// bailout that is richer than the given gas becomes breathable within the decompression
+    /// oxygen limit. The emergency ascent on the given gas ends there, because the diver
+    /// switches onto that gas as soon as it is reached. When no richer gas is carried the
+    /// ascent runs to the surface.
+    /// </summary>
+    /// <param name="gas">The gas whose ascent band is being bounded.</param>
+    /// <param name="cylinders">The cylinders available to the diver.</param>
+    /// <param name="settings">The settings that supply the environment and the decompression oxygen limit.</param>
+    /// <returns>The depth in meters at which the ascent on the given gas ends.</returns>
+    private static double NextRicherOperatingDepthMeter(GasMixture gas,
+        IReadOnlyList<Cylinder> cylinders,
+        DivePlanSettings settings)
+    {
+        var shallowestMeter = 0.0;
+
+        foreach (var candidate in cylinders)
+        {
+            if (candidate.Purpose is not (CylinderPurpose.DecoGas or CylinderPurpose.Bailout)
+                || candidate.Gas.FractionO2 <= gas.FractionO2)
+            {
+                continue;
+            }
+
+            shallowestMeter = Math.Max(shallowestMeter,
+                OperatingDepthMeter(candidate.Gas, settings.DecoPo2, settings));
+        }
+
+        return shallowestMeter;
+    }
+
+    /// <summary>
+    /// Returns the maximum operating depth of a gas, in meters, being the depth at which its
+    /// partial pressure of oxygen reaches the given limit.
+    /// </summary>
+    /// <param name="gas">The gas whose maximum operating depth is required.</param>
+    /// <param name="maxPo2">The maximum permitted partial pressure of oxygen.</param>
+    /// <param name="settings">The settings that supply the surface pressure and salinity.</param>
+    /// <returns>The maximum operating depth in meters, never negative.</returns>
+    private static double OperatingDepthMeter(GasMixture gas, Pressure maxPo2, DivePlanSettings settings)
+    {
+        var operatingPressure = GasSelector.MaxOperatingPressure(gas, maxPo2);
+        return Math.Max(AmbientConditions.DepthAtPressure(settings, operatingPressure).InMeter, 0.0);
     }
 
     /// <summary>
