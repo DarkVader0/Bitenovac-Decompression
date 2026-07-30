@@ -12,6 +12,8 @@ BenchmarkDotNet.Artifacts/*
 
 *.user
 
+artifacts/
+
 [Dd]ebug/
 [Rr]elease/
 [Bb]in/

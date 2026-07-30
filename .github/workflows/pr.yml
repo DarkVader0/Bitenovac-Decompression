@@ -1,0 +1,141 @@
+name: PR
+
+# Every pull request builds and tests exactly the projects its changes reach, in both Debug
+# and Release, and holds any changed library to full line and branch coverage.
+#
+# What runs is derived from the project reference graph, not from directory names: a project
+# is selected when it changed or when it depends, directly or transitively, on something that
+# changed. Nothing upstream of a change is retested.
+#
+# The real logic lives in build/ci.sh so anything CI does can be reproduced locally:
+#   CHANGED_FILES=src/libraries/.../Foo.cs bash build/ci.sh affected
+# Keep this file thin.
+
+on:
+  pull_request:
+    branches: [master]
+  merge_group:
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Empty on a merge_group run, where ci.sh then treats every project as affected.
+  BASE_SHA: ${{ github.event.pull_request.base.sha }}
+
+jobs:
+  affected:
+    name: Select affected projects
+    runs-on: ubuntu-latest
+    outputs:
+      any: ${{ steps.select.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history is needed to diff against the merge base.
+          fetch-depth: 0
+
+      - id: select
+        run: bash build/ci.sh affected
+
+  verify:
+    name: Verify build assumptions
+    needs: affected
+    if: needs.affected.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The API is skipped on library changes because it consumes the algorithms as versioned
+      # packages, so it is not a dependent of anything under src/libraries. A project
+      # reference would silently turn every library change into an API build too.
+      - run: bash build/ci.sh verify-isolation
+
+  build:
+    name: Build & test (${{ matrix.configuration }})
+    needs: affected
+    if: needs.affected.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The affected set is recomputed here rather than passed between jobs, so the full
+          # history is needed again.
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore local tools
+        run: dotnet tool restore
+
+      - name: Restore
+        run: bash build/ci.sh restore
+
+      - name: Build
+        run: bash build/ci.sh build ${{ matrix.configuration }}
+
+      - name: Test
+        run: bash build/ci.sh test ${{ matrix.configuration }}
+
+      # Coverage is gated on Debug only. Release IL is optimised and inlined, so the branch
+      # points coverlet records no longer map one-to-one onto the source: the same fully
+      # covered code measures 96.6% branch coverage in Release. Tests still run in both
+      # configurations above; only the measurement is taken from the unoptimised build.
+      - name: Coverage gate
+        if: matrix.configuration == 'Debug'
+        run: bash build/ci.sh coverage-gate ${{ matrix.configuration }}
+
+      - name: Upload coverage report
+        if: always() && matrix.configuration == 'Debug'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.configuration }}
+          path: artifacts/coverage-report/${{ matrix.configuration }}
+          if-no-files-found: ignore
+
+  # The single check to mark as required in branch protection. It stays green when a job is
+  # skipped on purpose -- a docs-only pull request selects nothing -- and turns red the moment
+  # one actually fails, which a list of individually-required conditional jobs cannot do.
+  pr:
+    name: PR
+    needs: [affected, verify, build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check results
+        run: |
+          echo "affected: ${{ needs.affected.result }} (any: ${{ needs.affected.outputs.any }})"
+          echo "verify:   ${{ needs.verify.result }}"
+          echo "build:    ${{ needs.build.result }}"
+
+          failed=0
+          for result in "${{ needs.affected.result }}" "${{ needs.verify.result }}" "${{ needs.build.result }}"; do
+            case "${result}" in
+              success|skipped) ;;
+              *) failed=1 ;;
+            esac
+          done
+
+          if [ "${failed}" -ne 0 ]; then
+            echo "::error::At least one required job did not succeed."
+            exit 1
+          fi
+
+          echo "All required jobs succeeded or were skipped."

@@ -1,0 +1,15 @@
+* text=auto
+
+# The pipeline is driven by shell scripts that run on Linux. A CRLF checkout makes bash fail
+# with an unreadable "\r: command not found", so pin them to LF regardless of the committer's
+# core.autocrlf setting.
+*.sh text eol=lf
+
+*.cs text diff=csharp
+*.csproj text
+*.props text
+*.targets text
+*.slnx text
+*.json text
+*.yml text
+*.md text

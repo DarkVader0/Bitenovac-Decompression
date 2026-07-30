@@ -50,4 +50,30 @@
         <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
         <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
     </PropertyGroup>
+
+    <!--
+        Coverage policy, enforced per project by build/ci.sh on every pull request that touches
+        the project. Every project is held to full coverage by default; a project lowers the bar
+        or opts out by setting these in its own file, which keeps the exception next to the code
+        it excuses and visible in review:
+
+            <PropertyGroup>
+                <MinimumLineCoverage>90</MinimumLineCoverage>
+                <MinimumBranchCoverage>80</MinimumBranchCoverage>
+            </PropertyGroup>
+
+        or, to drop out of the gate entirely:
+
+            <PropertyGroup>
+                <ExcludeFromCoverage>true</ExcludeFromCoverage>
+            </PropertyGroup>
+    -->
+    <PropertyGroup>
+        <MinimumLineCoverage Condition="'$(MinimumLineCoverage)' == ''">100</MinimumLineCoverage>
+        <MinimumBranchCoverage Condition="'$(MinimumBranchCoverage)' == ''">100</MinimumBranchCoverage>
+
+        <!-- Test projects do the measuring; they are not themselves measured. -->
+        <ExcludeFromCoverage Condition="'$(ExcludeFromCoverage)' == '' AND '$(IsTestProject)' == 'true'">true</ExcludeFromCoverage>
+        <ExcludeFromCoverage Condition="'$(ExcludeFromCoverage)' == ''">false</ExcludeFromCoverage>
+    </PropertyGroup>
 </Project>
