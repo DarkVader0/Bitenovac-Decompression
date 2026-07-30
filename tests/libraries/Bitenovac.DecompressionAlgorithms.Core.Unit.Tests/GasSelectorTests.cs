@@ -1,4 +1,5 @@
 using Bitenovac.DecompressionAlgorithms.Core.Calculations;
+using Bitenovac.DecompressionAlgorithms.Core.Environment;
 using Bitenovac.DecompressionAlgorithms.Core.Equipment;
 using Bitenovac.DecompressionAlgorithms.Core.Planning;
 using Bitenovac.DecompressionAlgorithms.Units;
@@ -311,5 +312,492 @@ public sealed class GasSelectorTests
 
         // Assert
         Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void MaxOperatingDepthMeter_ShouldReturnTheDepthAtWhichTheLimitIsReached_WhenTheModelIsRealistic()
+    {
+        // Arrange
+        // The depth is the excess over the surface pressure divided by the hydrostatic
+        // pressure of one meter of fresh water: (1600 - 1000) / (1000 * 9.80665 / 100).
+        const double MillibarPerMeter = 1000.0 * 9.80665 / 100.0;
+        var expected = (1600.0 - 1000.0) / MillibarPerMeter;
+        var settings = TestFactory.CreateSettings(
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic);
+
+        // Act
+        var depthMeter = GasSelector.MaxOperatingDepthMeter(GasMixture.Oxygen, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.Equal(expected, depthMeter, Precision);
+    }
+
+    [Fact]
+    public void MaxOperatingDepthMeter_ShouldReturnExactlySixMeters_WhenTheModelIsSimplifiedAndTheGasIsOxygen()
+    {
+        // Arrange
+        // The published depth is ten meters per bar above a one bar surface:
+        // (1.6 / 1.00 - 1) * 10 = 6.
+        var settings = TestFactory.CreateSettings(
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
+
+        // Act
+        var depthMeter = GasSelector.MaxOperatingDepthMeter(GasMixture.Oxygen, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.Equal(6.0, depthMeter, Precision);
+    }
+
+    [Fact]
+    public void MaxOperatingDepthMeter_ShouldReturnExactlyTwentyTwoMeters_WhenTheModelIsSimplifiedAndTheGasIsNitroxFifty()
+    {
+        // Arrange
+        // (1.6 / 0.50 - 1) * 10 = 22.
+        var settings = TestFactory.CreateSettings(
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
+
+        // Act
+        var depthMeter = GasSelector.MaxOperatingDepthMeter(GasMixture.FromPercent(50, 0), Pressure.FromBar(1.6),
+            settings);
+
+        // Assert
+        Assert.Equal(22.0, depthMeter, Precision);
+    }
+
+    [Fact]
+    public void MaxOperatingDepthMeter_ShouldReturnTheTextbookDepth_WhenTheModelIsSimplifiedAndTheGasIsAir()
+    {
+        // Arrange
+        // (1.4 / 0.21 - 1) * 10 = 56.66667.
+        var settings = TestFactory.CreateSettings(
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
+
+        // Act
+        var depthMeter = GasSelector.MaxOperatingDepthMeter(GasMixture.Air, Pressure.FromBar(1.4), settings);
+
+        // Assert
+        Assert.Equal(56.66667, depthMeter, Precision);
+    }
+
+    [Fact]
+    public void MaxOperatingDepthMeter_ShouldIgnoreTheEnvironment_WhenTheModelIsSimplified()
+    {
+        // Arrange
+        var atSeaLevelInFreshWater = TestFactory.CreateSettings(
+            surfacePressure: Pressure.FromMillibar(1000),
+            salinity: Salinity.Fresh,
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
+        var atAltitudeInSaltWater = TestFactory.CreateSettings(
+            surfacePressure: Pressure.FromMillibar(800),
+            salinity: Salinity.Salt,
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
+
+        // Act
+        var fresh = GasSelector.MaxOperatingDepthMeter(GasMixture.Oxygen, Pressure.FromBar(1.6), atSeaLevelInFreshWater);
+        var salt = GasSelector.MaxOperatingDepthMeter(GasMixture.Oxygen, Pressure.FromBar(1.6), atAltitudeInSaltWater);
+
+        // Assert
+        Assert.Equal(6.0, fresh, Precision);
+        Assert.Equal(6.0, salt, Precision);
+    }
+
+    [Fact]
+    public void MaxOperatingDepthMeter_ShouldReturnAShallowerDepthInSaltWater_WhenTheModelIsRealistic()
+    {
+        // Arrange
+        // Denser water reaches the same pressure in a shorter column, so the limit is met
+        // shallower.
+        var freshSettings = TestFactory.CreateSettings(salinity: Salinity.Fresh,
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic);
+        var saltSettings = TestFactory.CreateSettings(salinity: Salinity.Salt,
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic);
+
+        // Act
+        var fresh = GasSelector.MaxOperatingDepthMeter(GasMixture.Oxygen, Pressure.FromBar(1.6), freshSettings);
+        var salt = GasSelector.MaxOperatingDepthMeter(GasMixture.Oxygen, Pressure.FromBar(1.6), saltSettings);
+
+        // Assert
+        Assert.True(salt < fresh);
+    }
+
+    [Theory]
+    [InlineData(MaximumOperatingDepthModel.Realistic)]
+    [InlineData(MaximumOperatingDepthModel.Simplified)]
+    public void MaxOperatingDepthMeter_ShouldReturnZero_WhenTheLimitIsReachedAtTheSurface(
+        MaximumOperatingDepthModel model)
+    {
+        // Arrange
+        // A limit of 0.5 bar on pure oxygen is met above the surface under either model, so
+        // the depth is clamped to zero rather than going negative.
+        var settings = TestFactory.CreateSettings(maximumOperatingDepthModel: model);
+
+        // Act
+        var depthMeter = GasSelector.MaxOperatingDepthMeter(GasMixture.Oxygen, Pressure.FromBar(0.5), settings);
+
+        // Assert
+        Assert.Equal(0.0, depthMeter, Precision);
+    }
+
+    [Fact]
+    public void MaxOperatingDepthMeter_ShouldThrowArgumentNullException_WhenSettingsIsNull()
+    {
+        // Arrange
+        DivePlanSettings settings = null!;
+
+        // Act
+        Action act = () => GasSelector.MaxOperatingDepthMeter(GasMixture.Oxygen, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.Throws<ArgumentNullException>(act);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void MaxOperatingDepthMeter_ShouldThrowArgumentOutOfRangeException_WhenMaxPo2IsNotPositive(double bar)
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings();
+
+        // Act
+        Action act = () => GasSelector.MaxOperatingDepthMeter(GasMixture.Air, Pressure.FromBar(bar), settings);
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Theory]
+    [InlineData(MaximumOperatingDepthModel.Realistic)]
+    [InlineData(MaximumOperatingDepthModel.Simplified)]
+    public void MaxOperatingDepthMeter_ShouldThrowArgumentOutOfRangeException_WhenTheGasContainsNoOxygen(
+        MaximumOperatingDepthModel model)
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings(maximumOperatingDepthModel: model);
+
+        // Act
+        Action act = () => GasSelector.MaxOperatingDepthMeter(default, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void IsBreathableAt_ShouldRejectOxygenAtSixMeters_WhenTheModelIsRealistic()
+    {
+        // Arrange
+        // In salt water off a 1000 mbar surface the ambient pressure at 6 m is
+        // 1000 + 1030 * 9.80665 * 6 / 100 = 1606.05 mbar, just beyond a 1.6 bar limit.
+        var settings = TestFactory.CreateSettings(
+            surfacePressure: Pressure.FromMillibar(1000),
+            salinity: Salinity.Salt,
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic);
+
+        // Act
+        var breathable = GasSelector.IsBreathableAt(GasMixture.Oxygen, 6.0, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.False(breathable);
+    }
+
+    [Fact]
+    public void IsBreathableAt_ShouldAdmitOxygenAtSixMeters_WhenTheModelIsSimplified()
+    {
+        // Arrange
+        // The same depth and environment that the realistic model rejects, admitted because
+        // six meters is the published maximum operating depth of oxygen at 1.6 bar.
+        var settings = TestFactory.CreateSettings(
+            surfacePressure: Pressure.FromMillibar(1000),
+            salinity: Salinity.Salt,
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
+
+        // Act
+        var breathable = GasSelector.IsBreathableAt(GasMixture.Oxygen, 6.0, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.True(breathable);
+    }
+
+    [Fact]
+    public void IsBreathableAt_ShouldReturnFalse_WhenTheModelIsSimplifiedAndTheDepthIsBeyondTheOperatingDepth()
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings(
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
+
+        // Act
+        var breathable = GasSelector.IsBreathableAt(GasMixture.Oxygen, 6.5, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.False(breathable);
+    }
+
+    [Fact]
+    public void IsBreathableAt_ShouldReturnTrue_WhenTheModelIsRealisticAndThePartialPressureExactlyEqualsTheLimit()
+    {
+        // Arrange
+        // Fresh water off a 1000 mbar surface reaches 1400 mbar at 400 / 98.0665 meters.
+        const double MillibarPerMeter = 1000.0 * 9.80665 / 100.0;
+        var depthMeter = (1400.0 - 1000.0) / MillibarPerMeter;
+        var settings = TestFactory.CreateSettings(
+            surfacePressure: Pressure.FromMillibar(1000),
+            salinity: Salinity.Fresh,
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic);
+
+        // Act
+        var breathable = GasSelector.IsBreathableAt(GasMixture.Oxygen, depthMeter, Pressure.FromBar(1.4), settings);
+
+        // Assert
+        Assert.True(breathable);
+    }
+
+    [Theory]
+    [InlineData(MaximumOperatingDepthModel.Realistic)]
+    [InlineData(MaximumOperatingDepthModel.Simplified)]
+    public void IsBreathableAt_ShouldAdmitAGasHoldingNoOxygen_WhenItHasNoOperatingDepth(
+        MaximumOperatingDepthModel model)
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings(maximumOperatingDepthModel: model);
+
+        // Act
+        var breathable = GasSelector.IsBreathableAt(default, 30.0, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.True(breathable);
+    }
+
+    [Fact]
+    public void IsBreathableAt_ShouldThrowArgumentNullException_WhenSettingsIsNull()
+    {
+        // Arrange
+        DivePlanSettings settings = null!;
+
+        // Act
+        Action act = () => GasSelector.IsBreathableAt(GasMixture.Oxygen, 6.0, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.Throws<ArgumentNullException>(act);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void IsBreathableAt_ShouldThrowArgumentOutOfRangeException_WhenMaxPo2IsNotPositive(double bar)
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings();
+
+        // Act
+        Action act = () => GasSelector.IsBreathableAt(GasMixture.Air, 10.0, Pressure.FromBar(bar), settings);
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void SelectRichestGasAt_ShouldChooseTheNitrox_WhenTheModelIsRealisticAtSixMeters()
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings(
+            surfacePressure: Pressure.FromMillibar(1000),
+            salinity: Salinity.Salt,
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic);
+        Cylinder[] cylinders =
+        [
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), purpose: CylinderPurpose.DecoGas),
+            TestFactory.CreateCylinder(GasMixture.Oxygen, purpose: CylinderPurpose.DecoGas)
+        ];
+
+        // Act
+        var selected = GasSelector.SelectRichestGasAt(cylinders, 6.0, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.Equal(0.5, selected.Gas.FractionO2, Precision);
+    }
+
+    [Fact]
+    public void SelectRichestGasAt_ShouldChooseOxygen_WhenTheModelIsSimplifiedAtSixMeters()
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings(
+            surfacePressure: Pressure.FromMillibar(1000),
+            salinity: Salinity.Salt,
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
+        Cylinder[] cylinders =
+        [
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), purpose: CylinderPurpose.DecoGas),
+            TestFactory.CreateCylinder(GasMixture.Oxygen, purpose: CylinderPurpose.DecoGas)
+        ];
+
+        // Act
+        var selected = GasSelector.SelectRichestGasAt(cylinders, 6.0, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.Equal(1.0, selected.Gas.FractionO2, Precision);
+    }
+
+    [Fact]
+    public void SelectRichestGasAt_ShouldKeepTheRicherGas_WhenAPoorerCylinderFollowsIt()
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings();
+        Cylinder[] cylinders =
+        [
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), purpose: CylinderPurpose.DecoGas),
+            TestFactory.CreateCylinder(GasMixture.Air)
+        ];
+
+        // Act
+        var selected = GasSelector.SelectRichestGasAt(cylinders, 0.0, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.Equal(GasMixture.FromPercent(50, 0), selected.Gas);
+    }
+
+    [Fact]
+    public void SelectRichestGasAt_ShouldPreferTheHigherHeliumContent_WhenTwoGasesShareTheSameOxygenContent()
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings();
+        Cylinder[] cylinders =
+        [
+            TestFactory.CreateCylinder(GasMixture.FromPercent(21, 0)),
+            TestFactory.CreateCylinder(GasMixture.FromPercent(21, 35))
+        ];
+
+        // Act
+        var selected = GasSelector.SelectRichestGasAt(cylinders, 30.0, Pressure.FromBar(1.4), settings);
+
+        // Assert
+        Assert.Equal(35, selected.Gas.PercentHe, Precision);
+    }
+
+    [Fact]
+    public void SelectRichestGasAt_ShouldReturnTheFirstMatch_WhenTwoCylindersHoldTheIdenticalGas()
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings();
+        Cylinder[] cylinders =
+        [
+            TestFactory.CreateCylinder(GasMixture.Air, startPressureBar: 200),
+            TestFactory.CreateCylinder(GasMixture.Air, startPressureBar: 100)
+        ];
+
+        // Act
+        var selected = GasSelector.SelectRichestGasAt(cylinders, 30.0, Pressure.FromBar(1.4), settings);
+
+        // Assert
+        Assert.Equal(200, selected.StartPressure.InBar, Precision);
+    }
+
+    [Fact]
+    public void SelectRichestGasAt_ShouldSkipTheOxygenSupply_WhenNoPurposeIsRequired()
+    {
+        // Arrange
+        // The rebreather's oxygen supply carries no second stage to breathe from, so open
+        // circuit falls back to the leaner bottom gas.
+        var settings = TestFactory.CreateSettings();
+        Cylinder[] cylinders =
+        [
+            TestFactory.CreateCylinder(GasMixture.Air),
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), purpose: CylinderPurpose.Oxygen)
+        ];
+
+        // Act
+        var selected = GasSelector.SelectRichestGasAt(cylinders, 0.0, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.Equal(GasMixture.Air, selected.Gas);
+    }
+
+    [Fact]
+    public void SelectRichestGasAt_ShouldRestrictTheChoiceToTheRequiredPurpose_WhenOneIsSupplied()
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings();
+        Cylinder[] cylinders =
+        [
+            TestFactory.CreateCylinder(GasMixture.Air, purpose: CylinderPurpose.Diluent),
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), purpose: CylinderPurpose.DecoGas)
+        ];
+
+        // Act
+        var selected = GasSelector.SelectRichestGasAt(cylinders, 0.0, Pressure.FromBar(1.6), settings,
+            CylinderPurpose.Diluent);
+
+        // Assert
+        Assert.Equal(GasMixture.Air.FractionO2, selected.Gas.FractionO2, Precision);
+    }
+
+    [Fact]
+    public void SelectRichestGasAt_ShouldThrowArgumentNullException_WhenCylindersIsNull()
+    {
+        // Arrange
+        IReadOnlyList<Cylinder> cylinders = null!;
+
+        // Act
+        Action act = () => GasSelector.SelectRichestGasAt(cylinders, 6.0, Pressure.FromBar(1.6),
+            TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Throws<ArgumentNullException>(act);
+    }
+
+    [Fact]
+    public void SelectRichestGasAt_ShouldThrowArgumentNullException_WhenSettingsIsNull()
+    {
+        // Arrange
+        Cylinder[] cylinders = [TestFactory.CreateCylinder()];
+
+        // Act
+        Action act = () => GasSelector.SelectRichestGasAt(cylinders, 6.0, Pressure.FromBar(1.6), null!);
+
+        // Assert
+        Assert.Throws<ArgumentNullException>(act);
+    }
+
+    [Fact]
+    public void SelectRichestGasAt_ShouldThrowArgumentException_WhenCylindersIsEmpty()
+    {
+        // Arrange
+        var cylinders = Array.Empty<Cylinder>();
+
+        // Act
+        Action act = () => GasSelector.SelectRichestGasAt(cylinders, 6.0, Pressure.FromBar(1.6),
+            TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Throws<ArgumentException>(act);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void SelectRichestGasAt_ShouldThrowArgumentOutOfRangeException_WhenMaxPo2IsNotPositive(double bar)
+    {
+        // Arrange
+        Cylinder[] cylinders = [TestFactory.CreateCylinder()];
+
+        // Act
+        Action act = () => GasSelector.SelectRichestGasAt(cylinders, 6.0, Pressure.FromBar(bar),
+            TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void SelectRichestGasAt_ShouldThrowInvalidOperationException_WhenNoGasIsBreathableAtTheDepth()
+    {
+        // Arrange
+        var settings = TestFactory.CreateSettings();
+        Cylinder[] cylinders = [TestFactory.CreateCylinder(GasMixture.Oxygen, purpose: CylinderPurpose.DecoGas)];
+
+        // Act
+        Action act = () => GasSelector.SelectRichestGasAt(cylinders, 90.0, Pressure.FromBar(1.6), settings);
+
+        // Assert
+        Assert.Throws<InvalidOperationException>(act);
     }
 }

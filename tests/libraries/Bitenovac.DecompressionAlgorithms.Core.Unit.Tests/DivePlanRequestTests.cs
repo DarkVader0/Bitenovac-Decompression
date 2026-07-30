@@ -29,6 +29,7 @@ public sealed class DivePlanRequestTests
             6,
             Pressure.FromBar(1.4),
             Pressure.FromBar(1.6),
+            MaximumOperatingDepthModel.Realistic,
             Pressure.FromBar(50),
             1.5,
             2,

@@ -156,11 +156,8 @@ public sealed class DivePlanner
     private static Cylinder SelectBottomGas(IReadOnlyList<Cylinder> cylinders,
         double depthMeter,
         DivePlanSettings settings,
-        BreathingLoop loop)
-    {
-        var ambient = AmbientConditions.PressureAtDepth(settings, Depth.FromMeter(depthMeter));
-        return GasSelector.SelectRichestGas(cylinders, ambient, settings.BottomPo2, loop.SupplyPurpose);
-    }
+        BreathingLoop loop) =>
+        GasSelector.SelectRichestGasAt(cylinders, depthMeter, settings.BottomPo2, settings, loop.SupplyPurpose);
 
     /// <summary>Returns the total runtime of the given segments, being the sum of their durations.</summary>
     /// <param name="segments">The segments whose combined duration is required.</param>

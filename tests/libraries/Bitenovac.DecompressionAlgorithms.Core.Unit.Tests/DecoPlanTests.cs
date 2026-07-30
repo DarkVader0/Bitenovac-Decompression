@@ -336,7 +336,7 @@ public sealed class DecoPlanTests
         var lines = plan.ToString().Split(System.Environment.NewLine);
 
         // Assert
-        Assert.Equal("Valid: True, total runtime: 00:30:00", lines[0]);
+        Assert.Equal("Valid: True, total runtime: 30", lines[0]);
     }
 
     [Fact]

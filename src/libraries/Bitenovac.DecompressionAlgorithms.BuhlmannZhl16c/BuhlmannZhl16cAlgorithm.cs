@@ -297,11 +297,8 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         DivePlanSettings settings,
         double depthMeter,
         Pressure maxPo2,
-        BreathingLoop loop)
-    {
-        var ambient = AmbientConditions.PressureAtDepth(settings, Depth.FromMeter(depthMeter));
-        return GasSelector.SelectRichestGas(cylinders, ambient, maxPo2, loop.SupplyPurpose).Gas;
-    }
+        BreathingLoop loop) =>
+        GasSelector.SelectRichestGasAt(cylinders, depthMeter, maxPo2, settings, loop.SupplyPurpose).Gas;
 
     /// <summary>
     /// Advances the tissues, the depth-time tally, the current depth, and the current gas
@@ -598,8 +595,7 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
                 continue;
             }
 
-            var operatingPressure = GasSelector.MaxOperatingPressure(gas, settings.DecoPo2);
-            var operatingDepthMeter = AmbientConditions.DepthAtPressure(settings, operatingPressure).InMeter;
+            var operatingDepthMeter = GasSelector.MaxOperatingDepthMeter(gas, settings.DecoPo2, settings);
             double switchMeter = FloorToStopGrid(operatingDepthMeter);
 
             if (switchMeter > targetStopMeter + DepthToleranceMeter
@@ -730,7 +726,6 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         double depthMeter,
         BreathingLoop loop)
     {
-        var ambient = AmbientConditions.PressureAtDepth(settings, Depth.FromMeter(depthMeter));
         var supplyPurpose = loop.SupplyPurpose;
         GasMixture? best = null;
 
@@ -743,7 +738,7 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
 
             var gas = cylinders[i].Gas;
             if (gas.FractionO2 >= PureOxygenFraction
-                || gas.PartialPressureO2(ambient).InMillibar > settings.DecoPo2.InMillibar)
+                || !GasSelector.IsBreathableAt(gas, depthMeter, settings.DecoPo2, settings))
             {
                 continue;
             }

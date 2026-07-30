@@ -56,6 +56,11 @@ public sealed class DivePlanSettings
     /// </param>
     /// <param name="bottomPo2">The maximum partial pressure of oxygen permitted on the bottom gas.</param>
     /// <param name="decoPo2">The maximum partial pressure of oxygen permitted on decompression gas.</param>
+    /// <param name="maximumOperatingDepthModel">
+    /// How the maximum operating depth of a gas is derived from its oxygen partial pressure
+    /// limit, which decides the depth at which the gas becomes breathable and therefore the
+    /// stop a gas switch lands on.
+    /// </param>
     /// <param name="reservePressure">The cylinder pressure that must remain unused as a reserve.</param>
     /// <param name="reserveStressFactor">The multiplier applied to the breathing rate under stress in an emergency.</param>
     /// <param name="reserveTeamSize">The number of divers sharing the gas requirement in an emergency.</param>
@@ -87,6 +92,7 @@ public sealed class DivePlanSettings
         double loopVolumeLiters,
         Pressure bottomPo2,
         Pressure decoPo2,
+        MaximumOperatingDepthModel maximumOperatingDepthModel,
         Pressure reservePressure,
         double reserveStressFactor,
         int reserveTeamSize,
@@ -141,6 +147,16 @@ public sealed class DivePlanSettings
         {
             throw new ArgumentOutOfRangeException(nameof(decoPo2), decoPo2.InMillibar,
                 "The decompression partial pressure of oxygen must be greater than zero.");
+        }
+
+        // Checked against the known values rather than with Enum.IsDefined so that adding a
+        // model without teaching the calculations about it fails here, at construction,
+        // rather than being silently planned as one of the existing models.
+        if (maximumOperatingDepthModel is not (MaximumOperatingDepthModel.Realistic
+            or MaximumOperatingDepthModel.Simplified))
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumOperatingDepthModel), maximumOperatingDepthModel,
+                "The maximum operating depth model must be a defined value.");
         }
 
         if (reservePressure.InBar < 0.0)
@@ -217,6 +233,7 @@ public sealed class DivePlanSettings
         LoopVolumeLiters = loopVolumeLiters;
         BottomPo2 = bottomPo2;
         DecoPo2 = decoPo2;
+        MaximumOperatingDepthModel = maximumOperatingDepthModel;
         ReservePressure = reservePressure;
         ReserveStressFactor = reserveStressFactor;
         ReserveTeamSize = reserveTeamSize;
@@ -284,6 +301,13 @@ public sealed class DivePlanSettings
 
     /// <summary>Gets the maximum partial pressure of oxygen permitted on decompression gas.</summary>
     public Pressure DecoPo2 { get; }
+
+    /// <summary>
+    /// Gets the rule by which the maximum operating depth of a gas is derived from its oxygen
+    /// partial pressure limit, which decides the depth at which the gas becomes breathable and
+    /// therefore the stop a gas switch lands on.
+    /// </summary>
+    public MaximumOperatingDepthModel MaximumOperatingDepthModel { get; }
 
     /// <summary>Gets the cylinder pressure that must remain unused as a reserve.</summary>
     public Pressure ReservePressure { get; }

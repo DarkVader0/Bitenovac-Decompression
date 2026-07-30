@@ -203,11 +203,8 @@ public static class ReserveGas
     /// <returns>The maximum operating depth in meters, never negative.</returns>
     private static double OperatingDepthMeter(GasMixture gas,
         Pressure maxPo2,
-        DivePlanSettings settings)
-    {
-        var operatingPressure = GasSelector.MaxOperatingPressure(gas, maxPo2);
-        return Math.Max(AmbientConditions.DepthAtPressure(settings, operatingPressure).InMeter, 0.0);
-    }
+        DivePlanSettings settings) =>
+        GasSelector.MaxOperatingDepthMeter(gas, maxPo2, settings);
 
     /// <summary>
     /// Assesses a bottom-gas cylinder against a worst-case emergency ascent. The required

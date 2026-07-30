@@ -21,6 +21,7 @@ public sealed class DivePlanSettingsTests
         double loopVolumeLiters = 6,
         Pressure? bottomPo2 = null,
         Pressure? decoPo2 = null,
+        MaximumOperatingDepthModel maximumOperatingDepthModel = MaximumOperatingDepthModel.Realistic,
         Pressure? reservePressure = null,
         double reserveStressFactor = 1.5,
         int reserveTeamSize = 2,
@@ -49,6 +50,7 @@ public sealed class DivePlanSettingsTests
             loopVolumeLiters,
             bottomPo2 ?? Pressure.FromBar(1.4),
             decoPo2 ?? Pressure.FromBar(1.6),
+            maximumOperatingDepthModel,
             reservePressure ?? Pressure.FromBar(50),
             reserveStressFactor,
             reserveTeamSize,
@@ -767,5 +769,32 @@ public sealed class DivePlanSettingsTests
 
         // Assert
         Assert.Equal(TimeSpan.FromMinutes(6), settings.OxygenBreakDuration);
+    }
+
+    [Theory]
+    [InlineData(MaximumOperatingDepthModel.Realistic)]
+    [InlineData(MaximumOperatingDepthModel.Simplified)]
+    public void MaximumOperatingDepthModel_ShouldReturnConstructorValue_WhenSet(MaximumOperatingDepthModel model)
+    {
+        // Arrange
+
+        // Act
+        var settings = CreateSettings(maximumOperatingDepthModel: model);
+
+        // Assert
+        Assert.Equal(model, settings.MaximumOperatingDepthModel);
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentOutOfRangeException_WhenMaximumOperatingDepthModelIsNotDefined()
+    {
+        // Arrange
+        const MaximumOperatingDepthModel Undefined = (MaximumOperatingDepthModel)(-1);
+
+        // Act
+        Action act = () => CreateSettings(maximumOperatingDepthModel: Undefined);
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
     }
 }

@@ -28,6 +28,7 @@ internal static class TestFactory
         double loopVolumeLiters = 6,
         Pressure? bottomPo2 = null,
         Pressure? decoPo2 = null,
+        MaximumOperatingDepthModel maximumOperatingDepthModel = MaximumOperatingDepthModel.Realistic,
         double reserveStressFactor = 1.5,
         int reserveTeamSize = 2) =>
         new(
@@ -45,6 +46,7 @@ internal static class TestFactory
             loopVolumeLiters,
             bottomPo2 ?? Pressure.FromBar(1.4),
             decoPo2 ?? Pressure.FromBar(1.6),
+            maximumOperatingDepthModel,
             Pressure.FromBar(50),
             reserveStressFactor,
             reserveTeamSize,

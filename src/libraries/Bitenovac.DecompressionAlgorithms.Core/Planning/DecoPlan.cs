@@ -144,7 +144,7 @@ public sealed class DecoPlan
     public override string ToString()
     {
         var builder = new StringBuilder();
-        builder.Append(CultureInfo.InvariantCulture, $"Valid: {IsValid}, total runtime: {TotalRuntime}")
+        builder.Append(CultureInfo.InvariantCulture, $"Valid: {IsValid}, total runtime: {TotalRuntime.TotalMinutes}")
             .AppendLine()
             .AppendLine();
 

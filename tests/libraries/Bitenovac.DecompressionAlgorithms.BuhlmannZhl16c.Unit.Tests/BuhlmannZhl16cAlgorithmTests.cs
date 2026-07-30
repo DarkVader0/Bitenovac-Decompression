@@ -1,5 +1,6 @@
 using Bitenovac.DecompressionAlgorithms.BuhlmannZhl16c;
 using Bitenovac.DecompressionAlgorithms.Core.Abstractions;
+using Bitenovac.DecompressionAlgorithms.Core.Environment;
 using Bitenovac.DecompressionAlgorithms.Core.Equipment;
 using Bitenovac.DecompressionAlgorithms.Core.Planning;
 using Bitenovac.DecompressionAlgorithms.Units;
@@ -1151,6 +1152,100 @@ public sealed class BuhlmannZhl16cAlgorithmTests
 
         // Assert
         Assert.True(raised < held);
+    }
+
+    [Fact]
+    public void CalculateFinalAscent_ShouldSwitchToOxygenAtThreeMeters_WhenTheDepthModelIsRealistic()
+    {
+        // Arrange
+        // In salt water off a one bar surface the 1.6 bar limit on pure oxygen is reached at
+        // (1600 - 1000) / 101.008 = 5.94 m, which is short of the six meter stop and floors
+        // onto the three meter stop instead.
+        const double ExpectedSwitchDepthMeter = 3.0;
+        var settings = TestFactory.CreateSettings(
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic,
+            salinity: Salinity.Salt);
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(),
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0)),
+            TestFactory.CreateCylinder(GasMixture.Oxygen)
+        };
+        var algorithm = new BuhlmannZhl16cAlgorithm(0.3, 0.7);
+        var request = TestFactory.CreateRequest(40, 20, cylinders, settings);
+        var state = algorithm.BeginDive(request);
+        algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(40), TimeSpan.FromMinutes(20),
+            GasMixture.Air, SegmentKind.Bottom));
+
+        // Act
+        var ascent = algorithm.CalculateFinalAscent(state, request);
+
+        // Assert
+        var oxygenSwitch = Assert.Single(ascent,
+            segment => segment.Kind == SegmentKind.GasSwitch && segment.Gas.FractionO2 >= 1.0);
+        Assert.Equal(ExpectedSwitchDepthMeter, oxygenSwitch.Depth.InMeter, Precision);
+    }
+
+    [Fact]
+    public void CalculateFinalAscent_ShouldSwitchToOxygenAtSixMeters_WhenTheDepthModelIsSimplified()
+    {
+        // Arrange
+        // The published depth of pure oxygen at 1.6 bar is exactly (1.6 / 1.00 - 1) * 10 = 6 m,
+        // which lands on the six meter stop regardless of the salinity that shifts the
+        // realistic depth below it.
+        const double ExpectedSwitchDepthMeter = 6.0;
+        var settings = TestFactory.CreateSettings(
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified,
+            salinity: Salinity.Salt);
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(),
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0)),
+            TestFactory.CreateCylinder(GasMixture.Oxygen)
+        };
+        var algorithm = new BuhlmannZhl16cAlgorithm(0.3, 0.7);
+        var request = TestFactory.CreateRequest(40, 20, cylinders, settings);
+        var state = algorithm.BeginDive(request);
+        algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(40), TimeSpan.FromMinutes(20),
+            GasMixture.Air, SegmentKind.Bottom));
+
+        // Act
+        var ascent = algorithm.CalculateFinalAscent(state, request);
+
+        // Assert
+        var oxygenSwitch = Assert.Single(ascent,
+            segment => segment.Kind == SegmentKind.GasSwitch && segment.Gas.FractionO2 >= 1.0);
+        Assert.Equal(ExpectedSwitchDepthMeter, oxygenSwitch.Depth.InMeter, Precision);
+    }
+
+    [Fact]
+    public void CalculateFinalAscent_ShouldSwitchToNitroxFiftyAtTwentyOneMeters_WhenTheDepthModelIsSimplified()
+    {
+        // Arrange
+        // Nitrox 50 at 1.6 bar has a published depth of (1.6 / 0.50 - 1) * 10 = 22 m, which
+        // floors onto the twenty-one meter stop.
+        const double ExpectedSwitchDepthMeter = 21.0;
+        var settings = TestFactory.CreateSettings(
+            maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified,
+            salinity: Salinity.Salt);
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(),
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0))
+        };
+        var algorithm = new BuhlmannZhl16cAlgorithm(0.3, 0.7);
+        var request = TestFactory.CreateRequest(40, 20, cylinders, settings);
+        var state = algorithm.BeginDive(request);
+        algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(40), TimeSpan.FromMinutes(20),
+            GasMixture.Air, SegmentKind.Bottom));
+
+        // Act
+        var ascent = algorithm.CalculateFinalAscent(state, request);
+
+        // Assert
+        var nitroxSwitch = Assert.Single(ascent,
+            segment => segment.Kind == SegmentKind.GasSwitch && segment.Gas.FractionO2.Equals(0.5));
+        Assert.Equal(ExpectedSwitchDepthMeter, nitroxSwitch.Depth.InMeter, Precision);
     }
 
     private sealed class FakeDecompressionState : IDecompressionState;
