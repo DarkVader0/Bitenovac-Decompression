@@ -50,7 +50,7 @@ public sealed class DivePlannerZhl16cSemiClosedTests
     /// sea-level pressure and otherwise the shared baseline.
     /// </summary>
     private static DivePlanSettings CreateComparisonSettings() =>
-        TestFactory.CreateSettings(surfacePressureMillibar: 1013.25);
+        TestFactory.CreateSettings(1013.25);
 
     /// <summary>
     /// Creates the semi-closed set: the bottom mix and the whole ladder as loop supplies, so

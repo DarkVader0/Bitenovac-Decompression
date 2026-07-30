@@ -176,7 +176,9 @@ public static class GasConsumption
     /// <param name="gas">The supply gas to match.</param>
     /// <param name="mode">The breathing apparatus through which the gas is supplied.</param>
     /// <returns>The zero-based index of the supplying cylinder, or -1 if none matches.</returns>
-    private static int FindSupplyIndex(IReadOnlyList<Cylinder> cylinders, GasMixture gas, DiveMode mode)
+    private static int FindSupplyIndex(IReadOnlyList<Cylinder> cylinders,
+        GasMixture gas,
+        DiveMode mode)
     {
         var preferred = mode == DiveMode.OC ? null : (CylinderPurpose?)CylinderPurpose.Diluent;
 

@@ -201,7 +201,9 @@ public static class ReserveGas
     /// <param name="maxPo2">The maximum permitted partial pressure of oxygen.</param>
     /// <param name="settings">The settings that supply the surface pressure and salinity.</param>
     /// <returns>The maximum operating depth in meters, never negative.</returns>
-    private static double OperatingDepthMeter(GasMixture gas, Pressure maxPo2, DivePlanSettings settings)
+    private static double OperatingDepthMeter(GasMixture gas,
+        Pressure maxPo2,
+        DivePlanSettings settings)
     {
         var operatingPressure = GasSelector.MaxOperatingPressure(gas, maxPo2);
         return Math.Max(AmbientConditions.DepthAtPressure(settings, operatingPressure).InMeter, 0.0);

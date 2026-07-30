@@ -298,7 +298,7 @@ public sealed class ReserveGasTests
         var withRicherBottomGas = new[]
         {
             TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Bailout),
-            TestFactory.CreateCylinder(DecoGas, 11, 200, CylinderPurpose.BottomGas)
+            TestFactory.CreateCylinder(DecoGas, 11)
         };
 
         // Act

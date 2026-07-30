@@ -46,7 +46,7 @@ public sealed class DivePlannerZhl16cOpenCircuitTests
     /// sea-level pressure and otherwise the shared baseline.
     /// </summary>
     private static DivePlanSettings CreateComparisonSettings() =>
-        TestFactory.CreateSettings(surfacePressureMillibar: 1013.25);
+        TestFactory.CreateSettings(1013.25);
 
     /// <summary>Creates the open-circuit set: the bottom mix, then the ladder as decompression gas.</summary>
     private static Cylinder[] OpenCircuitCylinders(GasMixture bottom, params GasMixture[] ladder)
@@ -200,7 +200,7 @@ public sealed class DivePlannerZhl16cOpenCircuitTests
             TestFactory.CreateCylinder(50, 0, 11.1, 200, CylinderPurpose.DecoGas),
             TestFactory.CreateCylinder(100, 0, 7, 200, CylinderPurpose.DecoGas)
         ];
-        var settings = TestFactory.CreateSettings(surfacePressureMillibar: 1013.25,
+        var settings = TestFactory.CreateSettings(1013.25,
             gasSwitchMinutes: 3);
         var request = new DivePlanRequest(TestFactory.CreateProfile((60, 25)), cylinders,
             settings);
@@ -336,9 +336,9 @@ public sealed class DivePlannerZhl16cOpenCircuitTests
             TestFactory.CreateCylinder(100, 0, 7, 200, CylinderPurpose.DecoGas)
         ];
         var settings = TestFactory.CreateSettings(
-            surfacePressureMillibar: PhysicalConstants.AtmosphericPressureAtAltitudeMillibar(2200),
-            salinity: Salinity.Fresh,
-            descentRateMetersPerMinute: 15,
+            PhysicalConstants.AtmosphericPressureAtAltitudeMillibar(2200),
+            Salinity.Fresh,
+            15,
             lastStopAtSixMeters: false);
         var request = new DivePlanRequest(TestFactory.CreateProfile((52, 20)), cylinders,
             settings);

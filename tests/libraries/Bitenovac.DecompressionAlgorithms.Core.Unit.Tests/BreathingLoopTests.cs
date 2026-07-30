@@ -333,8 +333,9 @@ public sealed class BreathingLoopTests
     [InlineData(0)]
     [InlineData(-0.1)]
     [InlineData(1.1)]
-    public void SemiClosedOxygenDropCoefficient_ShouldThrowArgumentOutOfRangeException_WhenTheDumpRatioIsOutsideItsRange(
-        double dumpRatio)
+    public void
+        SemiClosedOxygenDropCoefficient_ShouldThrowArgumentOutOfRangeException_WhenTheDumpRatioIsOutsideItsRange(
+            double dumpRatio)
     {
         // Arrange
 
@@ -346,7 +347,8 @@ public sealed class BreathingLoopTests
     }
 
     [Fact]
-    public void SemiClosedOxygenDropCoefficient_ShouldThrowArgumentOutOfRangeException_WhenTheMetabolicConsumptionIsNegative()
+    public void
+        SemiClosedOxygenDropCoefficient_ShouldThrowArgumentOutOfRangeException_WhenTheMetabolicConsumptionIsNegative()
     {
         // Arrange
 
@@ -358,7 +360,8 @@ public sealed class BreathingLoopTests
     }
 
     [Fact]
-    public void SemiClosedOxygenDropCoefficient_ShouldThrowArgumentOutOfRangeException_WhenTheMinuteVolumeIsNotPositive()
+    public void
+        SemiClosedOxygenDropCoefficient_ShouldThrowArgumentOutOfRangeException_WhenTheMinuteVolumeIsNotPositive()
     {
         // Arrange
 

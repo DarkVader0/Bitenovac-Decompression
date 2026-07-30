@@ -358,7 +358,9 @@ public readonly struct BreathingLoop : IEquatable<BreathingLoop>
     /// mixture divided in the same ratio as the supply gas, since the loop neither adds nor
     /// removes inert gas.
     /// </summary>
-    private static double InertFraction(GasMixture supply, double supplyInertFraction, double oxygenFraction)
+    private static double InertFraction(GasMixture supply,
+        double supplyInertFraction,
+        double oxygenFraction)
     {
         var supplyInertTotal = supply.FractionN2 + supply.FractionHe;
         return supplyInertTotal <= 0.0

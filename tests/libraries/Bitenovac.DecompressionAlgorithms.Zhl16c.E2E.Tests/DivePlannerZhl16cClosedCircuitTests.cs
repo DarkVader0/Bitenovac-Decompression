@@ -49,7 +49,7 @@ public sealed class DivePlannerZhl16cClosedCircuitTests
     /// sea-level pressure and otherwise the shared baseline.
     /// </summary>
     private static DivePlanSettings CreateComparisonSettings() =>
-        TestFactory.CreateSettings(surfacePressureMillibar: 1013.25);
+        TestFactory.CreateSettings(1013.25);
 
     /// <summary>
     /// Creates the closed-circuit set: the bottom mix as the sole diluent, a small oxygen
@@ -93,7 +93,7 @@ public sealed class DivePlannerZhl16cClosedCircuitTests
             TestFactory.CreateCylinder(50, 0, 11.1, 207, CylinderPurpose.Bailout)
         ];
         var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
-        var settings = TestFactory.CreateSettings(surfacePressureMillibar: 1013.25);
+        var settings = TestFactory.CreateSettings(1013.25);
         var request = new DivePlanRequest(TestFactory.CreateProfile(loop, (80, 20)), cylinders,
             settings);
 
