@@ -900,6 +900,40 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     }
 
     [Fact]
+    public void CalculateFinalAscent_ShouldNotTakeTheOxygenBreakOnTheLoopOxygenSupply_WhenOneIsCarried()
+    {
+        // Arrange
+        // The rebreather's oxygen supply carries no second stage to breathe from, so the
+        // break must fall back to the air even though the supply holds a richer break gas.
+        var settings = TestFactory.CreateSettings(oxygenBreaks: true,
+            oxygenBreakInterval: TimeSpan.FromMinutes(1), oxygenBreakDuration: TimeSpan.FromMinutes(1));
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(),
+            new Cylinder(GasMixture.FromPercent(50, 0), Volume.FromLiter(3), Pressure.FromBar(200),
+                CylinderPurpose.Oxygen),
+            TestFactory.CreateCylinder(GasMixture.Oxygen)
+        };
+        var algorithm = new BuhlmannZhl16cAlgorithm(0.5, 0.5);
+        var request = TestFactory.CreateRequest(33, 35, cylinders, settings);
+        var state = algorithm.BeginDive(request);
+        algorithm.LoadSegment(state, new DiveSegment(Depth.FromMeter(33), TimeSpan.FromMinutes(35),
+            GasMixture.Air, SegmentKind.Bottom));
+
+        // Act
+        var ascent = algorithm.CalculateFinalAscent(state, request);
+
+        // Assert
+        var breaks = ascent
+            .Where(segment => segment.Kind == SegmentKind.Stop
+                              && segment.Depth.InMeter <= 6.0 + 1e-9
+                              && segment.Gas != GasMixture.Oxygen)
+            .ToList();
+        Assert.NotEmpty(breaks);
+        Assert.All(breaks, oxygenBreak => Assert.Equal(GasMixture.Air, oxygenBreak.Gas));
+    }
+
+    [Fact]
     public void CalculateFinalAscent_ShouldNotTakeTheOxygenBreakOnAMixAtThePureOxygenThreshold()
     {
         // Arrange

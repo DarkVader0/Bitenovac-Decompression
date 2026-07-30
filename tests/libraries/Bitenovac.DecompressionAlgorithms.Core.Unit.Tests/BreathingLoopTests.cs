@@ -329,6 +329,34 @@ public sealed class BreathingLoopTests
         Assert.Throws<ArgumentOutOfRangeException>(act);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-0.1)]
+    [InlineData(1.1)]
+    public void SemiClosedOxygenDropCoefficient_ShouldThrowArgumentOutOfRangeException_WhenTheDumpRatioIsOutsideItsRange(
+        double dumpRatio)
+    {
+        // Arrange
+
+        // Act
+        Action act = () => BreathingLoop.SemiClosedOxygenDropCoefficient(dumpRatio, 1.0, 20.0, Pressure.FromBar(1));
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void SemiClosedOxygenDropCoefficient_ShouldThrowArgumentOutOfRangeException_WhenTheMetabolicConsumptionIsNegative()
+    {
+        // Arrange
+
+        // Act
+        Action act = () => BreathingLoop.SemiClosedOxygenDropCoefficient(0.1, -0.1, 20.0, Pressure.FromBar(1));
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
     [Fact]
     public void SemiClosedOxygenDropCoefficient_ShouldThrowArgumentOutOfRangeException_WhenTheMinuteVolumeIsNotPositive()
     {
@@ -357,6 +385,71 @@ public sealed class BreathingLoopTests
         Assert.True(equalToSame);
         Assert.False(equalToOtherSetpoint);
         Assert.Equal(first.GetHashCode(), same.GetHashCode());
+    }
+
+    [Fact]
+    public void InspiredOxygenFraction_ShouldReturnTheSupplyFraction_WhenTheAmbientPressureIsNotPositive()
+    {
+        // Arrange
+        // A degenerate ambient pressure leaves the loop nothing to work against, so the
+        // supply gas is reported unaltered rather than dividing by zero.
+        var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
+
+        // Act
+        var oxygen = loop.InspiredOxygenFraction(Trimix1845, Pressure.FromMillibar(0));
+
+        // Assert
+        Assert.Equal(Trimix1845.FractionO2, oxygen, Precision);
+    }
+
+    [Fact]
+    public void OxygenPressureDrop_ShouldBeZero_WhenTheApparatusIsNotSemiClosed()
+    {
+        // Arrange
+        var openCircuit = BreathingLoop.OpenCircuit;
+        var closedCircuit = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
+
+        // Act
+        var openCircuitDrop = openCircuit.OxygenPressureDrop(Nitrox32);
+        var closedCircuitDrop = closedCircuit.OxygenPressureDrop(Nitrox32);
+
+        // Assert
+        Assert.Equal(0.0, openCircuitDrop.InMillibar, Precision);
+        Assert.Equal(0.0, closedCircuitDrop.InMillibar, Precision);
+    }
+
+    [Fact]
+    public void Equals_ShouldFollowValueSemantics_WhenTheOtherInstanceIsBoxed()
+    {
+        // Arrange
+        var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
+        object same = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
+        object otherType = "CCR @ 1.3";
+
+        // Act
+        var equalToSame = loop.Equals(same);
+        var equalToOtherType = loop.Equals(otherType);
+
+        // Assert
+        Assert.True(equalToSame);
+        Assert.False(equalToOtherType);
+    }
+
+    [Fact]
+    public void InequalityOperator_ShouldMirrorEquality_WhenLoopsAreCompared()
+    {
+        // Arrange
+        var first = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
+        var same = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
+        var otherSetpoint = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.2));
+
+        // Act
+        var differentFromSame = first != same;
+        var differentFromOtherSetpoint = first != otherSetpoint;
+
+        // Assert
+        Assert.False(differentFromSame);
+        Assert.True(differentFromOtherSetpoint);
     }
 
     [Fact]

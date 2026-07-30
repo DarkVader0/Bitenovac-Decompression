@@ -354,6 +354,30 @@ public sealed class GasConsumptionTests
     }
 
     [Fact]
+    public void Calculate_ShouldNotRequireAnOxygenSupply_WhenAClosedCircuitSegmentHasNoMetabolicDemand()
+    {
+        // Arrange
+        // With no metabolic demand the loop draws nothing from an oxygen supply, so none
+        // needs to be carried and only the descent make-up of 6 x (3.941995 - 1) L is drawn
+        // from the diluent.
+        var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
+        var segments = new[]
+        {
+            new DiveSegment(Depth.FromMeter(30), TimeSpan.FromMinutes(10), GasMixture.Air, SegmentKind.Bottom, loop)
+        };
+        var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Diluent) };
+
+        // Act
+        var usage = GasConsumption.Calculate(segments, cylinders,
+            TestFactory.CreateSettings(bottomMetabolicOxygenConsumptionLitersPerMinute: 0,
+                decoMetabolicOxygenConsumptionLitersPerMinute: 0,
+                loopVolumeLiters: 6));
+
+        // Assert
+        Assert.Equal(17.65197, usage[0].GasUsed.InLiter, Precision);
+    }
+
+    [Fact]
     public void Calculate_ShouldThrowInvalidOperationException_WhenAClosedCircuitSegmentHasNoOxygenSupply()
     {
         // Arrange

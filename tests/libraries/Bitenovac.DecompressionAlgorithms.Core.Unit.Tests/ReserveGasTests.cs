@@ -288,6 +288,30 @@ public sealed class ReserveGasTests
     }
 
     [Fact]
+    public void Calculate_ShouldNotShortenTheBailoutBand_WhenTheRicherGasIsNotCarriedForDecoOrBailout()
+    {
+        // Arrange
+        // Only a decompression or bailout gas can end the emergency ascent early, so a
+        // richer gas carried as bottom gas leaves the bailout band running to the surface.
+        var segments = new[] { TestFactory.CreateSegment(30, 10) };
+        var alone = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Bailout) };
+        var withRicherBottomGas = new[]
+        {
+            TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Bailout),
+            TestFactory.CreateCylinder(DecoGas, 11, 200, CylinderPurpose.BottomGas)
+        };
+
+        // Act
+        var aloneResult = ReserveGas.Calculate(segments, alone, TestFactory.CreateSettings());
+        var withRicherBottomGasResult = ReserveGas.Calculate(segments, withRicherBottomGas,
+            TestFactory.CreateSettings());
+
+        // Assert
+        Assert.Equal(aloneResult.CylinderStatuses[0].RequiredReserve.InLiter,
+            withRicherBottomGasResult.CylinderStatuses[0].RequiredReserve.InLiter, Precision);
+    }
+
+    [Fact]
     public void Calculate_ShouldReportTheReserveAsSatisfied_WhenAmpleGasRemains()
     {
         // Arrange

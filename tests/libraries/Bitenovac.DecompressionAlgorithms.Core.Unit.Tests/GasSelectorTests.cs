@@ -143,6 +143,23 @@ public sealed class GasSelectorTests
     }
 
     [Fact]
+    public void SelectRichestGas_ShouldKeepTheRicherGas_WhenAPoorerCylinderFollowsIt()
+    {
+        // Arrange
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0)),
+            TestFactory.CreateCylinder(GasMixture.Air)
+        };
+
+        // Act
+        var selected = GasSelector.SelectRichestGas(cylinders, Pressure.FromBar(1), Pressure.FromBar(1.6));
+
+        // Assert
+        Assert.Equal(GasMixture.FromPercent(50, 0), selected.Gas);
+    }
+
+    [Fact]
     public void SelectRichestGas_ShouldReturnTheFirstMatch_WhenTwoCylindersHoldTheIdenticalGas()
     {
         // Arrange
@@ -157,6 +174,76 @@ public sealed class GasSelectorTests
 
         // Assert
         Assert.Equal(200, selected.StartPressure.InBar, Precision);
+    }
+
+    [Fact]
+    public void SelectRichestGas_ShouldRestrictTheChoiceToTheRequiredPurpose_WhenOneIsSupplied()
+    {
+        // Arrange
+        // The nitrox 50 stage is richer, but a rebreather is fed from its diluent alone.
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), purpose: CylinderPurpose.DecoGas),
+            TestFactory.CreateCylinder(GasMixture.Air, purpose: CylinderPurpose.Diluent)
+        };
+
+        // Act
+        var selected = GasSelector.SelectRichestGas(cylinders, Pressure.FromBar(1), Pressure.FromBar(1.6),
+            CylinderPurpose.Diluent);
+
+        // Assert
+        Assert.Equal(GasMixture.Air, selected.Gas);
+    }
+
+    [Fact]
+    public void SelectRichestGas_ShouldSkipTheOxygenSupply_WhenNoPurposeIsRequired()
+    {
+        // Arrange
+        // The rebreather's oxygen supply carries no second stage to breathe from, so open
+        // circuit falls back to the leaner bottom gas.
+        var cylinders = new[]
+        {
+            TestFactory.CreateCylinder(GasMixture.Air),
+            TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), purpose: CylinderPurpose.Oxygen)
+        };
+
+        // Act
+        var selected = GasSelector.SelectRichestGas(cylinders, Pressure.FromBar(1), Pressure.FromBar(1.6));
+
+        // Assert
+        Assert.Equal(GasMixture.Air, selected.Gas);
+    }
+
+    [Fact]
+    public void IsAvailableFor_ShouldMatchThePurposeExactly_WhenOneIsRequired()
+    {
+        // Arrange
+        var diluent = TestFactory.CreateCylinder(GasMixture.Air, purpose: CylinderPurpose.Diluent);
+        var stage = TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), purpose: CylinderPurpose.DecoGas);
+
+        // Act
+        var diluentAvailable = GasSelector.IsAvailableFor(diluent, CylinderPurpose.Diluent);
+        var stageAvailable = GasSelector.IsAvailableFor(stage, CylinderPurpose.Diluent);
+
+        // Assert
+        Assert.True(diluentAvailable);
+        Assert.False(stageAvailable);
+    }
+
+    [Fact]
+    public void IsAvailableFor_ShouldExcludeOnlyTheOxygenSupply_WhenNoPurposeIsRequired()
+    {
+        // Arrange
+        var bottomGas = TestFactory.CreateCylinder(GasMixture.Air);
+        var oxygenSupply = TestFactory.CreateCylinder(GasMixture.Oxygen, purpose: CylinderPurpose.Oxygen);
+
+        // Act
+        var bottomGasAvailable = GasSelector.IsAvailableFor(bottomGas, null);
+        var oxygenSupplyAvailable = GasSelector.IsAvailableFor(oxygenSupply, null);
+
+        // Assert
+        Assert.True(bottomGasAvailable);
+        Assert.False(oxygenSupplyAvailable);
     }
 
     [Fact]

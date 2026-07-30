@@ -178,6 +178,56 @@ public sealed class DivePlanSettingsTests
     }
 
     [Fact]
+    public void Constructor_ShouldThrowArgumentOutOfRangeException_WhenBottomMetabolicOxygenConsumptionIsNegative()
+    {
+        // Arrange
+
+        // Act
+        Action act = () => CreateSettings(bottomMetabolicOxygenConsumptionLitersPerMinute: -0.1);
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentOutOfRangeException_WhenDecoMetabolicOxygenConsumptionIsNegative()
+    {
+        // Arrange
+
+        // Act
+        Action act = () => CreateSettings(decoMetabolicOxygenConsumptionLitersPerMinute: -0.1);
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void Constructor_ShouldThrowArgumentOutOfRangeException_WhenLoopVolumeIsNegative()
+    {
+        // Arrange
+
+        // Act
+        Action act = () => CreateSettings(loopVolumeLiters: -1);
+
+        // Assert
+        Assert.Throws<ArgumentOutOfRangeException>(act);
+    }
+
+    [Fact]
+    public void Constructor_ShouldSucceed_WhenTheMetabolicRatesAndLoopVolumeAreZero()
+    {
+        // Arrange
+
+        // Act
+        var settings = CreateSettings(bottomMetabolicOxygenConsumptionLitersPerMinute: 0,
+            decoMetabolicOxygenConsumptionLitersPerMinute: 0,
+            loopVolumeLiters: 0);
+
+        // Assert
+        Assert.Equal(0, settings.LoopVolumeLiters, Precision);
+    }
+
+    [Fact]
     public void Constructor_ShouldThrowArgumentOutOfRangeException_WhenBottomPo2IsZero()
     {
         // Arrange
