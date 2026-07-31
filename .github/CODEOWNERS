@@ -1,0 +1,26 @@
+# Code owners for this repository.
+#
+# GitHub requests a review from the owners of every path a pull request touches. With
+# 'require_code_owner_review' enabled in the master ruleset, that review is also required before
+# the pull request can merge.
+#
+# Rules are matched in order and the LAST matching rule wins, so a later, more specific line
+# overrides the catch-all above it. Patterns follow .gitignore syntax.
+
+# Everything, unless a rule below overrides it.
+*                          @DarkVader0
+
+# How the repository is built, tested and measured. Called out separately because a change here
+# governs every project in the repository rather than any one of them: 'build/ci.sh' treats a
+# pipeline change as affecting everything, and the reviewer should be someone who knows why.
+/build/                    @DarkVader0
+/.github/                  @DarkVader0
+/Directory.Build.props     @DarkVader0
+/Directory.Build.targets   @DarkVader0
+/Directory.Packages.props  @DarkVader0
+/global.json               @DarkVader0
+/nuget.config              @DarkVader0
+
+# The decompression algorithms themselves. Getting these wrong is a diver safety issue, not a
+# build failure, so they are worth naming explicitly once there is more than one maintainer.
+/src/libraries/            @DarkVader0

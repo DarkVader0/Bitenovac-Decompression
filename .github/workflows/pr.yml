@@ -1,14 +1,27 @@
 name: PR
 
-# Every pull request builds and tests exactly the projects its changes reach, in both Debug
-# and Release, and holds any changed library to full line and branch coverage.
+# Every pull request builds and tests exactly the projects its changes reach, in both Debug and
+# Release, and holds any changed library to full line and branch coverage.
 #
-# What runs is derived from the project reference graph, not from directory names: a project
-# is selected when it changed or when it depends, directly or transitively, on something that
+# What runs is derived from the project reference graph, not from directory names: a project is
+# selected when it changed or when it depends, directly or transitively, on something that
 # changed. Nothing upstream of a change is retested.
 #
+# Shape:
+#
+#   plan ──┬──► debug  shard 0..N ──► restore, build, test, coverage gate
+#          │
+#          └──► release shard 0..N ──► restore, build, test
+#
+# The two configurations are independent stages that start together, because a change that
+# compiles in Debug and fails under optimised IL must not be mergeable. Within a stage each
+# shard owns a disjoint slice of the affected projects and finishes on its own; nothing is
+# handed between shards and there is no barrier before the coverage gate. That is only sound
+# because build/shards.awk keeps a project and every test project that covers it in the same
+# shard -- see the comment there.
+#
 # The real logic lives in build/ci.sh so anything CI does can be reproduced locally:
-#   CHANGED_FILES=src/libraries/.../Foo.cs bash build/ci.sh affected
+#   CHANGED_FILES=src/libraries/.../Foo.cs bash build/ci.sh plan
 # Keep this file thin.
 
 on:
@@ -24,56 +37,91 @@ permissions:
   contents: read
 
 env:
-  # Empty on a merge_group run, where ci.sh then treats every project as affected.
-  BASE_SHA: ${{ github.event.pull_request.base.sha }}
+  # A merge group is tested against the queue's base, so the affected-set narrowing applies to
+  # queued merges too. Leaving it empty there made every merge a full-repository build.
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+  DOTNET_NOLOGO: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
 
 jobs:
-  affected:
-    name: Select affected projects
+  # Timeouts are per job, which is the only granularity GitHub offers, and a job covers runner
+  # start-up, the SDK install and every project in its shard. They are sized to catch a hang, not
+  # to police how long one project takes: restore and build run all of a shard's projects in a
+  # single MSBuild session, so there is no per-project process left to time.
+  plan:
+    name: Plan
     runs-on: ubuntu-latest
+    timeout-minutes: 1
     outputs:
-      any: ${{ steps.select.outputs.any }}
+      any: ${{ steps.plan.outputs.any }}
+      shards: ${{ steps.plan.outputs.shards }}
     steps:
       - uses: actions/checkout@v4
         with:
-          # Full history is needed to diff against the merge base.
+          # Commit history is needed to diff against the merge base, but file contents are not:
+          # a blobless clone fetches blobs on demand and keeps a deep history cheap to clone.
           fetch-depth: 0
-
-      - id: select
-        run: bash build/ci.sh affected
-
-  verify:
-    name: Verify build assumptions
-    needs: affected
-    if: needs.affected.outputs.any == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      # The API is skipped on library changes because it consumes the algorithms as versioned
-      # packages, so it is not a dependent of anything under src/libraries. A project
-      # reference would silently turn every library change into an API build too.
-      - run: bash build/ci.sh verify-isolation
-
-  build:
-    name: Build & test (${{ matrix.configuration }})
-    needs: affected
-    if: needs.affected.outputs.any == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        configuration: [Debug, Release]
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          # The affected set is recomputed here rather than passed between jobs, so the full
-          # history is needed again.
-          fetch-depth: 0
+          filter: blob:none
 
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+
+      - id: plan
+        run: bash build/ci.sh plan
+
+      # Every later job reads this instead of recomputing it. Recomputation would also risk the
+      # two stages disagreeing about the shard partition.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-plan
+          path: artifacts/ci
+          retention-days: 1
+          if-no-files-found: error
+
+  verify:
+    name: Verify build assumptions
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    # Pure text analysis over the project files; it needs no SDK and no packages.
+    timeout-minutes: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+
+      # The API is skipped on library changes because it consumes the algorithms as versioned
+      # packages, so it is not a dependent of anything under src/libraries. A project reference
+      # would silently turn every library change into an API build too.
+      - run: bash build/ci.sh verify
+
+  debug:
+    name: Debug (shard ${{ matrix.shard }})
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    # Overhead plus up to PROJECTS_PER_SHARD projects built, tested and coverage-gated.
+    timeout-minutes: 1
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
+    env:
+      CI_SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ci-plan
+          path: artifacts/ci
 
       - name: Cache NuGet packages
         uses: actions/cache@v4
@@ -85,48 +133,122 @@ jobs:
       - name: Restore local tools
         run: dotnet tool restore
 
-      - name: Restore
-        run: bash build/ci.sh restore
+      - id: restore
+        name: Restore
+        run: bash build/ci.sh restore Debug
 
-      - name: Build
-        run: bash build/ci.sh build ${{ matrix.configuration }}
+      - id: build
+        name: Build
+        run: bash build/ci.sh build Debug
 
-      - name: Test
-        run: bash build/ci.sh test ${{ matrix.configuration }}
+      - id: test
+        name: Test
+        run: bash build/ci.sh test Debug
 
       # Coverage is gated on Debug only. Release IL is optimised and inlined, so the branch
-      # points coverlet records no longer map one-to-one onto the source: the same fully
-      # covered code measures 96.6% branch coverage in Release. Tests still run in both
-      # configurations above; only the measurement is taken from the unoptimised build.
-      - name: Coverage gate
-        if: matrix.configuration == 'Debug'
-        run: bash build/ci.sh coverage-gate ${{ matrix.configuration }}
+      # points coverlet records no longer map one-to-one onto the source: the same fully covered
+      # code measures 96.6% branch coverage in Release. Tests still run in both configurations;
+      # only the measurement is taken from the unoptimised build.
+      #
+      # Deliberately not run when the tests failed: coverage collected from a run that died
+      # part-way measures how far the tests got, not how much of the code is covered, so it would
+      # report failures that have nothing to do with coverage and bury the real one.
+      - id: gate
+        name: Coverage gate
+        run: bash build/ci.sh coverage-gate Debug
+
+      - name: Summarise
+        if: always()
+        run: CI_STAGE=Debug bash build/ci.sh summarise
+            "restore=${{ steps.restore.outcome }}"
+            "build=${{ steps.build.outcome }}"
+            "test=${{ steps.test.outcome }}"
+            "coverage-gate=${{ steps.gate.outcome }}"
 
       - name: Upload coverage report
-        if: always() && matrix.configuration == 'Debug'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-${{ matrix.configuration }}
-          path: artifacts/coverage-report/${{ matrix.configuration }}
+          name: coverage-Debug-shard-${{ matrix.shard }}
+          path: artifacts/coverage-report/Debug
           if-no-files-found: ignore
 
-  # The single check to mark as required in branch protection. It stays green when a job is
-  # skipped on purpose -- a docs-only pull request selects nothing -- and turns red the moment
-  # one actually fails, which a list of individually-required conditional jobs cannot do.
+  release:
+    name: Release (shard ${{ matrix.shard }})
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    # Same work as the Debug stage without the coverage gate.
+    timeout-minutes: 1
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
+    env:
+      CI_SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ci-plan
+          path: artifacts/ci
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - id: restore
+        name: Restore
+        run: bash build/ci.sh restore Release
+
+      - id: build
+        name: Build
+        run: bash build/ci.sh build Release
+
+      - id: test
+        name: Test
+        run: bash build/ci.sh test Release
+
+      - name: Summarise
+        if: always()
+        run: CI_STAGE=Release bash build/ci.sh summarise
+            "restore=${{ steps.restore.outcome }}"
+            "build=${{ steps.build.outcome }}"
+            "test=${{ steps.test.outcome }}"
+
+  # The single check to mark as required in the ruleset. It stays green when a job is skipped on
+  # purpose -- a docs-only pull request selects nothing -- and turns red the moment one actually
+  # fails, which a list of individually-required conditional jobs cannot do. It is also stable
+  # under sharding: the shard count changes with every pull request, so the matrix jobs can never
+  # be named as required checks.
   pr:
     name: PR
-    needs: [affected, verify, build]
+    needs: [plan, verify, debug, release]
     if: always()
     runs-on: ubuntu-latest
+    # Reads four job results and exits.
+    timeout-minutes: 1
     steps:
       - name: Check results
         run: |
-          echo "affected: ${{ needs.affected.result }} (any: ${{ needs.affected.outputs.any }})"
-          echo "verify:   ${{ needs.verify.result }}"
-          echo "build:    ${{ needs.build.result }}"
+          echo "plan:    ${{ needs.plan.result }} (any: ${{ needs.plan.outputs.any }})"
+          echo "verify:  ${{ needs.verify.result }}"
+          echo "debug:   ${{ needs.debug.result }}"
+          echo "release: ${{ needs.release.result }}"
 
           failed=0
-          for result in "${{ needs.affected.result }}" "${{ needs.verify.result }}" "${{ needs.build.result }}"; do
+          for result in "${{ needs.plan.result }}" "${{ needs.verify.result }}" \
+                        "${{ needs.debug.result }}" "${{ needs.release.result }}"; do
             case "${result}" in
               success|skipped) ;;
               *) failed=1 ;;
@@ -134,7 +256,7 @@ jobs:
           done
 
           if [ "${failed}" -ne 0 ]; then
-            echo "::error::At least one required job did not succeed."
+            echo "::error::At least one required job did not succeed. Every shard ran to completion; the run summary lists each stage and shard with the phase that failed."
             exit 1
           fi
 

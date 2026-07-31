@@ -8,6 +8,21 @@
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     </PropertyGroup>
 
+    <!--
+        Every managed project in the repository targets one framework, declared once here. A
+        project that needs a different one sets TargetFramework in its own file, which wins
+        because the project body is evaluated after this file.
+
+        Multi-targeting is deliberately not supported: 'build/ci.sh verify' fails any project
+        that declares TargetFrameworks, because a single TargetPath is what lets the pipeline
+        locate an output without knowing the language or the framework. Repositories that mix
+        languages need that indirection more, not less.
+    -->
+    <PropertyGroup>
+        <RepositoryTargetFramework>net10.0</RepositoryTargetFramework>
+        <TargetFramework Condition="'$(TargetFramework)' == '' AND '$(TargetFrameworks)' == ''">$(RepositoryTargetFramework)</TargetFramework>
+    </PropertyGroup>
+
     <PropertyGroup>
         <IsLibrary Condition="'$(IsLibrary)' == '' AND ($(MSBuildProjectDirectory.Contains('src/libraries')) OR $(MSBuildProjectDirectory.Contains('src\libraries')))">true</IsLibrary>
         <IsLibrary Condition="'$(IsLibrary)' == ''">false</IsLibrary>
@@ -25,7 +40,6 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(IsLibrary)' == 'true'">
-        <TargetFramework>net10.0</TargetFramework>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <AnalysisLevel>latest-recommended</AnalysisLevel>
         <Deterministic>true</Deterministic>
@@ -44,7 +58,6 @@
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
-        <TargetFramework>net10.0</TargetFramework>
         <IsPackable>false</IsPackable>
         <OutputType>Exe</OutputType>
         <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>

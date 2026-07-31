@@ -1,3 +1,27 @@
 ﻿<Project>
 
+    <!--
+        Reports the properties build/ci.sh needs, so the pipeline never has to parse project XML
+        or guess an output path. It is evaluated, not built: nothing here depends on a restore or
+        a compilation, which is what lets the plan step run before anything is restored.
+
+        TargetPath is the authoritative location of a project's output. Deriving it in the shell
+        from a hard-coded target framework breaks the moment a project multi-targets, moves its
+        output, or is written in another language.
+    -->
+    <Target Name="CiProjectInfo" Returns="@(CiProjectInfoResult)">
+        <ItemGroup>
+            <CiProjectInfoResult Include="$(MSBuildProjectFullPath)">
+                <RelativePath>$([MSBuild]::MakeRelative('$(CiRepoRoot)', '$(MSBuildProjectFullPath)').Replace('\', '/'))</RelativePath>
+                <AssemblyName>$(AssemblyName)</AssemblyName>
+                <IsTestProject>$(IsTestProject)</IsTestProject>
+                <ExcludeFromCoverage>$(ExcludeFromCoverage)</ExcludeFromCoverage>
+                <MinimumLineCoverage>$(MinimumLineCoverage)</MinimumLineCoverage>
+                <MinimumBranchCoverage>$(MinimumBranchCoverage)</MinimumBranchCoverage>
+                <TargetPath>$(TargetPath)</TargetPath>
+                <TargetFrameworks>$(TargetFrameworks)</TargetFrameworks>
+            </CiProjectInfoResult>
+        </ItemGroup>
+    </Target>
+
 </Project>

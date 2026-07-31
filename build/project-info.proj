@@ -1,0 +1,61 @@
+<!--
+    Reads the CI-relevant properties of every project in one MSBuild process.
+
+    Asking each project separately costs an SDK start-up per project, which is a second or two
+    each and dominates every step that needs this data once the repository holds more than a
+    handful of projects. The MSBuild task evaluates them all in-process, in parallel.
+
+    Invoked by build/ci.sh; not part of the solution and not built by anything else.
+
+        dotnet msbuild build/project-info.proj -m -nologo \
+            -p:CiRepoRoot=<root>\ -p:Configuration=Debug \
+            -p:CiProjectsFile=<file of repository-relative project paths, one per line> \
+            -p:CiInfoOutput=<file>
+
+    The project list arrives as a file rather than as a property because the MSBuild command line
+    splits a property value on a semicolon, and escaping the separator to survive that stops the
+    item Include from splitting on it at all.
+
+    The CiProjectInfo target it calls is defined in Directory.Build.targets, so every project that
+    imports the repository's build files answers it, whatever its language.
+-->
+<Project DefaultTargets="Emit">
+
+    <PropertyGroup>
+        <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    </PropertyGroup>
+
+    <Target Name="Emit">
+        <Error Condition="'$(CiProjectsFile)' == ''" Text="CiProjectsFile was not supplied." />
+        <Error Condition="'$(CiInfoOutput)' == ''" Text="CiInfoOutput was not supplied." />
+        <Error Condition="'$(CiRepoRoot)' == ''" Text="CiRepoRoot was not supplied." />
+
+        <ReadLinesFromFile File="$(CiProjectsFile)">
+            <Output TaskParameter="Lines" ItemName="CiProjectRelative" />
+        </ReadLinesFromFile>
+
+        <ItemGroup>
+            <!--
+                Paths arrive repository-relative, but an item Include is resolved against the
+                directory of the file declaring it (build/), not against the working directory.
+                Rooting each one keeps the caller free to use the relative paths it uses
+                everywhere else.
+            -->
+            <CiProjectToScan Include="@(CiProjectRelative->'$(CiRepoRoot)%(Identity)')" />
+        </ItemGroup>
+
+        <MSBuild Projects="@(CiProjectToScan)"
+                 Targets="CiProjectInfo"
+                 Properties="Configuration=$(Configuration);CiRepoRoot=$(CiRepoRoot)"
+                 BuildInParallel="true"
+                 SkipNonexistentProjects="false">
+            <Output TaskParameter="TargetOutputs" ItemName="CiProjectInfoResult" />
+        </MSBuild>
+
+        <!-- %09 is a tab: the reader in build/ci.sh splits on it. -->
+        <WriteLinesToFile File="$(CiInfoOutput)"
+                          Overwrite="true"
+                          Lines="@(CiProjectInfoResult->'%(RelativePath)%09%(AssemblyName)%09%(IsTestProject)%09%(ExcludeFromCoverage)%09%(MinimumLineCoverage)%09%(MinimumBranchCoverage)%09%(TargetPath)%09%(TargetFrameworks)')" />
+    </Target>
+
+</Project>
