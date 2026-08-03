@@ -3,24 +3,19 @@
 namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 
 /// <summary>
-/// Provides calculations of oxygen toxicity exposure: the central nervous system (CNS)
-/// toxicity expressed as a percentage of the recommended single-exposure limit, and the
-/// pulmonary oxygen toxicity expressed in oxygen tolerance units (OTU). Both quantities
-/// depend only on the partial pressure of oxygen and the time of exposure and so are
-/// independent of the decompression model in use.
+/// Provides calculations of oxygen toxicity exposure: central nervous system (CNS) toxicity as a
+/// percentage of the recommended single-exposure limit, and pulmonary oxygen toxicity in oxygen
+/// tolerance units (OTU). Both depend only on the partial pressure of oxygen and the time, and
+/// are shared by every decompression model.
 /// </summary>
 /// <remarks>
-/// The core calculations operate on partial pressures in millibars and durations in
-/// seconds, matching the integer canonical units used on the planning hot path.
-/// Strongly-typed overloads that accept a <see cref="Pressure" /> and a
-/// <see cref="TimeSpan" /> are provided for callers elsewhere in the system. The central
-/// nervous system rate is the two-line exponential fit to the logarithm of the NOAA
-/// single-exposure table used by common dive-planning software. Both the central nervous
-/// system and the pulmonary (OTU) calculations evaluate the exact time-integral of their
-/// relation over a segment during which the partial pressure of oxygen changes linearly,
-/// which is more precise than a fixed-mean evaluation or a truncated polynomial
-/// approximation. Evaluating either relation at the mean partial pressure of a segment
-/// understates the exposure, because both are convex in the partial pressure.
+/// The core calculations take partial pressures in millibars and durations in seconds, matching
+/// the integer units used on the planning hot path; overloads taking a <see cref="Pressure" />
+/// and a <see cref="TimeSpan" /> are provided for other callers. The CNS rate is the two-line
+/// exponential fit to the logarithm of the NOAA single-exposure table used by common
+/// dive-planning software. Both calculations evaluate the exact time-integral of their relation
+/// over a segment whose partial pressure of oxygen changes linearly. Both relations are convex
+/// in the partial pressure, so evaluating either at a segment's mean understates the exposure.
 /// </remarks>
 public static class OxygenToxicity
 {
@@ -107,8 +102,7 @@ public static class OxygenToxicity
         int endPo2Mbar,
         int durationSec)
     {
-        // A flat segment has no ramp to integrate over, and the exposure is simply the rate
-        // at that partial pressure held for the duration.
+        // A flat segment has no ramp to integrate over: the rate held for the duration.
         if (startPo2Mbar == endPo2Mbar)
         {
             return CalculateCns(startPo2Mbar, durationSec);

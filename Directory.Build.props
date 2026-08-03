@@ -8,14 +8,12 @@
     </PropertyGroup>
 
     <!--
-        Every managed project in the repository targets one framework, declared once here. A
-        project that needs a different one sets TargetFramework in its own file, which wins
-        because the project body is evaluated after this file.
+        Every managed project targets one framework, declared here. A project that needs a
+        different one sets TargetFramework in its own file, which wins: the project body is
+        evaluated after this file.
 
-        Multi-targeting is deliberately not supported: 'build/ci.sh verify' fails any project
-        that declares TargetFrameworks, because a single TargetPath is what lets the pipeline
-        locate an output without knowing the language or the framework. Repositories that mix
-        languages need that indirection more, not less.
+        Multi-targeting is not supported. CI fails any project declaring TargetFrameworks,
+        because an outer multi-targeting build reports no TargetPath to locate the output by.
     -->
     <PropertyGroup>
         <RepositoryTargetFramework>net10.0</RepositoryTargetFramework>
@@ -64,10 +62,8 @@
     </PropertyGroup>
 
     <!--
-        Coverage policy, enforced per project by build/ci.sh on every pull request that touches
-        the project. Every project is held to full coverage by default; a project lowers the bar
-        or opts out by setting these in its own file, which keeps the exception next to the code
-        it excuses and visible in review:
+        Coverage policy, read per project by CI. Full coverage by default; a project lowers the
+        bar or opts out in its own file, keeping the exception next to the code it excuses:
 
             <PropertyGroup>
                 <MinimumLineCoverage>90</MinimumLineCoverage>

@@ -8,31 +8,29 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.BuhlmannZhl16c;
 
 /// <summary>
-/// The Bühlmann ZH-L16C dissolved-gas decompression model with gradient factors. Sixteen
-/// tissue compartments track dissolved nitrogen and helium; constant-depth segments load
-/// the tissues with the instantaneous (Haldane) exponential and depth-changing segments
-/// with the Schreiner equation; the decompression ceiling is the deepest tolerated
-/// ambient pressure over all compartments under the gradient-factor-reduced M-values.
-/// Repetitive dives are supported without stored state: <see cref="BeginDive" /> replays
-/// the request's prior dives — working phase, generated final ascent, and surface
-/// interval, each under that dive's own settings — to reconstruct the residual tissue
-/// loading deterministically from pure inputs. All internal arithmetic is performed in
-/// millibars and meters, the canonical units of <see cref="Pressure" /> and
-/// <see cref="Depth" />.
+/// The Bühlmann ZH-L16C dissolved-gas decompression model with gradient factors.
 /// </summary>
 /// <remarks>
+/// Sixteen tissue compartments track dissolved nitrogen and helium. Constant-depth segments load
+/// them with the instantaneous (Haldane) exponential and depth-changing segments with the
+/// Schreiner equation; the decompression ceiling is the deepest tolerated ambient pressure over
+/// all compartments under the gradient-factor-reduced M-values. All arithmetic is in millibars
+/// and meters.
 /// <para>
-/// An instance plans one dive at a time and is not thread-safe: the model state and the
-/// returned final-ascent list are pooled and reused, so <see cref="BeginDive" />
-/// invalidates any state previously returned by this instance, and
-/// <see cref="CalculateFinalAscent" /> invalidates its previously returned list. In
-/// return, a warmed instance allocates no heap memory while planning.
+/// Repetitive dives need no stored state: <see cref="BeginDive" /> replays the request's prior
+/// dives — working phase, generated final ascent and surface interval, each under that dive's
+/// own settings — to reconstruct the residual tissue loading.
 /// </para>
 /// <para>
-/// The gradient-factor slope is anchored at the first decompression stop: the low factor
-/// applies at the first stop and the high factor at the surface, interpolated linearly by
-/// depth. <see cref="CurrentCeiling" /> reports the ceiling at the low factor, the
-/// conservative bound appropriate while the working phase is still in progress.
+/// An instance plans one dive at a time and is not thread-safe. The model state and the returned
+/// final-ascent list are pooled and reused, so <see cref="BeginDive" /> invalidates state
+/// previously returned by this instance and <see cref="CalculateFinalAscent" /> invalidates its
+/// previously returned list. A warmed instance allocates nothing on the heap while planning.
+/// </para>
+/// <para>
+/// The gradient-factor slope is anchored at the first decompression stop: the low factor applies
+/// there and the high factor at the surface, interpolated linearly by depth.
+/// <see cref="CurrentCeiling" /> reports the ceiling at the low factor.
 /// </para>
 /// </remarks>
 public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
@@ -461,9 +459,8 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
             return;
         }
 
-        // The ascent to the surface is the decompression phase, so a closed-circuit loop is
-        // raised to its decompression setpoint here and every segment emitted below carries
-        // it.
+        // The ascent to the surface is the decompression phase: a closed-circuit loop is raised
+        // to its decompression setpoint here, and every segment emitted below carries it.
         state.CurrentLoop = state.CurrentLoop.ForDecompression();
 
         var averageDepthMeter = state.RuntimeMinutes > 0.0

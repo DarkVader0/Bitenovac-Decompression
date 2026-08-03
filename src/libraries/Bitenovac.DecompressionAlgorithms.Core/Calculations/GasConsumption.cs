@@ -23,12 +23,10 @@ public static class GasConsumption
 {
     /// <summary>
     /// Computes the gas consumed from each supplied cylinder over the given expanded dive
-    /// profile. Each segment draws from the cylinder holding its supply gas — preferring the
-    /// diluent supply when the segment is breathed through a rebreather — at the rate its
-    /// breathing apparatus demands. Only decompression stops are breathed at the
-    /// decompression rate; every other segment, including descents, bottom time, working
-    /// ascents between levels, and gas switches, is breathed at the higher bottom rate,
-    /// since the diver is moving or working rather than holding a stop.
+    /// profile. Each segment draws from the cylinder holding its supply gas, preferring the
+    /// diluent supply when breathed through a rebreather, at the rate its apparatus demands.
+    /// Only decompression stops use the decompression rate; every other segment, including
+    /// descents, bottom time, working ascents and gas switches, uses the bottom rate.
     /// </summary>
     /// <param name="segments">The fully expanded, ordered, depth-contiguous dive segments.</param>
     /// <param name="cylinders">The cylinders available to the diver.</param>
@@ -58,13 +56,11 @@ public static class GasConsumption
             throw new ArgumentException("At least one cylinder must be available.", nameof(cylinders));
         }
 
-        // Accumulate the free-gas volume consumed from each cylinder, indexed in step with
-        // the supplied cylinder list.
+        // Indexed in step with the supplied cylinder list.
         var consumedMilliliters = new double[cylinders.Count];
 
-        // The depth at which each segment begins is the depth at which the previous one
-        // ended, so that the loop make-up over a descent can be measured. The first segment
-        // begins at the surface.
+        // Each segment begins where the previous one ended, which is what makes the loop
+        // make-up over a descent measurable. The first begins at the surface.
         var previousDepthMeter = 0.0;
 
         foreach (var segment in segments)
@@ -109,10 +105,8 @@ public static class GasConsumption
                 "A segment's supply gas does not match any supplied cylinder.");
         }
 
-        // Only decompression stops are breathed at the decompression rate; descent, bottom,
-        // working ascents between levels, and gas switches are all breathed at the higher
-        // bottom rate, since the diver is moving or working rather than holding a stop. The
-        // metabolic demand of a rebreather diver is split the same way.
+        // Only decompression stops use the decompression rate. The metabolic demand of a
+        // rebreather diver is split the same way.
         var restingAtAStop = segment.Kind == SegmentKind.Stop;
         var sacLitersPerMinute = restingAtAStop
             ? settings.DecoSacLitersPerMinute

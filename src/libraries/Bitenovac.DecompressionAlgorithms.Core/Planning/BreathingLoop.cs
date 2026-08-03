@@ -5,39 +5,27 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
 /// <summary>
-/// Describes the breathing apparatus in use during a segment and derives the gas the diver
-/// actually inspires from the supply mixture carried in the cylinder. On open circuit the
-/// inspired gas is the supply gas itself; on a rebreather the loop alters it, so the
-/// inspired mixture is a function of the supply gas, the ambient pressure, and the
-/// apparatus.
-/// <para>
-/// A closed-circuit loop injects oxygen to hold a target partial pressure, the setpoint.
-/// The inspired partial pressure of oxygen is therefore the setpoint, bounded below by what
-/// the diluent alone provides — oxygen cannot be removed from the loop — and above by the
-/// ambient pressure, which pure oxygen would reach. A loop may be run at one setpoint on the
-/// bottom and raised to another for the decompression ascent; the loop carries both, and
-/// <see cref="ForDecompression" /> returns the form that holds the raised one.
-/// </para>
-/// <para>
-/// A passive semi-closed loop vents a fixed fraction of each exhaled breath and replaces it
-/// with fresh supply gas. In the steady state the metabolised oxygen is replenished by that
-/// fresh gas, leaving the loop poorer in oxygen than the supply by a fixed partial pressure;
-/// see <see cref="SemiClosedOxygenDropCoefficient" /> for the derivation. The drop is a
-/// constant in pressure rather than in fraction, so a semi-closed loop is proportionally
-/// much leaner near the surface than at depth, and can become hypoxic during the shallow
-/// stops on a lean supply gas. The shortfall also varies inversely with how hard the diver
-/// is breathing, but it is fixed for the dive at the rate chosen when the loop is built,
-/// rather than following the working and decompression rates segment by segment.
-/// </para>
-/// <para>
-/// In every mode the inert gas makes up the balance of the inspired mixture, divided between
-/// nitrogen and helium in the same ratio as the supply gas, since the loop neither adds nor
-/// removes inert gas.
-/// </para>
+/// Describes the breathing apparatus in use during a segment and derives the inspired gas from
+/// the supply mixture carried in the cylinder.
 /// </summary>
 /// <remarks>
-/// Instances are immutable, and the default instance is an open-circuit loop, so a segment
-/// that does not specify an apparatus is breathed open circuit.
+/// On open circuit the inspired gas is the supply gas. A closed-circuit loop injects oxygen to
+/// hold its setpoint, bounded below by what the diluent alone provides and above by the ambient
+/// pressure. A loop may run one setpoint on the bottom and a raised one on the decompression
+/// ascent; <see cref="ForDecompression" /> returns the form holding the raised one.
+/// <para>
+/// A passive semi-closed loop vents a fixed fraction of each exhaled breath and replaces it with
+/// fresh supply gas, leaving the loop poorer in oxygen than the supply by a fixed partial
+/// pressure; see <see cref="SemiClosedOxygenDropCoefficient" />. The drop is constant in
+/// pressure rather than in fraction, so such a loop runs proportionally leaner near the surface
+/// and can become hypoxic on the shallow stops with a lean supply gas. It is fixed for the dive
+/// at the breathing rate chosen when the loop is built.
+/// </para>
+/// <para>
+/// In every mode the inert gas makes up the balance, divided between nitrogen and helium in the
+/// ratio of the supply gas.
+/// </para>
+/// <para>Instances are immutable. The default instance is an open-circuit loop.</para>
 /// </remarks>
 public readonly struct BreathingLoop : IEquatable<BreathingLoop>
 {
@@ -174,21 +162,18 @@ public readonly struct BreathingLoop : IEquatable<BreathingLoop>
     }
 
     /// <summary>
-    /// Returns the shortfall in the partial pressure of oxygen that a passive semi-closed
-    /// loop would run at were its supply gas free of oxygen, from which the shortfall on any
-    /// actual supply follows by scaling with that supply's inert fraction.
+    /// Returns the shortfall in the partial pressure of oxygen a passive semi-closed loop runs
+    /// at on an oxygen-free supply. Scale by the inert fraction for an actual supply.
     /// </summary>
     /// <remarks>
-    /// In the steady state the loop vents a fraction <c>r</c> of each exhaled breath, so the
-    /// fresh supply gas flows through it at <c>r · RMV · Pamb / Psurf</c> in surface-referenced
-    /// volume, while metabolism removes oxygen at <c>V̇O₂</c> and the inert gas of the fresh
-    /// supply takes its place. Balancing the oxygen entering and leaving the loop gives an
-    /// oxygen fraction below the supply's by <c>V̇O₂ · (1 − FO₂) / flow</c>. Because the flow
-    /// grows in proportion to the ambient pressure while the metabolic demand does not, that
-    /// fractional shortfall shrinks with depth exactly as fast as the ambient pressure grows,
-    /// leaving a shortfall in partial pressure that is constant over the dive:
-    /// <c>ΔpO₂ = V̇O₂ · (1 − FO₂) · Psurf / (r · RMV)</c>. This method returns that expression
-    /// without its <c>(1 − FO₂)</c> factor, which depends on the supply in use.
+    /// In the steady state the loop vents a fraction <c>r</c> of each exhaled breath, so fresh
+    /// supply flows through it at <c>r · RMV · Pamb / Psurf</c> in surface-referenced volume
+    /// while metabolism removes oxygen at <c>V̇O₂</c>. Balancing the oxygen entering and leaving
+    /// puts the loop below the supply's oxygen fraction by <c>V̇O₂ · (1 − FO₂) / flow</c>. The
+    /// flow grows with the ambient pressure and the metabolic demand does not, so the shortfall
+    /// in partial pressure is constant over the dive:
+    /// <c>ΔpO₂ = V̇O₂ · (1 − FO₂) · Psurf / (r · RMV)</c>, returned here without the
+    /// <c>(1 − FO₂)</c> factor.
     /// </remarks>
     /// <param name="dumpRatio">The fraction of each exhaled breath the loop vents, in (0, 1].</param>
     /// <param name="metabolicOxygenConsumptionLitersPerMinute">

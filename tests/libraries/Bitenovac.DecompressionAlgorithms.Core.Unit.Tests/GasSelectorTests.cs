@@ -349,7 +349,8 @@ public sealed class GasSelectorTests
     }
 
     [Fact]
-    public void MaxOperatingDepthMeter_ShouldReturnExactlyTwentyTwoMeters_WhenTheModelIsSimplifiedAndTheGasIsNitroxFifty()
+    public void
+        MaxOperatingDepthMeter_ShouldReturnExactlyTwentyTwoMeters_WhenTheModelIsSimplifiedAndTheGasIsNitroxFifty()
     {
         // Arrange
         // (1.6 / 0.50 - 1) * 10 = 22.
@@ -384,16 +385,17 @@ public sealed class GasSelectorTests
     {
         // Arrange
         var atSeaLevelInFreshWater = TestFactory.CreateSettings(
-            surfacePressure: Pressure.FromMillibar(1000),
-            salinity: Salinity.Fresh,
+            Pressure.FromMillibar(1000),
+            Salinity.Fresh,
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
         var atAltitudeInSaltWater = TestFactory.CreateSettings(
-            surfacePressure: Pressure.FromMillibar(800),
-            salinity: Salinity.Salt,
+            Pressure.FromMillibar(800),
+            Salinity.Salt,
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
 
         // Act
-        var fresh = GasSelector.MaxOperatingDepthMeter(GasMixture.Oxygen, Pressure.FromBar(1.6), atSeaLevelInFreshWater);
+        var fresh = GasSelector.MaxOperatingDepthMeter(GasMixture.Oxygen, Pressure.FromBar(1.6),
+            atSeaLevelInFreshWater);
         var salt = GasSelector.MaxOperatingDepthMeter(GasMixture.Oxygen, Pressure.FromBar(1.6), atAltitudeInSaltWater);
 
         // Assert
@@ -489,8 +491,8 @@ public sealed class GasSelectorTests
         // In salt water off a 1000 mbar surface the ambient pressure at 6 m is
         // 1000 + 1030 * 9.80665 * 6 / 100 = 1606.05 mbar, just beyond a 1.6 bar limit.
         var settings = TestFactory.CreateSettings(
-            surfacePressure: Pressure.FromMillibar(1000),
-            salinity: Salinity.Salt,
+            Pressure.FromMillibar(1000),
+            Salinity.Salt,
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic);
 
         // Act
@@ -507,8 +509,8 @@ public sealed class GasSelectorTests
         // The same depth and environment that the realistic model rejects, admitted because
         // six meters is the published maximum operating depth of oxygen at 1.6 bar.
         var settings = TestFactory.CreateSettings(
-            surfacePressure: Pressure.FromMillibar(1000),
-            salinity: Salinity.Salt,
+            Pressure.FromMillibar(1000),
+            Salinity.Salt,
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
 
         // Act
@@ -540,8 +542,8 @@ public sealed class GasSelectorTests
         const double MillibarPerMeter = 1000.0 * 9.80665 / 100.0;
         var depthMeter = (1400.0 - 1000.0) / MillibarPerMeter;
         var settings = TestFactory.CreateSettings(
-            surfacePressure: Pressure.FromMillibar(1000),
-            salinity: Salinity.Fresh,
+            Pressure.FromMillibar(1000),
+            Salinity.Fresh,
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic);
 
         // Act
@@ -600,8 +602,8 @@ public sealed class GasSelectorTests
     {
         // Arrange
         var settings = TestFactory.CreateSettings(
-            surfacePressure: Pressure.FromMillibar(1000),
-            salinity: Salinity.Salt,
+            Pressure.FromMillibar(1000),
+            Salinity.Salt,
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic);
         Cylinder[] cylinders =
         [
@@ -621,8 +623,8 @@ public sealed class GasSelectorTests
     {
         // Arrange
         var settings = TestFactory.CreateSettings(
-            surfacePressure: Pressure.FromMillibar(1000),
-            salinity: Salinity.Salt,
+            Pressure.FromMillibar(1000),
+            Salinity.Salt,
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
         Cylinder[] cylinders =
         [

@@ -33,20 +33,16 @@ public static class GasSelector
     private const double DepthToleranceMeter = 1e-9;
 
     /// <summary>
-    /// Selects the richest breathing gas from the available cylinders whose partial
-    /// pressure of oxygen at the given ambient pressure does not exceed the permitted
-    /// limit. Among the cylinders that are permissible at the depth, the one whose gas has
-    /// the highest oxygen fraction is chosen; ties are resolved in favor of the higher
-    /// helium content, so that the least narcotic of two otherwise equivalent gases is
-    /// preferred.
+    /// Selects the richest breathing gas from the available cylinders whose partial pressure of
+    /// oxygen at the given ambient pressure does not exceed the permitted limit. Ties on oxygen
+    /// fraction are resolved in favor of the higher helium content, which is less narcotic.
     /// </summary>
     /// <param name="cylinders">The cylinders available to the diver.</param>
     /// <param name="ambient">The absolute ambient pressure at the depth for which a gas is being selected.</param>
     /// <param name="maxPo2">The maximum permitted partial pressure of oxygen at that depth.</param>
     /// <param name="requiredPurpose">
-    /// When supplied, restricts the choice to cylinders carried for that role, so that a
-    /// rebreather draws only on its diluent supply rather than on the open-circuit stages
-    /// carried alongside it. When omitted, every cylinder is a candidate.
+    /// When supplied, restricts the choice to cylinders carried for that role, so a rebreather
+    /// draws only on its diluent supply. When omitted, every cylinder is a candidate.
     /// </param>
     /// <returns>The cylinder holding the richest gas that is breathable within the limit at the given depth.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="cylinders" /> is <see langword="null" />.</exception>
@@ -82,8 +78,6 @@ public static class GasSelector
                 continue;
             }
 
-            // The gas is permissible only if its oxygen partial pressure at this depth is
-            // within the limit.
             if (cylinder.Gas.PartialPressureO2(ambient).InMillibar > maxPo2.InMillibar)
             {
                 continue;
@@ -177,8 +171,7 @@ public static class GasSelector
 
         var operatingPressure = MaxOperatingPressure(gas, maxPo2);
 
-        // The settings admit no model beyond these two, so the realistic conversion stands as
-        // the alternative rather than as a default that could never be reached.
+        // The settings admit no model beyond these two.
         var depthMeter = settings.MaximumOperatingDepthModel is MaximumOperatingDepthModel.Simplified
             ? (operatingPressure.InBar - SimplifiedSurfaceBar) * SimplifiedMetersPerBar
             : AmbientConditions.DepthAtPressure(settings, operatingPressure).InMeter;
@@ -215,12 +208,11 @@ public static class GasSelector
                 "The maximum partial pressure of oxygen must be greater than zero.");
         }
 
-        // Under the simplified model a gas holding no oxygen has no maximum operating depth to
-        // compare against, and is breathable at every depth as far as the oxygen limit is
-        // concerned. The settings admit no model beyond these two.
+        // Under the simplified model a gas holding no oxygen has no maximum operating depth, so
+        // the oxygen limit does not bound it at any depth.
         return settings.MaximumOperatingDepthModel is MaximumOperatingDepthModel.Simplified
             ? gas.FractionO2 <= 0.0
-                || depthMeter <= MaxOperatingDepthMeter(gas, maxPo2, settings) + DepthToleranceMeter
+              || depthMeter <= MaxOperatingDepthMeter(gas, maxPo2, settings) + DepthToleranceMeter
             : gas.PartialPressureO2(AmbientConditions.PressureAtDepth(settings, Depth.FromMeter(depthMeter)))
                 .InMillibar <= maxPo2.InMillibar;
     }
@@ -228,17 +220,15 @@ public static class GasSelector
     /// <summary>
     /// Selects the richest breathing gas from the available cylinders that may be breathed at
     /// the given depth, applying the maximum operating depth model carried by the settings.
-    /// Ties are resolved in favor of the higher helium content, so that the least narcotic of
-    /// two otherwise equivalent gases is preferred.
+    /// Ties are resolved in favor of the higher helium content, which is less narcotic.
     /// </summary>
     /// <param name="cylinders">The cylinders available to the diver.</param>
     /// <param name="depthMeter">The depth, in meters, for which a gas is being selected.</param>
     /// <param name="maxPo2">The maximum permitted partial pressure of oxygen at that depth.</param>
     /// <param name="settings">The settings supplying the environment and the depth model.</param>
     /// <param name="requiredPurpose">
-    /// When supplied, restricts the choice to cylinders carried for that role, so that a
-    /// rebreather draws only on its diluent supply rather than on the open-circuit stages
-    /// carried alongside it. When omitted, every cylinder is a candidate.
+    /// When supplied, restricts the choice to cylinders carried for that role, so a rebreather
+    /// draws only on its diluent supply. When omitted, every cylinder is a candidate.
     /// </param>
     /// <returns>The cylinder holding the richest gas that is breathable at the given depth.</returns>
     /// <exception cref="ArgumentNullException">

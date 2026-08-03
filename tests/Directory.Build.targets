@@ -2,11 +2,10 @@
 
     <!--
         A nested Directory.Build.targets replaces the one above it rather than adding to it, so
-        the repository-wide targets have to be imported explicitly. Without this line no test
-        project sees the root file, and the CI project-info target defined there is missing from
-        exactly the projects the coverage gate depends on.
+        the root file has to be imported explicitly. Without this line no test project sees the
+        targets defined there.
     -->
-    <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../'))" />
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildThisFileDirectory)../'))"/>
 
     <ItemGroup Condition="'$(IsTestProject)' == 'true'">
         <Content Include="$(MSBuildThisFileDirectory)xunit.runner.json" Link="xunit.runner.json" CopyToOutputDirectory="PreserveNewest"/>

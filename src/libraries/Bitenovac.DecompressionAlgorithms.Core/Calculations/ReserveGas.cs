@@ -11,19 +11,15 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 /// retain enough gas to bring the whole team, under stress, from the deepest point at
 /// which its gas is breathed up to the next breathable gas (the next gas switch or the
 /// surface); gas below the regulator's intermediate pressure is treated as unusable and is
-/// excluded from what remains. A decompression-gas cylinder must simply retain a fixed
-/// fraction of its capacity, so that no more than the permitted fraction is ever consumed. A
-/// bailout cylinder is assessed like a bottom gas, but over the band of the ascent it is
-/// responsible for, since it is carried against an emergency that the plan never reaches. The
-/// diluent and oxygen supplies of a rebreather are not assessed and are reported with a zero
-/// requirement. Whether a reserve is met is an expected planning outcome and is reported
-/// through flags rather than by throwing.
+/// excluded from what remains. A decompression-gas cylinder must retain a fixed fraction of its
+/// capacity. A bailout cylinder is assessed like a bottom gas, over the band of the ascent it
+/// covers. The diluent and oxygen supplies of a rebreather are reported with a zero requirement.
+/// An unmet reserve is reported through flags rather than by throwing.
 /// </summary>
 public static class ReserveGas
 {
     /// <summary>
-    /// The maximum fraction of a decompression cylinder's capacity that may be consumed,
-    /// so that a reserve of the remaining fraction is always retained.
+    /// The maximum fraction of a decompression cylinder's capacity that may be consumed.
     /// </summary>
     private const double MaxDecoGasUsageFraction = 0.40;
 

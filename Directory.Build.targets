@@ -1,13 +1,13 @@
 ﻿<Project>
 
     <!--
-        Reports the properties build/ci.sh needs, so the pipeline never has to parse project XML
-        or guess an output path. It is evaluated, not built: nothing here depends on a restore or
-        a compilation, which is what lets the plan step run before anything is restored.
+        Reports the properties CI reads, so nothing downstream parses project XML or guesses an
+        output path. Evaluated rather than built: it depends on no restore and no compilation, so
+        it can be queried before anything is restored.
 
-        TargetPath is the authoritative location of a project's output. Deriving it in the shell
-        from a hard-coded target framework breaks the moment a project multi-targets, moves its
-        output, or is written in another language.
+        TargetPath is the authoritative location of a project's output. Deriving it from a
+        hard-coded target framework breaks as soon as a project moves its output or is written in
+        another language.
     -->
     <Target Name="CiProjectInfo" Returns="@(CiProjectInfoResult)">
         <ItemGroup>

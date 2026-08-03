@@ -3,24 +3,11 @@ name: PR
 # Builds and tests the projects a pull request's changes reach, in both Debug and Release, and
 # holds any changed library to full line and branch coverage.
 #
-# What runs is derived from the project reference graph, not from directory names: a project is
-# selected when it changed or when it depends, directly or transitively, on something that
-# changed. Nothing upstream of a change is retested.
-#
-# Shape:
-#
 #   plan ──┬──► debug  shard 0..N ──► restore, build, test, coverage gate
 #          │
 #          └──► release shard 0..N ──► restore, build, test
 #
-# The two configurations are independent stages that start together, so a change that compiles
-# in Debug and fails under optimised IL cannot be merged. Within a stage each shard owns a
-# disjoint slice of the affected projects and finishes on its own, with no barrier before the
-# coverage gate; build/shards.awk keeps a project and every test project covering it in the same
-# shard.
-#
-# The logic lives in build/ci.sh so anything CI does can be reproduced locally:
-#   CHANGED_FILES=src/libraries/.../Foo.cs bash build/ci.sh plan
+# Which projects each shard owns is decided by build/ci.sh plan.
 
 on:
   pull_request:
@@ -42,13 +29,10 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
 
 jobs:
-  # Timeouts are per job, the only granularity GitHub offers, and a job covers runner start-up,
-  # the SDK install and every project in its shard. They are sized to catch a hang rather than to
-  # bound one project: restore and build run all of a shard's projects in a single MSBuild
-  # session, leaving no per-project process to time.
+  # Every timeout below is sized to catch a hang, not to bound how long the work takes.
   plan:
     name: Plan
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, bitenovac]
     timeout-minutes: 1
     outputs:
       any: ${{ steps.plan.outputs.any }}
@@ -56,20 +40,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Diffing against the merge base needs commit history but not file contents; a blobless
-          # clone fetches blobs on demand.
+          # Diffing against the merge base needs history but not file contents.
           fetch-depth: 0
           filter: blob:none
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-
       - id: plan
-        run: bash build/ci.sh plan
+        run: bash runner/in-container.sh plan
 
-      # Every later job reads this instead of recomputing it, which would risk the two stages
-      # disagreeing about the shard partition.
+      # Every later job downloads this rather than planning again, so all stages shard alike.
       - uses: actions/upload-artifact@v4
         with:
           name: ci-plan
@@ -81,25 +59,20 @@ jobs:
     name: Verify build assumptions
     needs: plan
     if: needs.plan.outputs.any == 'true'
-    runs-on: ubuntu-latest
-    # Pure text analysis over the project files; it needs no SDK and no packages.
+    runs-on: [self-hosted, linux, x64, bitenovac]
     timeout-minutes: 1
     steps:
       - uses: actions/checkout@v4
         with:
           filter: blob:none
 
-      # The API is skipped on library changes because it consumes the algorithms as versioned
-      # packages and is therefore not a dependent of anything under src/libraries. A project
-      # reference would turn every library change into an API build.
-      - run: bash build/ci.sh verify
+      - run: bash runner/in-container.sh verify
 
   debug:
     name: Debug (shard ${{ matrix.shard }})
     needs: plan
     if: needs.plan.outputs.any == 'true'
-    runs-on: ubuntu-latest
-    # Overhead plus up to PROJECTS_PER_SHARD projects built, tested and coverage-gated.
+    runs-on: [self-hosted, linux, x64, bitenovac]
     timeout-minutes: 1
     strategy:
       fail-fast: false
@@ -112,53 +85,32 @@ jobs:
         with:
           filter: blob:none
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-
       - uses: actions/download-artifact@v4
         with:
           name: ci-plan
           path: artifacts/ci
 
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          # Keyed on the central version list, which is the only file that changes what gets
-          # restored. There are no lock files to hash: see the comment in build/ci.sh restore.
-          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
-          restore-keys: nuget-${{ runner.os }}-
-
-      - name: Restore local tools
-        run: dotnet tool restore
-
       - id: restore
         name: Restore
-        run: bash build/ci.sh restore Debug
+        run: bash runner/in-container.sh restore Debug
 
       - id: build
         name: Build
-        run: bash build/ci.sh build Debug
+        run: bash runner/in-container.sh build Debug
 
       - id: test
         name: Test
-        run: bash build/ci.sh test Debug
+        run: bash runner/in-container.sh test Debug
 
-      # Coverage is gated on Debug only. Release IL is optimised and inlined, so the branch
-      # points coverlet records no longer map one-to-one onto the source: the same fully covered
-      # code measures 96.6% branch coverage in Release. Tests still run in both configurations;
-      # only the measurement is taken from the unoptimised build.
-      #
-      # Not run when the tests failed. Coverage collected from a run that died part-way measures
-      # how far the tests got, reporting failures unrelated to coverage and burying the real one.
+      # Debug only: optimised IL does not map onto the source well enough to measure branches.
+      # No if: always(), because coverage from a part-way test run measures nothing useful.
       - id: gate
         name: Coverage gate
-        run: bash build/ci.sh coverage-gate Debug
+        run: bash runner/in-container.sh coverage-gate Debug
 
       - name: Summarise
         if: always()
-        run: CI_STAGE=Debug bash build/ci.sh summarise
+        run: CI_STAGE=Debug bash runner/in-container.sh summarise
             "restore=${{ steps.restore.outcome }}"
             "build=${{ steps.build.outcome }}"
             "test=${{ steps.test.outcome }}"
@@ -176,8 +128,7 @@ jobs:
     name: Release (shard ${{ matrix.shard }})
     needs: plan
     if: needs.plan.outputs.any == 'true'
-    runs-on: ubuntu-latest
-    # Same work as the Debug stage without the coverage gate.
+    runs-on: [self-hosted, linux, x64, bitenovac]
     timeout-minutes: 1
     strategy:
       fail-fast: false
@@ -190,53 +141,37 @@ jobs:
         with:
           filter: blob:none
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-
       - uses: actions/download-artifact@v4
         with:
           name: ci-plan
           path: artifacts/ci
 
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          # Keyed on the central version list, which is the only file that changes what gets
-          # restored. There are no lock files to hash: see the comment in build/ci.sh restore.
-          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
-          restore-keys: nuget-${{ runner.os }}-
-
       - id: restore
         name: Restore
-        run: bash build/ci.sh restore Release
+        run: bash runner/in-container.sh restore Release
 
       - id: build
         name: Build
-        run: bash build/ci.sh build Release
+        run: bash runner/in-container.sh build Release
 
       - id: test
         name: Test
-        run: bash build/ci.sh test Release
+        run: bash runner/in-container.sh test Release
 
       - name: Summarise
         if: always()
-        run: CI_STAGE=Release bash build/ci.sh summarise
+        run: CI_STAGE=Release bash runner/in-container.sh summarise
             "restore=${{ steps.restore.outcome }}"
             "build=${{ steps.build.outcome }}"
             "test=${{ steps.test.outcome }}"
 
-  # The single check to mark as required in the ruleset. It stays green when a job is skipped --
-  # a docs-only pull request selects nothing -- and red when one fails, which a list of
-  # individually-required conditional jobs cannot do. It is also stable under sharding: the shard
-  # count changes with every pull request, so matrix jobs cannot be named as required checks.
+  # Mark this as the required check. The shard count varies per pull request, so the matrix jobs
+  # cannot be named in the ruleset, and a skipped job must not read as a failure.
   pr:
     name: PR
     needs: [plan, verify, debug, release]
     if: always()
-    runs-on: ubuntu-latest
-    # Reads four job results and exits.
+    runs-on: [self-hosted, linux, x64, bitenovac]
     timeout-minutes: 1
     steps:
       - name: Check results
@@ -256,7 +191,7 @@ jobs:
           done
 
           if [ "${failed}" -ne 0 ]; then
-            echo "::error::At least one required job did not succeed. Every shard ran to completion; the run summary lists each stage and shard with the phase that failed."
+            echo "::error::At least one required job did not succeed. The run summary lists each stage and shard with the phase that failed."
             exit 1
           fi
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Continuous integration entry point. The workflows call into here so every CI step can be run
-# locally with the same command.
+# Continuous integration entry point. Every CI step is one of these commands, so any of them can
+# be run locally.
 #
 # Usage:
 #   BASE_SHA=<ref> build/ci.sh plan                  Compute the graph, the affected set, the shards
