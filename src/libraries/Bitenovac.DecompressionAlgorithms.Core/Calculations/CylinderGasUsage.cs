@@ -6,8 +6,8 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 /// <summary>
 /// Represents the outcome of gas consumption for a single cylinder over the course of a
 /// planned dive: the cylinder to which the usage relates, the volume of free gas
-/// consumed, and the cylinder pressure remaining at the end of the dive. This is a
-/// result of planning and is produced by the algorithm rather than supplied as input.
+/// consumed, and the cylinder pressure remaining at the end of the dive. Produced by the
+/// algorithm as a result of planning rather than supplied as input.
 /// </summary>
 /// <remarks>Instances are immutable.</remarks>
 public sealed class CylinderGasUsage

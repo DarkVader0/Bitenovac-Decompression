@@ -7,22 +7,18 @@
 #
 # Emits "shardIndex<TAB>project".
 #
-# The partition is not arbitrary. A project's coverage is measured by whatever test projects
-# reference it, and those reports have to be merged before a percentage means anything -- each
-# test project only exercises part of a library. So a gated project and every test project that
-# reaches it must land in the same shard, or the gate reads a fraction of the real coverage and
-# fails a fully covered library.
+# A project's coverage is measured by the test projects referencing it, and those reports must
+# be merged before a percentage means anything, since each test project exercises only part of a
+# library. A gated project and every test project reaching it therefore land in the same shard;
+# otherwise the gate reads a fraction of the real coverage and fails a fully covered library.
 #
-# Only the seeds are gated: the projects the pull request actually changed. That is what the
-# pipeline promises -- a changed library is held to full coverage -- and it is also what makes
-# this partition useful. Fusing on every *affected* project instead means one widely referenced
-# library drags its entire dependent tree into a single indivisible group: on a repository whose
-# projects all descend from a common core, that collapses the partition to one shard and the
-# parallel stages degenerate to one runner doing everything.
+# Only the seeds are gated: the projects the pull request changed. Fusing on every affected
+# project instead lets one widely referenced library drag its entire dependent tree into a single
+# indivisible group, collapsing the partition to one shard on a repository whose projects share a
+# common core.
 #
-# Dependents are still built and their tests still run; they are simply not re-measured, because
-# neither their code nor their tests changed. They carry no grouping constraint and are packed
-# wherever there is room.
+# Dependents are still built and their tests still run, but they are not re-measured, so they
+# carry no grouping constraint and are packed wherever there is room.
 #
 # The constraint is expressed as a union-find over the forward dependency closure of each test
 # project. The resulting groups are indivisible; they are then packed into the requested number

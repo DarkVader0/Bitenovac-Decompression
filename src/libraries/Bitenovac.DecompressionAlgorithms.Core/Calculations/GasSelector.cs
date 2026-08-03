@@ -9,9 +9,8 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 /// the cylinders available to the diver, the gas with the highest oxygen content whose
 /// partial pressure of oxygen at that depth does not exceed the permitted limit is chosen.
 /// Breathing the richest permissible gas minimizes inert gas uptake and accelerates
-/// decompression. This selection depends only on the gases carried, the ambient pressure,
-/// and the oxygen partial pressure limit, and is therefore identical for every
-/// decompression model.
+/// decompression. The selection depends only on the gases carried, the ambient pressure and
+/// the oxygen partial pressure limit, and is shared by every decompression model.
 /// </summary>
 public static class GasSelector
 {

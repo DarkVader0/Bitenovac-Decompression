@@ -8,13 +8,13 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 /// environment, the vertical movement rates, the gas consumption rates, the oxygen
 /// partial pressure limits, the reserve gas requirement, and the rules that shape the
 /// decompression stops. Parameters specific to a particular decompression model, such as
-/// gradient factors, are supplied to that model directly and are deliberately not part of
-/// these settings.
+/// gradient factors, are supplied to that model directly and are not part of these
+/// settings.
 /// </summary>
 /// <remarks>
-/// All values must be supplied when an instance is constructed; there are no defaults, so
-/// that a plan is never computed from an incompletely specified configuration. Each value
-/// is validated on construction.
+/// All values must be supplied when an instance is constructed; there are no defaults, so a
+/// plan cannot be computed from an incompletely specified configuration. Each value is
+/// validated on construction.
 /// </remarks>
 public sealed class DivePlanSettings
 {
@@ -149,9 +149,9 @@ public sealed class DivePlanSettings
                 "The decompression partial pressure of oxygen must be greater than zero.");
         }
 
-        // Checked against the known values rather than with Enum.IsDefined so that adding a
-        // model without teaching the calculations about it fails here, at construction,
-        // rather than being silently planned as one of the existing models.
+        // Checked against the known values rather than with Enum.IsDefined, so that adding a
+        // model without updating the calculations fails here at construction rather than
+        // being planned as one of the existing models.
         if (maximumOperatingDepthModel is not (MaximumOperatingDepthModel.Realistic
             or MaximumOperatingDepthModel.Simplified))
         {

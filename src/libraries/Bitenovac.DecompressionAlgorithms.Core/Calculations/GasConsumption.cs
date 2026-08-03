@@ -15,9 +15,9 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 /// nothing, so it draws only the oxygen the diver metabolises and the diluent needed to keep
 /// the loop full as the ambient pressure rises during a descent. A passive semi-closed loop
 /// vents a fixed fraction of each breath, so it draws that fraction of the open-circuit
-/// demand from its supply, plus the same descent make-up. The resulting per-cylinder usage,
-/// including the pressure remaining at the end of the dive, depends only on the expanded
-/// profile and the equipment and is therefore identical for every decompression model.
+/// demand from its supply, plus the same descent make-up. Per-cylinder usage, including the
+/// pressure remaining at the end of the dive, depends only on the expanded profile and the
+/// equipment, and is shared by every decompression model.
 /// </summary>
 public static class GasConsumption
 {

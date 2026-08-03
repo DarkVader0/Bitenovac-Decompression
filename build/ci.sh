@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Continuous integration entry point. The workflow files stay thin and call into here, so
-# every step a pull request runs can also be run locally with the same command.
+# Continuous integration entry point. The workflows call into here so every CI step can be run
+# locally with the same command.
 #
 # Usage:
 #   BASE_SHA=<ref> build/ci.sh plan                  Compute the graph, the affected set, the shards
@@ -15,55 +15,49 @@
 #
 # CONFIG is 'Debug' or 'Release'.
 #
-# 'plan' writes everything the later commands need into artifacts/ci and nothing recomputes it.
-# In CI that directory travels between jobs as an artifact, which is what keeps the shard
-# partition identical in every stage -- two stages that disagreed about which projects belong to
-# shard 2 would gate coverage against a different set than they tested.
+# 'plan' writes everything the later commands need into artifacts/ci; nothing recomputes it. In
+# CI that directory travels between jobs as an artifact, keeping the shard partition identical
+# in every stage.
 #
 # Selection
 # ---------
-# BASE_SHA is the commit to diff against; when it is unset or unusable every project is treated
-# as affected, which is the safe default. CHANGED_FILES overrides it with a literal newline
-# separated list, which answers "what would CI do if I touched these?" without needing a commit.
+# BASE_SHA is the commit to diff against. When unset or unusable, every project is treated as
+# affected. CHANGED_FILES overrides it with a newline separated list, for answering "what would
+# CI do if I touched these?" without a commit.
 #
-# Work is selected from the project reference graph rather than from directory names. A project
-# is affected when it changed, or when it depends -- directly or transitively -- on something
-# that changed. Nothing upstream of the change is retested: editing Core cannot alter Units, so
-# Units' tests do not run, though Units is still compiled because Core needs it to build.
+# Work is selected from the project reference graph, not from directory names. A project is
+# affected when it changed, or when it depends directly or transitively on something that
+# changed. Nothing upstream of a change is retested: editing Core cannot alter Units, so Units'
+# tests do not run, though Units is still compiled as an input to Core.
 #
-# A shared build file affects the subtree it sits in, not the whole repository. Directory.Build
-# .props at the root therefore still marks everything, while one under tests/ marks only the
-# tests. Scoping it this way is what stops a repository with hundreds of projects rebuilding
-# itself every time any shared file is touched.
+# A shared build file affects the subtree it sits in. Directory.Build.props at the root marks
+# everything; one under tests/ marks only the tests. Without this scoping, any change to a
+# shared file rebuilds the entire repository.
 #
-# The pipeline itself -- build/ and .github/workflows/ -- is the exception, and marks every
-# project. It governs how everything is compiled, tested and measured, so no subtree scoping
-# applies and no sample stands in for the whole: a change to how the build works has to be shown
-# to work on everything it builds.
+# build/ and .github/workflows/ are the exception and mark every project: they govern how
+# everything is compiled, tested and measured, so no subtree stands in for the whole.
 #
-# The API is excluded from library changes by the same rule, with no special case: it consumes
-# the algorithms as published, versioned NuGet packages rather than by project reference, so it
-# is not a dependent of anything under src/libraries. 'verify' keeps that true.
+# The API falls out of library changes by the same rule, with no special case: it consumes the
+# algorithms as versioned NuGet packages rather than by project reference, so it is not a
+# dependent of anything under src/libraries. 'verify' keeps that true.
 #
 # Sharding
 # --------
 # CI_SHARD selects one shard of the plan; unset means every affected project. Shards are
-# self-contained by construction -- see build/shards.awk -- so a shard restores, builds, tests
-# and gates coverage without waiting for or reading from any other shard.
+# self-contained by construction (see build/shards.awk), so a shard restores, builds, tests and
+# gates coverage without reading from any other shard.
 #
 # Coverage
 # --------
-# Run the coverage gate against Debug. Release IL is optimised and inlined, so the branch points
-# coverlet records stop mapping cleanly onto the source and fully covered code reports less than
-# 100% branch coverage.
+# The coverage gate runs against Debug. Release IL is optimised and inlined, so coverlet's branch
+# points stop mapping onto the source and fully covered code reports below 100% branch coverage.
 
 set -euo pipefail
 
 readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# The .NET tools are native Windows programs under Git Bash and do not understand an MSYS path
-# like /d/Projekti. Everything this script hands to MSBuild is either relative to REPO_ROOT,
-# which it cds into, or rooted at this. Both work unchanged on Linux.
+# Under Git Bash the .NET tools are native Windows programs and cannot read an MSYS path such as
+# /d/Projekti. Paths handed to MSBuild are either relative to REPO_ROOT or rooted at this.
 if command -v cygpath > /dev/null 2>&1; then
     readonly REPO_ROOT_NATIVE="$(cygpath -w "${REPO_ROOT}")\\"
 else
@@ -105,9 +99,8 @@ log()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 warn() { printf '::warning::%s\n' "$*" >&2; }
 fail() { printf '::error::%s\n' "$*" >&2; exit 1; }
 
-# Appends markdown to the run's job summary, which is where a sharded pipeline becomes readable:
-# two stages times N shards is a lot of job names, and the summary collects what each one found
-# into one page. A no-op outside CI, so the same commands still work locally.
+# Appends markdown to the run's job summary, collecting what each of the two stages times N
+# shards found onto one page. A no-op outside CI.
 summary() {
     [[ -n "${GITHUB_STEP_SUMMARY:-}" ]] || return 0
     printf '%s\n' "$*" >> "${GITHUB_STEP_SUMMARY}"
@@ -124,8 +117,7 @@ require_configuration() {
 
 # Scans the whole repository rather than a fixed list of roots, so a project added anywhere is
 # picked up without editing this script. Every MSBuild language is included: the graph, the
-# shards and the coverage gate care about project references and output paths, neither of which
-# is C#-specific.
+# shards and the coverage gate use project references and output paths, neither C#-specific.
 discover_projects() {
     find . \
         \( -name '*.csproj' -o -name '*.fsproj' -o -name '*.vbproj' \) \
@@ -198,9 +190,8 @@ projects_under() {
 }
 
 # Returns every project that could own a file: those in the nearest ancestor directory holding
-# any project file. More than one is not a tie to be broken -- a file in a directory with two
-# projects genuinely belongs to both, and selecting one of them at random is how a change ships
-# untested.
+# any project file. A file in a directory with two projects belongs to both, so all of them are
+# returned rather than one being picked.
 owning_projects() {
     local directory
     directory="$(dirname "$1")"
@@ -248,9 +239,8 @@ compute_affected() {
     if ! files="$(changed_files)"; then
         echo "No usable BASE_SHA ('${BASE_SHA:-}'); treating every project as affected." >&2
         cp "${PROJECTS_FILE}" "${AFFECTED_FILE}"
-        # Nothing is known to be unchanged, so everything is gated. The seed list drives both the
-        # coverage gate and the shard partition; leaving it empty here would silently gate
-        # nothing on exactly the run that is meant to check everything.
+        # The seed list drives both the coverage gate and the shard partition. Nothing is known
+        # to be unchanged, so everything is seeded; an empty list would gate nothing.
         cp "${PROJECTS_FILE}" "${SEEDS_FILE}"
         return
     fi
@@ -272,11 +262,9 @@ compute_affected() {
                 continue
             fi
 
-            # The pipeline decides how everything is built, tested and measured, so a change to
-            # it is not scoped to any subtree: every project is rebuilt and re-measured under the
-            # new rules. This is the expensive answer on purpose -- a pull request that changes
-            # how the build works has to prove it still works, and there is no subset of the
-            # repository that can honestly stand in for that.
+            # A change to the pipeline is not scoped to any subtree: it governs how everything is
+            # built, tested and measured, so every project is rebuilt and re-measured under the
+            # new rules.
             if is_pipeline_path "${file}"; then
                 printf '  %s  (pipeline: affects every project)\n' "${file}"
                 projects_under "." >> "${SEEDS_FILE}"
@@ -304,11 +292,10 @@ compute_affected() {
 # ----------------------------------------------------------------------- project info ----
 
 # Reads AssemblyName, TargetPath and the coverage policy of every project in one MSBuild
-# process. Asking per project costs an SDK start-up each, which at several hundred projects is
-# minutes of doing nothing before the first useful check runs.
+# process. Asking per project costs an SDK start-up each.
 #
-# The properties are read from MSBuild rather than from the XML so that the Directory.Build.props
-# defaults and any per-project override resolve exactly as the compiler sees them.
+# The properties come from MSBuild rather than from the XML so that the Directory.Build.props
+# defaults and any per-project override resolve as the compiler sees them.
 project_info() {
     local configuration="$1"
     local output="$2"
@@ -331,10 +318,10 @@ project_info() {
     [[ -s "${output}" ]] || fail "Project information came back empty; ${output} was not written."
 }
 
-# Where the configuration-specific project information for the current selection lives. It is
-# scoped to the shard: the file describes one selection, and two shards sharing a name means the
-# second one to run leaves a file the first would misread as its own. Each shard is a separate
-# runner in CI, so this only bites locally -- which is exactly where it is hardest to explain.
+# Where the configuration-specific project information for the current selection lives. The file
+# describes one selection, so it is scoped to the shard: two shards sharing a name would leave
+# the second one's file for the first to misread. Only reachable locally, where shards share a
+# working directory.
 config_info_file() {
     printf '%s\n' "${PLAN_DIR}/info-${1}${CI_SHARD:+-shard-${CI_SHARD}}.tsv"
 }
@@ -404,8 +391,8 @@ cmd_plan() {
     shards="$(shard_count "${affected_count}")"
 
     log "Partitioning ${affected_count} project(s) into at most ${shards} shard(s)"
-    # Anything describing the previous plan's selection is stale the moment the partition moves.
-    # 'info-*.tsv' does not match 'info.tsv', which this run has just written.
+    # Anything describing the previous selection is stale once the partition moves. 'info-*.tsv'
+    # does not match 'info.tsv', which this run has just written.
     rm -f "${PLAN_DIR}"/shard-*.txt "${PLAN_DIR}"/info-*.tsv "${PLAN_DIR}"/gated-*.tsv "${PLAN_DIR}"/measured-*.tsv
 
     awk -F'\t' -v edges="${EDGES_FILE}" -v affected="${AFFECTED_FILE}" -v info="${INFO_FILE}" \
@@ -440,13 +427,13 @@ cmd_plan() {
 
 require_plan() {
     [[ -f "${AFFECTED_FILE}" ]] || fail "No plan found at ${AFFECTED_FILE}. Run 'build/ci.sh plan' first."
-    # The gate reads this to decide what changed. A missing file would read as "nothing changed"
-    # and quietly gate nothing at all, which is the one failure mode that looks like success.
+    # The gate reads this to decide what changed. A missing file reads as "nothing changed" and
+    # gates nothing, while still reporting success.
     [[ -f "${SEEDS_FILE}" ]] || fail "The plan at ${PLAN_DIR} has no ${SEEDS_FILE##*/}. Re-run 'build/ci.sh plan'."
 }
 
 # The projects this invocation is responsible for: one shard, or everything when CI_SHARD is
-# unset, which is what a local run does.
+# unset.
 selected_file() {
     if [[ -n "${CI_SHARD:-}" ]]; then
         local file="${PLAN_DIR}/shard-${CI_SHARD}.txt"
@@ -467,11 +454,10 @@ selected_test_projects() {
 
 # Writes a project that builds the selected projects in a single MSBuild session. One session
 # evaluates each shared dependency once and schedules the graph across cores; a loop of
-# "dotnet build <project>" re-evaluates the whole reference closure of every project separately,
-# which is where the wall clock goes once projects share a common core.
+# "dotnet build <project>" re-evaluates the whole reference closure of every project separately.
 #
-# It is a plain <Project> with no Sdk attribute, so it does not import Directory.Build.props and
-# cannot pick up repository defaults meant for real projects.
+# A plain <Project> with no Sdk attribute, so it does not import Directory.Build.props and cannot
+# pick up repository defaults meant for real projects.
 write_build_project() {
     local selected="$1" output="$2"
 
@@ -486,11 +472,10 @@ write_build_project() {
             printf '        <CiProject Include="$(CiRepoRoot)%s" />\n' "${project}"
         done < "${selected}"
         echo '    </ItemGroup>'
-        # Restore is deliberately serial. Each project restores its own reference closure, and
-        # MSBuild's project cache does not dedupe those the way it dedupes Build, so two parallel
-        # entry points sharing an upstream project race to write the same obj/ files and one of
-        # them dies with "Cannot create a file when that file already exists". Restore is short
-        # and I/O bound once the package cache is warm; the parallelism that matters is below.
+        # Restore runs serially. Each project restores its own reference closure, and MSBuild's
+        # project cache does not dedupe those the way it dedupes Build, so two parallel entry
+        # points sharing an upstream project race to write the same obj/ files and one fails with
+        # "Cannot create a file when that file already exists".
         echo '    <Target Name="Restore">'
         echo '        <MSBuild Projects="@(CiProject)" Targets="Restore" BuildInParallel="false"'
         echo '                 Properties="Configuration=$(Configuration)" />'
@@ -511,8 +496,8 @@ cmd_verify() {
     log "Verifying the API does not project-reference the libraries"
 
     # Skipping the API on a library change is only sound while the API depends on published
-    # package versions. A project reference would make the API a dependent of the libraries, and
-    # quietly turn every library pull request into an API build too.
+    # package versions. A project reference would make it a dependent of the libraries, turning
+    # every library pull request into an API build.
     local offenders
     offenders="$(awk -F'\t' '
         ($1 ~ /^src\/apps\// || $1 ~ /^tests\/apps\//) && $2 ~ /^src\/libraries\// {
@@ -527,9 +512,9 @@ cmd_verify() {
 
     log "Verifying no project multi-targets"
 
-    # The pipeline locates every output through TargetPath, which an outer multi-targeting build
-    # leaves empty. Standardising on one framework in Directory.Build.props is what lets projects
-    # in other languages join the graph without the shell knowing anything about frameworks.
+    # Every output is located through TargetPath, which an outer multi-targeting build leaves
+    # empty. One framework declared in Directory.Build.props lets projects in other languages
+    # join the graph without this script knowing anything about frameworks.
     local multi=""
     local project
     while IFS= read -r project; do
@@ -626,17 +611,17 @@ cmd_test() {
         name="$(basename "${project}")"
         name="${name%.*}"
 
-        # TargetPath comes from MSBuild, so the output is found whatever the framework, language
-        # or output layout the project uses. MSBuild reports it with the platform separator, and
-        # a Windows path only reaches the shell's file tests once the separators are flipped.
+        # TargetPath comes from MSBuild, locating the output whatever the framework, language or
+        # output layout. It is reported with the platform separator; the shell's file tests need
+        # forward slashes.
         assembly="$(info_field "${info}" "${project}" 7 | tr '\\' '/')"
         [[ -n "${assembly}" ]] || fail "MSBuild reported no TargetPath for ${project}."
         [[ -f "${assembly}" ]] || fail "Test assembly not found: ${assembly}. Run 'build' first."
 
         echo "--- ${name}"
         # The test projects run on Microsoft.Testing.Platform. 'dotnet test' does not forward
-        # extension arguments to the test app, so --coverlet reaches nothing and no coverage is
-        # produced; executing the assembly directly is what actually collects it.
+        # extension arguments to the test app, so --coverlet would reach nothing and produce no
+        # coverage; the assembly is executed directly instead.
         local status=0
         dotnet exec "${assembly}" \
             --coverlet \
@@ -647,10 +632,9 @@ cmd_test() {
         case "${status}" in
             0) ;;
             # Microsoft.Testing.Platform returns 8 when a run discovers no tests and 5 when a
-            # filter selects none. Neither is a failing assertion. Across hundreds of projects an
-            # empty suite is a normal transient state -- one scaffolded ahead of its tests, or a
-            # suite entirely filtered out -- and failing the build on it blocks work for a
-            # condition the coverage gate already reports properly and with a better message.
+            # filter selects none. Neither is a failing assertion, and a suite scaffolded ahead
+            # of its tests is a normal transient state. The coverage gate reports the same
+            # condition with a better message.
             5|8) empty+="  ${name}"$'\n' ;;
             *)   failed+="  ${name} (exit ${status})"$'\n' ;;
         esac
@@ -690,8 +674,8 @@ cmd_coverage_gate() {
 
     # Only the projects the pull request changed are judged. A dependent is rebuilt and retested
     # because its inputs moved, but neither its code nor its tests changed, so re-measuring it
-    # asks a question nobody asked and drags every test that touches it into one shard. See the
-    # header of build/shards.awk: the partition depends on this staying narrow.
+    # would drag every test that touches it into one shard. See the header of build/shards.awk:
+    # the partition depends on this staying narrow.
     #
     # Each surviving entry is assembly<TAB>minimumLine<TAB>minimumBranch. The policy was resolved
     # once by 'plan'; this is a table lookup, not an MSBuild run.
@@ -736,10 +720,9 @@ cmd_coverage_gate() {
     info="$(config_info_file "${configuration}")"
     [[ -s "${info}" ]] || project_info "${configuration}" "${info}" "${selected}"
 
-    # A project with no test project at all would otherwise fail further down with a confusing
-    # complaint about missing coverage files. Name the real problem instead: a project held to a
-    # coverage bar has to be tested by something. The shard partition guarantees the tests that
-    # cover it are in this shard, so their absence is a real gap and not a sharding artefact.
+    # A project with no test project would otherwise fail further down with a complaint about
+    # missing coverage files. The shard partition guarantees the tests covering it are in this
+    # shard, so their absence is a real gap rather than a sharding artefact.
     if [[ -z "$(selected_test_projects "${selected}" "${info}")" ]]; then
         printf '::error::Nothing tests these selected projects: %s\n' "$(cut -f1 "${gated}" | tr '\n' ' ')" >&2
         fail "A project under the coverage gate must be tested by something. Add a test project with a ProjectReference to it, or set <ExcludeFromCoverage>true</ExcludeFromCoverage> in the project."
@@ -755,16 +738,16 @@ cmd_coverage_gate() {
 
     rm -rf "${report_dir}"
 
-    # ReportGenerator merges the per-project reports. Merging matters: each test project only
-    # exercises part of a library, and coverlet writes the source path differently depending on
-    # which project produced the report, so a merge keyed on file path double counts every line.
+    # ReportGenerator merges the per-project reports. Each test project exercises only part of a
+    # library, and coverlet writes the source path differently depending on which project
+    # produced the report, so a merge keyed on file path double counts every line.
     #
-    # Only this shard's reports are merged. A repository-wide merge is what makes this step the
-    # memory ceiling of the job once there are hundreds of test projects, and it is unnecessary:
-    # a shard holds every test project that covers anything it gates.
+    # Only this shard's reports are merged. A repository-wide merge is the memory ceiling of the
+    # job once there are hundreds of test projects, and a shard already holds every test project
+    # covering anything it gates.
     #
-    # The HTML report is the expensive part of ReportGenerator and nothing reads it unless a gate
-    # fails, so CI produces it only on demand while a local run gets it by default.
+    # The HTML report is the expensive part of ReportGenerator and is read only when a gate
+    # fails, so CI produces it on demand and a local run gets it by default.
     local report_types="Cobertura;TextSummary"
     if [[ "${CI_COVERAGE_HTML:-${GITHUB_ACTIONS:+0}}" != "0" ]]; then
         report_types="${report_types};Html"
@@ -775,8 +758,7 @@ cmd_coverage_gate() {
         "-reports:${coverage_dir}/*cobertura*.xml" \
         "-targetdir:${report_dir}" \
         "-reporttypes:${report_types}" 2>&1)"; then
-        # Its output is captured to keep the log readable, so it has to be replayed on failure
-        # rather than discarded, or the gate dies with no explanation at all.
+        # The output is captured to keep the log readable, so it must be replayed on failure.
         printf '%s\n' "${generator_output}" >&2
         fail "ReportGenerator failed to merge the coverage reports."
     fi
@@ -784,8 +766,8 @@ cmd_coverage_gate() {
     local merged="${report_dir}/Cobertura.xml"
     [[ -f "${merged}" ]] || fail "ReportGenerator produced no merged report at ${merged}."
 
-    # The merged report is read once into a table rather than grepped once per gated assembly,
-    # which was quadratic in the number of assemblies against a file that grows with all of them.
+    # The merged report is read once into a table. Grepping it per gated assembly is quadratic in
+    # the number of assemblies, against a file that grows with all of them.
     local measured="${PLAN_DIR}/measured-${configuration}.tsv"
     awk '
         /<package / {
@@ -839,12 +821,11 @@ cmd_coverage_gate() {
 # -------------------------------------------------------------------------- summarise ----
 
 # Renders one shard's outcome into the job summary. Takes phase=outcome pairs as GitHub reports
-# them, where a phase after a failed one reads 'skipped' -- which is itself the useful signal:
-# "the build broke, so nothing was tested" is a different story from "the tests ran and failed".
+# them, where a phase after a failed one reads 'skipped', distinguishing "the build broke, so
+# nothing was tested" from "the tests ran and failed".
 #
-# Every shard writes its own section whatever happened, because the point is to see the whole
-# board at once. A pull request whose Release shard 3 is red and everything else green tells the
-# author exactly where to look, which sixteen job names on a checks page do not.
+# Every shard writes its section whatever happened, so one page shows which stage and shard
+# failed rather than a checks page of up to sixteen job names.
 cmd_summarise() {
     local stage="${CI_STAGE:-Debug}"
     local shard="${CI_SHARD:-all}"
@@ -892,7 +873,8 @@ case "${1:-}" in
     test)             shift; cmd_test "$@" ;;
     coverage-gate)    shift; cmd_coverage_gate "$@" ;;
     *)
-        sed -n '2,50p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
+        # The usage block only: from the first comment line to the section headings below it.
+        sed -n '2,${/^# Selection/q;p;}' "${BASH_SOURCE[0]}" | sed 's/^# \?//'
         exit 1
         ;;
 esac

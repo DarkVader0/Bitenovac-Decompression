@@ -3,12 +3,11 @@
 #
 #   awk -F'\t' -v edges=<edges.tsv> -v seeds=<seeds.txt> -f affected.awk <edges.tsv> <seeds.txt>
 #
-# The traversal is O(vertices + edges) with an index cursor over the queue. Doing this in the
-# shell instead means an array copy per dequeue and a string append per edge, both of which are
-# quadratic in bash and become the dominant cost of every CI step once the graph is large.
+# The traversal is O(vertices + edges) with an index cursor over the queue. In the shell it
+# would be an array copy per dequeue and a string append per edge, both quadratic in bash.
 #
-# Files are told apart by name rather than by the usual NR == FNR trick, which misfires when
-# the first file is empty -- a repository whose projects have no ProjectReference at all.
+# Files are told apart by name rather than by the usual NR == FNR trick, which misfires when the
+# first file is empty -- a repository whose projects have no ProjectReference at all.
 
 FILENAME == edges {
     if ($1 == "" || $2 == "")

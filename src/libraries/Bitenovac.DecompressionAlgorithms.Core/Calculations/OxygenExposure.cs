@@ -9,9 +9,9 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 /// profile. The central nervous system toxicity and the pulmonary oxygen tolerance units
 /// are accumulated segment by segment, with the partial pressure of oxygen taken to change
 /// linearly across each segment from the depth at the end of the previous segment to the
-/// depth at the end of the current one. The segments are therefore required to be
-/// contiguous in depth. Because the exposure depends only on the partial pressure of
-/// oxygen and the time, this aggregation is identical for every decompression model.
+/// depth at the end of the current one, so the segments are required to be contiguous in
+/// depth. The exposure depends only on the partial pressure of oxygen and the time, and is
+/// shared by every decompression model.
 /// </summary>
 public static class OxygenExposure
 {

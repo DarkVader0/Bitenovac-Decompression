@@ -51,9 +51,8 @@ missing=0
 
 log "Shell utilities"
 
-# These are what build/ci.sh is written in. On Linux and macOS they are always present; on
-# Windows they come with Git for Windows, so a missing one means this is not running under Git
-# Bash and no amount of installing here will fix it.
+# build/ci.sh is written in these. They are always present on Linux and macOS; on Windows they
+# come with Git for Windows, so a missing one means this is not running under Git Bash.
 for utility in git awk curl tar sed grep find sort; do
     if command -v "${utility}" > /dev/null 2>&1; then
         ok "${utility}"
@@ -69,15 +68,14 @@ fi
 
 # ------------------------------------------------------------------------------- .NET SDK ----
 
-# The exact version global.json pins. Read with sed rather than a JSON parser so the script has
-# no dependency the repository does not already have.
+# The exact version global.json pins. Read with sed rather than a JSON parser to avoid a
+# dependency the repository does not already have.
 sdk_version() {
     sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' global.json | head -n 1
 }
 
-# 'dotnet --version' resolves through global.json and fails when no installed SDK satisfies it,
-# which is exactly the question being asked. Comparing version strings here would only
-# re-implement the roll-forward rules, and get them subtly wrong.
+# 'dotnet --version' resolves through global.json and fails when no installed SDK satisfies it.
+# Comparing version strings here would re-implement the roll-forward rules.
 sdk_satisfies_global_json() {
     command -v dotnet > /dev/null 2>&1 && dotnet --version > /dev/null 2>&1
 }

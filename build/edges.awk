@@ -1,13 +1,13 @@
 # Emits one "project<TAB>referencedProject" edge per ProjectReference, for every project file
 # handed to it, in a single pass.
 #
-# This replaces a grep-per-project plus a realpath fork per reference. At a few dozen projects
-# the difference is invisible; at several hundred it is thousands of processes per CI step.
+# This replaces a grep-per-project plus a realpath fork per reference, which at several hundred
+# projects is thousands of processes per CI step.
 #
 # Paths are normalised here rather than by shelling out, so a reference written as
 # ../../src/Foo/Foo.csproj with Windows separators compares equal to the discovered path.
-# References are matched against the whole file rather than line by line, because an element
-# split across lines is valid MSBuild and a line-oriented match silently drops it.
+# References are matched against the whole file rather than line by line: an element split
+# across lines is valid MSBuild, and a line-oriented match drops it.
 
 function normalise(path,    parts, count, position, stack, depth, result) {
     gsub(/\\/, "/", path)

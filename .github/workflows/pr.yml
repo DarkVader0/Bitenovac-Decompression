@@ -1,7 +1,7 @@
 name: PR
 
-# Every pull request builds and tests exactly the projects its changes reach, in both Debug and
-# Release, and holds any changed library to full line and branch coverage.
+# Builds and tests the projects a pull request's changes reach, in both Debug and Release, and
+# holds any changed library to full line and branch coverage.
 #
 # What runs is derived from the project reference graph, not from directory names: a project is
 # selected when it changed or when it depends, directly or transitively, on something that
@@ -13,16 +13,14 @@ name: PR
 #          │
 #          └──► release shard 0..N ──► restore, build, test
 #
-# The two configurations are independent stages that start together, because a change that
-# compiles in Debug and fails under optimised IL must not be mergeable. Within a stage each
-# shard owns a disjoint slice of the affected projects and finishes on its own; nothing is
-# handed between shards and there is no barrier before the coverage gate. That is only sound
-# because build/shards.awk keeps a project and every test project that covers it in the same
-# shard -- see the comment there.
+# The two configurations are independent stages that start together, so a change that compiles
+# in Debug and fails under optimised IL cannot be merged. Within a stage each shard owns a
+# disjoint slice of the affected projects and finishes on its own, with no barrier before the
+# coverage gate; build/shards.awk keeps a project and every test project covering it in the same
+# shard.
 #
-# The real logic lives in build/ci.sh so anything CI does can be reproduced locally:
+# The logic lives in build/ci.sh so anything CI does can be reproduced locally:
 #   CHANGED_FILES=src/libraries/.../Foo.cs bash build/ci.sh plan
-# Keep this file thin.
 
 on:
   pull_request:
@@ -37,17 +35,17 @@ permissions:
   contents: read
 
 env:
-  # A merge group is tested against the queue's base, so the affected-set narrowing applies to
-  # queued merges too. Leaving it empty there made every merge a full-repository build.
+  # A merge group is tested against the queue's base, applying the affected-set narrowing to
+  # queued merges. Left empty, every merge becomes a full-repository build.
   BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
   DOTNET_NOLOGO: "true"
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
 
 jobs:
-  # Timeouts are per job, which is the only granularity GitHub offers, and a job covers runner
-  # start-up, the SDK install and every project in its shard. They are sized to catch a hang, not
-  # to police how long one project takes: restore and build run all of a shard's projects in a
-  # single MSBuild session, so there is no per-project process left to time.
+  # Timeouts are per job, the only granularity GitHub offers, and a job covers runner start-up,
+  # the SDK install and every project in its shard. They are sized to catch a hang rather than to
+  # bound one project: restore and build run all of a shard's projects in a single MSBuild
+  # session, leaving no per-project process to time.
   plan:
     name: Plan
     runs-on: ubuntu-latest
@@ -58,8 +56,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Commit history is needed to diff against the merge base, but file contents are not:
-          # a blobless clone fetches blobs on demand and keeps a deep history cheap to clone.
+          # Diffing against the merge base needs commit history but not file contents; a blobless
+          # clone fetches blobs on demand.
           fetch-depth: 0
           filter: blob:none
 
@@ -70,8 +68,8 @@ jobs:
       - id: plan
         run: bash build/ci.sh plan
 
-      # Every later job reads this instead of recomputing it. Recomputation would also risk the
-      # two stages disagreeing about the shard partition.
+      # Every later job reads this instead of recomputing it, which would risk the two stages
+      # disagreeing about the shard partition.
       - uses: actions/upload-artifact@v4
         with:
           name: ci-plan
@@ -92,8 +90,8 @@ jobs:
           filter: blob:none
 
       # The API is skipped on library changes because it consumes the algorithms as versioned
-      # packages, so it is not a dependent of anything under src/libraries. A project reference
-      # would silently turn every library change into an API build too.
+      # packages and is therefore not a dependent of anything under src/libraries. A project
+      # reference would turn every library change into an API build.
       - run: bash build/ci.sh verify
 
   debug:
@@ -152,9 +150,8 @@ jobs:
       # code measures 96.6% branch coverage in Release. Tests still run in both configurations;
       # only the measurement is taken from the unoptimised build.
       #
-      # Deliberately not run when the tests failed: coverage collected from a run that died
-      # part-way measures how far the tests got, not how much of the code is covered, so it would
-      # report failures that have nothing to do with coverage and bury the real one.
+      # Not run when the tests failed. Coverage collected from a run that died part-way measures
+      # how far the tests got, reporting failures unrelated to coverage and burying the real one.
       - id: gate
         name: Coverage gate
         run: bash build/ci.sh coverage-gate Debug
@@ -230,11 +227,10 @@ jobs:
             "build=${{ steps.build.outcome }}"
             "test=${{ steps.test.outcome }}"
 
-  # The single check to mark as required in the ruleset. It stays green when a job is skipped on
-  # purpose -- a docs-only pull request selects nothing -- and turns red the moment one actually
-  # fails, which a list of individually-required conditional jobs cannot do. It is also stable
-  # under sharding: the shard count changes with every pull request, so the matrix jobs can never
-  # be named as required checks.
+  # The single check to mark as required in the ruleset. It stays green when a job is skipped --
+  # a docs-only pull request selects nothing -- and red when one fails, which a list of
+  # individually-required conditional jobs cannot do. It is also stable under sharding: the shard
+  # count changes with every pull request, so matrix jobs cannot be named as required checks.
   pr:
     name: PR
     needs: [plan, verify, debug, release]

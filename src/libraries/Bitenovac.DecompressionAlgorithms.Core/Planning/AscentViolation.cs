@@ -4,11 +4,10 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
 /// <summary>
 /// Records a single inter-level ascent within a multi-level dive that would incur a
-/// decompression obligation and is therefore not permitted. The diver planned to ascend
-/// from a deeper working level to a shallower one, but the decompression model's ceiling at
-/// that point was deeper than the intended depth, meaning a decompression stop would be
-/// required before the shallower depth could be reached. The planner records the violation
-/// and marks the plan invalid rather than silently omitting the required stop.
+/// decompression obligation and is not permitted. The decompression model's ceiling at that
+/// point was deeper than the intended depth, so a decompression stop would be required
+/// before the shallower depth could be reached. The planner marks the plan invalid rather
+/// than omitting the required stop.
 /// </summary>
 /// <remarks>Instances are immutable.</remarks>
 public sealed class AscentViolation

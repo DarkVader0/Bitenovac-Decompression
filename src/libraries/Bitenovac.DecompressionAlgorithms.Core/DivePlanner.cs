@@ -14,8 +14,7 @@ namespace Bitenovac.DecompressionAlgorithms.Core;
 /// the model for the final ascent to the surface and runs the shared calculators for gas
 /// consumption, reserve gas, and oxygen toxicity over the complete profile. An inter-level
 /// ascent that would incur a decompression obligation is recorded as a violation and marks
-/// the resulting plan invalid, rather than being silently planned without the required
-/// stop.
+/// the resulting plan invalid, rather than being planned without the required stop.
 /// </summary>
 public sealed class DivePlanner
 {

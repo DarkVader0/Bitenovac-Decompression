@@ -64,9 +64,8 @@ function Test-Command
     return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
-# 'dotnet --version' resolves through global.json and fails when no installed SDK satisfies it,
-# which is exactly the question being asked. Comparing version strings here would only
-# re-implement the roll-forward rules, and get them subtly wrong.
+# 'dotnet --version' resolves through global.json and fails when no installed SDK satisfies it.
+# Comparing version strings here would re-implement the roll-forward rules.
 function Test-SdkSatisfiesGlobalJson
 {
     if (-not (Test-Command 'dotnet'))
@@ -87,8 +86,8 @@ try
 
     Write-Log 'Shell utilities'
 
-    # build/ci.sh and docker/ci-local.sh are bash scripts driving awk. On Windows every one of
-    # these comes from Git for Windows, so they are checked together and reported as one install.
+    # build/ci.sh and docker/ci-local.sh are bash scripts driving awk. On Windows these all come
+    # from Git for Windows, so they are checked together and reported as one install.
     $gitBash = $null
     foreach ($candidate in @(
         (Join-Path $env:ProgramFiles 'Git\bin\bash.exe'),

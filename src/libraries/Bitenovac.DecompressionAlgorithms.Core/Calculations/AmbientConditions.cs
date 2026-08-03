@@ -9,8 +9,8 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 /// a <see cref="DivePlanSettings" />: the ambient pressure at a depth is the surface
 /// pressure plus the hydrostatic pressure of the water column above the diver, and the
 /// depth at an ambient pressure is the inverse of that relation. The conversion depends
-/// only on the surface pressure and the salinity, and is therefore identical for every
-/// decompression model.
+/// only on the surface pressure and the salinity, and is shared by every decompression
+/// model.
 /// </summary>
 public static class AmbientConditions
 {

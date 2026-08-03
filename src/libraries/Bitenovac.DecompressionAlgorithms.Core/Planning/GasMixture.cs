@@ -15,9 +15,9 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 /// value. A mixture must contain some oxygen, so it is validated on construction that the
 /// oxygen content is greater than zero and that the oxygen and helium content sum to no
 /// more than one hundred percent. Construct instances using <see cref="FromPercent" /> or
-/// the <see cref="Air" /> and <see cref="Oxygen" /> presets. Note that the
-/// <see langword="default" /> value bypasses this validation and represents no oxygen; it
-/// is not a breathable mixture and must not be used as one.
+/// the <see cref="Air" /> and <see cref="Oxygen" /> presets. The
+/// <see langword="default" /> value bypasses this validation and represents no oxygen,
+/// which is not breathable.
 /// </remarks>
 public readonly struct GasMixture : IEquatable<GasMixture>
 {
