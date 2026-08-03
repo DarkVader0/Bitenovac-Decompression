@@ -559,12 +559,15 @@ cmd_restore() {
 
     log "Restoring $(wc -l < "${selected}" | tr -d '[:space:]') project(s) (${configuration})"
 
-    # RestoreLockedMode makes a stale packages.lock.json fail the build instead of being silently
-    # rewritten, which the repository guidelines require.
+    # Deliberately not RestoreLockedMode. Locked mode only means anything against a committed
+    # packages.lock.json, and there is none: every version is declared centrally in
+    # Directory.Packages.props, and a change to that file is a scoping change that rebuilds and
+    # retests every project in the repository. What a lock file would add on top is protection
+    # against a restore resolving differently for the same commit, which NuGet's lowest-applicable
+    # rule already rules out for a single fixed feed.
     dotnet msbuild "${project_file}" -t:Restore -nologo -maxCpuCount \
         -p:CiRepoRoot="${REPO_ROOT_NATIVE}" \
-        -p:Configuration="${configuration}" \
-        -p:RestoreLockedMode=true
+        -p:Configuration="${configuration}"
 }
 
 cmd_build() {

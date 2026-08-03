@@ -127,7 +127,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          # Keyed on the central version list, which is the only file that changes what gets
+          # restored. There are no lock files to hash: see the comment in build/ci.sh restore.
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-
 
       - name: Restore local tools
@@ -204,7 +206,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json') }}
+          # Keyed on the central version list, which is the only file that changes what gets
+          # restored. There are no lock files to hash: see the comment in build/ci.sh restore.
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-
 
       - id: restore
