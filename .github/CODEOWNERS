@@ -15,6 +15,7 @@
 # pipeline change as affecting everything, and the reviewer should be someone who knows why.
 /build/                    @DarkVader0
 /.github/                  @DarkVader0
+/runner/*.sh               @DarkVader0
 /Directory.Build.props     @DarkVader0
 /Directory.Build.targets   @DarkVader0
 /Directory.Packages.props  @DarkVader0
