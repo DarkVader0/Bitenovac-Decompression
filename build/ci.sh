@@ -34,8 +34,10 @@
 # everything; one under tests/ marks only the tests. Without this scoping, any change to a
 # shared file rebuilds the entire repository.
 #
-# build/ and .github/workflows/ are the exception and mark every project: they govern how
-# everything is compiled, tested and measured, so no subtree stands in for the whole.
+# build/, .github/workflows/ and the scripts in runner/ are the exception and mark every project:
+# they govern how everything is compiled, tested and measured, so no subtree stands in for the
+# whole. runner/in-container.sh in particular sits between the workflow and every build, where a
+# wrong mount or a dropped environment variable would otherwise merge green having tested nothing.
 #
 # The API falls out of library changes by the same rule, with no special case: it consumes the
 # algorithms as versioned NuGet packages rather than by project reference, so it is not a
@@ -67,6 +69,7 @@ fi
 readonly ARTIFACTS_DIR="artifacts"
 readonly PLAN_DIR="${ARTIFACTS_DIR}/ci"
 readonly BUILD_DIR="build"
+readonly RUNNER_DIR="runner"
 
 readonly PROJECTS_FILE="${PLAN_DIR}/projects.txt"
 readonly EDGES_FILE="${PLAN_DIR}/edges.tsv"
@@ -213,7 +216,14 @@ owning_projects() {
 }
 
 is_pipeline_path() {
-    [[ "$1" == "${BUILD_DIR}/"* || "$1" == .github/workflows/* ]]
+    case "$1" in
+        "${BUILD_DIR}/"* | .github/workflows/*) return 0 ;;
+        # Only the scripts. runner/ holds its README as well, and prose cannot change how
+        # anything compiles; matching the whole directory would rebuild the repository to
+        # document it.
+        "${RUNNER_DIR}/"*.sh) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 changed_files() {

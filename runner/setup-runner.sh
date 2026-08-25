@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
         --runner-version) runner_version="${2:-}"; shift 2 ;;
         --uninstall)      uninstall=true;          shift ;;
         --purge)          purge=true;              shift ;;
-        -h|--help)        sed -n '2,32p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 0 ;;
+        -h|--help)        sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 0 ;;
         *)                fail "Unknown argument: $1" ;;
     esac
 done
