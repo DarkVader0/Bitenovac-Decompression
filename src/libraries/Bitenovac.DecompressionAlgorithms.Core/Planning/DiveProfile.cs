@@ -36,11 +36,16 @@ public sealed class DiveProfile
     /// segments classified as <see cref="SegmentKind.Bottom" />.
     /// </summary>
     /// <returns>The sum of the durations of the bottom segments.</returns>
-    public TimeSpan BottomTime() => _segments.Where(static segment => segment.Kind == SegmentKind.Bottom)
-        .Aggregate(TimeSpan.Zero, static (current, segment) => current + segment.Duration);
+    public TimeSpan BottomTime()
+    {
+        return _segments.Where(static segment => segment.Kind == SegmentKind.Bottom)
+            .Aggregate(TimeSpan.Zero, static (current, segment) => current + segment.Duration);
+    }
 
     /// <summary>Gets the total elapsed time of the dive, being the combined duration of all segments.</summary>
     /// <returns>The sum of the durations of every segment.</returns>
-    public TimeSpan TotalRuntime() =>
-        _segments.Aggregate(TimeSpan.Zero, static (current, segment) => current + segment.Duration);
+    public TimeSpan TotalRuntime()
+    {
+        return _segments.Aggregate(TimeSpan.Zero, static (current, segment) => current + segment.Duration);
+    }
 }

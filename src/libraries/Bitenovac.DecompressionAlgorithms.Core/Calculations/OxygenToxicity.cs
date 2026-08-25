@@ -80,8 +80,10 @@ public static class OxygenToxicity
     /// The percentage of the single-exposure central nervous system limit accrued, where a
     /// value of one hundred represents the whole limit.
     /// </returns>
-    public static double CalculateCns(int po2Mbar, int durationSec) =>
-        CnsRatePerSecond(po2Mbar) * durationSec * 100.0;
+    public static double CalculateCns(int po2Mbar, int durationSec)
+    {
+        return CnsRatePerSecond(po2Mbar) * durationSec * 100.0;
+    }
 
     /// <summary>
     /// Returns the central nervous system oxygen toxicity accrued over a segment during
@@ -168,8 +170,10 @@ public static class OxygenToxicity
     private static double BranchIntegral(double intercept,
         double slope,
         double fromMbar,
-        double toMbar) =>
-        (Math.Exp(intercept + slope * toMbar) - Math.Exp(intercept + slope * fromMbar)) / slope;
+        double toMbar)
+    {
+        return (Math.Exp(intercept + slope * toMbar) - Math.Exp(intercept + slope * fromMbar)) / slope;
+    }
 
     /// <summary>
     /// Returns the pulmonary oxygen toxicity, in oxygen tolerance units (OTU), accrued by
@@ -181,8 +185,10 @@ public static class OxygenToxicity
     /// The oxygen tolerance units accrued. A partial pressure at or below the threshold
     /// accrues nothing and returns zero.
     /// </returns>
-    public static double CalculateOtu(int po2Mbar, int durationSec) =>
-        CalculateOtuTransition(po2Mbar, po2Mbar, durationSec);
+    public static double CalculateOtu(int po2Mbar, int durationSec)
+    {
+        return CalculateOtuTransition(po2Mbar, po2Mbar, durationSec);
+    }
 
     /// <summary>
     /// Returns the pulmonary oxygen toxicity, in oxygen tolerance units (OTU), accrued over
@@ -256,8 +262,10 @@ public static class OxygenToxicity
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="duration" /> is negative.</exception>
     public static double CalculateCnsTransition(Pressure startPo2,
         Pressure endPo2,
-        TimeSpan duration) =>
-        CalculateCnsTransition(ToMbar(startPo2), ToMbar(endPo2), ToSeconds(duration));
+        TimeSpan duration)
+    {
+        return CalculateCnsTransition(ToMbar(startPo2), ToMbar(endPo2), ToSeconds(duration));
+    }
 
     /// <summary>
     /// Returns the pulmonary oxygen toxicity, in oxygen tolerance units (OTU), accrued over
@@ -270,10 +278,15 @@ public static class OxygenToxicity
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="duration" /> is negative.</exception>
     public static double CalculateOtuTransition(Pressure startPo2,
         Pressure endPo2,
-        TimeSpan duration) =>
-        CalculateOtuTransition(ToMbar(startPo2), ToMbar(endPo2), ToSeconds(duration));
+        TimeSpan duration)
+    {
+        return CalculateOtuTransition(ToMbar(startPo2), ToMbar(endPo2), ToSeconds(duration));
+    }
 
-    private static int ToMbar(Pressure pressure) => (int)Math.Round(pressure.InMillibar, MidpointRounding.AwayFromZero);
+    private static int ToMbar(Pressure pressure)
+    {
+        return (int)Math.Round(pressure.InMillibar, MidpointRounding.AwayFromZero);
+    }
 
     private static int ToSeconds(TimeSpan duration)
     {

@@ -113,10 +113,12 @@ public static class GasSelector
     /// The role the supply must be carried for, or <see langword="null" /> for open circuit.
     /// </param>
     /// <returns><see langword="true" /> when the cylinder may supply the segment; otherwise <see langword="false" />.</returns>
-    public static bool IsAvailableFor(Cylinder cylinder, CylinderPurpose? requiredPurpose) =>
-        requiredPurpose is { } purpose
+    public static bool IsAvailableFor(Cylinder cylinder, CylinderPurpose? requiredPurpose)
+    {
+        return requiredPurpose is { } purpose
             ? cylinder.Purpose == purpose
             : cylinder.Purpose != CylinderPurpose.Oxygen;
+    }
 
     /// <summary>
     /// Returns the maximum operating depth of a gas, being the shallowest ambient pressure

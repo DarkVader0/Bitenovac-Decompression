@@ -154,13 +154,15 @@ public sealed class DecoPlan
             TimeSpan duration,
             TimeSpan runtime,
             GasMixture gas,
-            BreathingLoop loop) =>
+            BreathingLoop loop)
+        {
             builder.Append(CultureInfo.InvariantCulture,
                     $"{kind,-9} {depth.InMeter,6:0.##} m  " +
                     $"{Math.Round(duration.TotalMinutes),4:0} min  " +
                     $"{Math.Round(runtime.TotalMinutes),4:0} min  {gas}" +
                     $"{(loop.Mode == DiveMode.OC ? string.Empty : $" ({loop})")}")
                 .AppendLine();
+        }
 
         var runtime = TimeSpan.Zero;
         var pendingAscent = TimeSpan.Zero;

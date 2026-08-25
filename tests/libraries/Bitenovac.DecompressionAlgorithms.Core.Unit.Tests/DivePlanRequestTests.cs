@@ -7,14 +7,21 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Unit.Tests;
 
 public sealed class DivePlanRequestTests
 {
-    private static DiveProfile CreateProfile() =>
-        new([new DiveSegment(Depth.FromMeter(20), TimeSpan.FromMinutes(20), GasMixture.Air, SegmentKind.Bottom)]);
+    private static DiveProfile CreateProfile()
+    {
+        return new DiveProfile([
+            new DiveSegment(Depth.FromMeter(20), TimeSpan.FromMinutes(20), GasMixture.Air, SegmentKind.Bottom)
+        ]);
+    }
 
-    private static Cylinder CreateCylinder() =>
-        new(GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(200), CylinderPurpose.BottomGas);
+    private static Cylinder CreateCylinder()
+    {
+        return new Cylinder(GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(200), CylinderPurpose.BottomGas);
+    }
 
-    private static DivePlanSettings CreateSettings() =>
-        new(
+    private static DivePlanSettings CreateSettings()
+    {
+        return new DivePlanSettings(
             Pressure.FromBar(1),
             Salinity.Salt,
             20,
@@ -43,6 +50,7 @@ public sealed class DivePlanRequestTests
             false,
             false,
             false);
+    }
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenProfileIsNull()
@@ -220,6 +228,9 @@ public sealed class DivePlanRequestTests
         Assert.Single(request.PriorDives);
     }
 
-    private static PriorDive CreatePriorDive() =>
-        new(CreateProfile(), [CreateCylinder()], CreateSettings(), TimeSpan.FromHours(1), GasMixture.Air);
+    private static PriorDive CreatePriorDive()
+    {
+        return new PriorDive(CreateProfile(), [CreateCylinder()], CreateSettings(), TimeSpan.FromHours(1),
+            GasMixture.Air);
+    }
 }

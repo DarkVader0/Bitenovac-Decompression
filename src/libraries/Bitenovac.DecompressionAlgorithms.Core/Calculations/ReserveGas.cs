@@ -199,8 +199,10 @@ public static class ReserveGas
     /// <returns>The maximum operating depth in meters, never negative.</returns>
     private static double OperatingDepthMeter(GasMixture gas,
         Pressure maxPo2,
-        DivePlanSettings settings) =>
-        GasSelector.MaxOperatingDepthMeter(gas, maxPo2, settings);
+        DivePlanSettings settings)
+    {
+        return GasSelector.MaxOperatingDepthMeter(gas, maxPo2, settings);
+    }
 
     /// <summary>
     /// Assesses a bottom-gas cylinder against a worst-case emergency ascent. The required
@@ -383,7 +385,10 @@ public static class ReserveGas
     /// <returns>The free-gas volume, in milliliters at surface conditions.</returns>
     private static double FreeGasMilliliters(Cylinder cylinder,
         Pressure pressure,
-        Pressure surfacePressure) => cylinder.Size.InMilliliter * (pressure.InMillibar / surfacePressure.InMillibar);
+        Pressure surfacePressure)
+    {
+        return cylinder.Size.InMilliliter * (pressure.InMillibar / surfacePressure.InMillibar);
+    }
 
     /// <summary>
     /// Returns the absolute ambient pressure at a given depth, being the surface pressure

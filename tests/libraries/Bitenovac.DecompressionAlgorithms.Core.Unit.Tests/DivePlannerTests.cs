@@ -12,10 +12,12 @@ public sealed class DivePlannerTests
     private static readonly GasMixture Nitrox50 = GasMixture.FromPercent(50, 0);
 
     private static DivePlanRequest CreateRequest(IEnumerable<DiveSegment> profile,
-        IEnumerable<Cylinder>? cylinders = null) =>
-        new(new DiveProfile(profile),
+        IEnumerable<Cylinder>? cylinders = null)
+    {
+        return new DivePlanRequest(new DiveProfile(profile),
             cylinders ?? [TestFactory.CreateCylinder(GasMixture.Air)],
             TestFactory.CreateSettings());
+    }
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenAlgorithmIsNull()
@@ -444,7 +446,10 @@ public sealed class DivePlannerTests
             return state;
         }
 
-        public Depth CurrentCeiling(IDecompressionState state) => _ceiling;
+        public Depth CurrentCeiling(IDecompressionState state)
+        {
+            return _ceiling;
+        }
 
         public IReadOnlyList<DiveSegment> CalculateFinalAscent(IDecompressionState state, DivePlanRequest request)
         {

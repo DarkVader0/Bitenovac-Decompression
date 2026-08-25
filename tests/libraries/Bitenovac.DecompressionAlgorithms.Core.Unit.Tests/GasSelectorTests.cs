@@ -386,7 +386,6 @@ public sealed class GasSelectorTests
         // Arrange
         var atSeaLevelInFreshWater = TestFactory.CreateSettings(
             Pressure.FromMillibar(1000),
-            Salinity.Fresh,
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
         var atAltitudeInSaltWater = TestFactory.CreateSettings(
             Pressure.FromMillibar(800),
@@ -542,9 +541,7 @@ public sealed class GasSelectorTests
         const double MillibarPerMeter = 1000.0 * 9.80665 / 100.0;
         var depthMeter = (1400.0 - 1000.0) / MillibarPerMeter;
         var settings = TestFactory.CreateSettings(
-            Pressure.FromMillibar(1000),
-            Salinity.Fresh,
-            maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic);
+            Pressure.FromMillibar(1000));
 
         // Act
         var breathable = GasSelector.IsBreathableAt(GasMixture.Oxygen, depthMeter, Pressure.FromBar(1.4), settings);

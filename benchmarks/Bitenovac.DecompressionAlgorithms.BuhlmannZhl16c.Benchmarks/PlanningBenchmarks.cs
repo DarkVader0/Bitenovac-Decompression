@@ -59,13 +59,22 @@ public class PlanningBenchmarks
     }
 
     [Benchmark(Baseline = true)]
-    public int PlanNoDecoDive() => Plan(_noDecoRequest, _noDecoDescent, _noDecoBottom);
+    public int PlanNoDecoDive()
+    {
+        return Plan(_noDecoRequest, _noDecoDescent, _noDecoBottom);
+    }
 
     [Benchmark]
-    public int PlanDecoDive() => Plan(_decoRequest, _decoDescent, _decoBottom);
+    public int PlanDecoDive()
+    {
+        return Plan(_decoRequest, _decoDescent, _decoBottom);
+    }
 
     [Benchmark]
-    public int PlanRepetitiveDecoDive() => Plan(_repetitiveRequest, _decoDescent, _decoBottom);
+    public int PlanRepetitiveDecoDive()
+    {
+        return Plan(_repetitiveRequest, _decoDescent, _decoBottom);
+    }
 
     private int Plan(DivePlanRequest request,
         in DiveSegment descent,
@@ -78,8 +87,9 @@ public class PlanningBenchmarks
         return _algorithm.CalculateFinalAscent(state, request).Count;
     }
 
-    private static DivePlanSettings CreateSettings() =>
-        new(
+    private static DivePlanSettings CreateSettings()
+    {
+        return new DivePlanSettings(
             Pressure.FromBar(1),
             Salinity.Fresh,
             20,
@@ -108,4 +118,5 @@ public class PlanningBenchmarks
             false,
             false,
             false);
+    }
 }

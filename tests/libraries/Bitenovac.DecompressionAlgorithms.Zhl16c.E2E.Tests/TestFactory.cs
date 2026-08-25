@@ -47,8 +47,9 @@ internal static class TestFactory
         bool lastStopAtSixMeters = true,
         bool switchAtRequiredStop = false,
         bool oxygenBreaks = false,
-        bool oxygenIsNarcotic = true) =>
-        new(
+        bool oxygenIsNarcotic = true)
+    {
+        return new DivePlanSettings(
             Pressure.FromMillibar(surfacePressureMillibar),
             salinity,
             descentRateMetersPerMinute,
@@ -77,39 +78,50 @@ internal static class TestFactory
             switchAtRequiredStop,
             oxygenBreaks,
             oxygenIsNarcotic);
+    }
 
     /// <summary>Creates one cylinder from the mix in percent and the size and fill.</summary>
     public static Cylinder CreateCylinder(double percentO2,
         double percentHe,
         double sizeLiter,
         double startPressureBar,
-        CylinderPurpose purpose) =>
-        new(GasMixture.FromPercent(percentO2, percentHe), Volume.FromLiter(sizeLiter),
+        CylinderPurpose purpose)
+    {
+        return new Cylinder(GasMixture.FromPercent(percentO2, percentHe), Volume.FromLiter(sizeLiter),
             Pressure.FromBar(startPressureBar), purpose);
+    }
 
     /// <summary>Plans the requested dive with a fresh algorithm instance.</summary>
     public static DecoPlan CreatePlan(DivePlanRequest request,
         double gradientFactorLow,
-        double gradientFactorHigh) =>
-        new DivePlanner(new BuhlmannZhl16cAlgorithm(gradientFactorLow, gradientFactorHigh))
+        double gradientFactorHigh)
+    {
+        return new DivePlanner(new BuhlmannZhl16cAlgorithm(gradientFactorLow, gradientFactorHigh))
             .CreatePlan(request);
+    }
 
-    public static DiveProfile CreateProfile(params (double DepthMeter, double Minutes)[] levels) =>
-        new(levels.Select(static level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
+    public static DiveProfile CreateProfile(params (double DepthMeter, double Minutes)[] levels)
+    {
+        return new DiveProfile(levels.Select(static level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
             TimeSpan.FromMinutes(level.Minutes), GasMixture.Air, SegmentKind.Bottom)));
+    }
 
     /// <summary>Builds a profile whose every level is breathed through the same apparatus.</summary>
     public static DiveProfile CreateProfile(BreathingLoop loop,
-        params (double DepthMeter, double Minutes)[] levels) =>
-        new(levels.Select(level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
+        params (double DepthMeter, double Minutes)[] levels)
+    {
+        return new DiveProfile(levels.Select(level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
             TimeSpan.FromMinutes(level.Minutes), GasMixture.Air, SegmentKind.Bottom, loop)));
+    }
 
     /// <summary>
     /// Builds a profile whose levels are breathed through different apparatus, so that a
     /// bailout onto open circuit part way through a dive can be planned.
     /// </summary>
     public static DiveProfile CreateProfile(
-        params (double DepthMeter, double Minutes, BreathingLoop Loop)[] levels) =>
-        new(levels.Select(static level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
+        params (double DepthMeter, double Minutes, BreathingLoop Loop)[] levels)
+    {
+        return new DiveProfile(levels.Select(static level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
             TimeSpan.FromMinutes(level.Minutes), GasMixture.Air, SegmentKind.Bottom, level.Loop)));
+    }
 }

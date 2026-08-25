@@ -97,25 +97,36 @@ public readonly struct GasMixture : IEquatable<GasMixture>
     /// <summary>Returns the partial pressure of oxygen at a given ambient pressure.</summary>
     /// <param name="ambient">The absolute ambient pressure.</param>
     /// <returns>The partial pressure of oxygen.</returns>
-    public Pressure PartialPressureO2(Pressure ambient) => ambient * FractionO2;
+    public Pressure PartialPressureO2(Pressure ambient)
+    {
+        return ambient * FractionO2;
+    }
 
     /// <summary>Returns the partial pressure of helium at a given ambient pressure.</summary>
     /// <param name="ambient">The absolute ambient pressure.</param>
     /// <returns>The partial pressure of helium.</returns>
-    public Pressure PartialPressureHe(Pressure ambient) => ambient * FractionHe;
+    public Pressure PartialPressureHe(Pressure ambient)
+    {
+        return ambient * FractionHe;
+    }
 
     /// <summary>Returns the partial pressure of nitrogen at a given ambient pressure.</summary>
     /// <param name="ambient">The absolute ambient pressure.</param>
     /// <returns>The partial pressure of nitrogen.</returns>
-    public Pressure PartialPressureN2(Pressure ambient) => ambient * FractionN2;
+    public Pressure PartialPressureN2(Pressure ambient)
+    {
+        return ambient * FractionN2;
+    }
 
     /// <summary>Returns a value indicating whether this instance is equal to another mixture.</summary>
     /// <param name="other">The mixture to compare with this instance.</param>
     /// <returns>
     /// <see langword="true" /> if the mixtures have the same composition; otherwise, <see langword="false" />.
     /// </returns>
-    public bool Equals(GasMixture other) =>
-        _permilleO2 == other._permilleO2 && _permilleHe == other._permilleHe;
+    public bool Equals(GasMixture other)
+    {
+        return _permilleO2 == other._permilleO2 && _permilleHe == other._permilleHe;
+    }
 
     /// <summary>Returns a value indicating whether this instance is equal to a specified object.</summary>
     /// <param name="obj">The object to compare with this instance.</param>
@@ -123,11 +134,17 @@ public readonly struct GasMixture : IEquatable<GasMixture>
     /// <see langword="true" /> if <paramref name="obj" /> is a <see cref="GasMixture" /> with the same composition;
     /// otherwise, <see langword="false" />.
     /// </returns>
-    public override bool Equals([NotNullWhen(true)] object? obj) => obj is GasMixture gas && Equals(gas);
+    public override bool Equals([NotNullWhen(true)] object? obj)
+    {
+        return obj is GasMixture gas && Equals(gas);
+    }
 
     /// <summary>Returns the hash code for this instance.</summary>
     /// <returns>A 32-bit signed integer hash code.</returns>
-    public override int GetHashCode() => HashCode.Combine(_permilleO2, _permilleHe);
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(_permilleO2, _permilleHe);
+    }
 
     /// <summary>
     /// Returns the conventional diver's name of the mixture: "Air" for 21% oxygen without
@@ -154,11 +171,17 @@ public readonly struct GasMixture : IEquatable<GasMixture>
     /// <param name="left">The first mixture to compare.</param>
     /// <param name="right">The second mixture to compare.</param>
     /// <returns><see langword="true" /> if the mixtures are equal; otherwise, <see langword="false" />.</returns>
-    public static bool operator ==(GasMixture left, GasMixture right) => left.Equals(right);
+    public static bool operator ==(GasMixture left, GasMixture right)
+    {
+        return left.Equals(right);
+    }
 
     /// <summary>Indicates whether two mixtures are not equal.</summary>
     /// <param name="left">The first mixture to compare.</param>
     /// <param name="right">The second mixture to compare.</param>
     /// <returns><see langword="true" /> if the mixtures are not equal; otherwise, <see langword="false" />.</returns>
-    public static bool operator !=(GasMixture left, GasMixture right) => !left.Equals(right);
+    public static bool operator !=(GasMixture left, GasMixture right)
+    {
+        return !left.Equals(right);
+    }
 }

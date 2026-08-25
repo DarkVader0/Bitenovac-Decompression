@@ -295,8 +295,10 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         DivePlanSettings settings,
         double depthMeter,
         Pressure maxPo2,
-        BreathingLoop loop) =>
-        GasSelector.SelectRichestGasAt(cylinders, depthMeter, maxPo2, settings, loop.SupplyPurpose).Gas;
+        BreathingLoop loop)
+    {
+        return GasSelector.SelectRichestGasAt(cylinders, depthMeter, maxPo2, settings, loop.SupplyPurpose).Gas;
+    }
 
     /// <summary>
     /// Advances the tissues, the depth-time tally, the current depth, and the current gas
@@ -814,12 +816,18 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         return _gradientFactorHigh - (_gradientFactorHigh - _gradientFactorLow) * fraction;
     }
 
-    private static double NextStopBelow(double stopMeter, int lastStopMeter) =>
-        stopMeter <= lastStopMeter + DepthToleranceMeter ? 0.0 : stopMeter - StopIntervalMeter;
+    private static double NextStopBelow(double stopMeter, int lastStopMeter)
+    {
+        return stopMeter <= lastStopMeter + DepthToleranceMeter ? 0.0 : stopMeter - StopIntervalMeter;
+    }
 
-    private static int CeilToStopGrid(double depthMeter) =>
-        (int)Math.Ceiling((depthMeter - DepthToleranceMeter) / StopIntervalMeter) * StopIntervalMeter;
+    private static int CeilToStopGrid(double depthMeter)
+    {
+        return (int)Math.Ceiling((depthMeter - DepthToleranceMeter) / StopIntervalMeter) * StopIntervalMeter;
+    }
 
-    private static int FloorToStopGrid(double depthMeter) =>
-        (int)Math.Floor((depthMeter + DepthToleranceMeter) / StopIntervalMeter) * StopIntervalMeter;
+    private static int FloorToStopGrid(double depthMeter)
+    {
+        return (int)Math.Floor((depthMeter + DepthToleranceMeter) / StopIntervalMeter) * StopIntervalMeter;
+    }
 }

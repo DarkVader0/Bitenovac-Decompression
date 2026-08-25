@@ -34,8 +34,9 @@ public sealed class DivePlanSettingsTests
         bool lastStopAtSixMeters = false,
         bool switchAtRequiredStop = false,
         bool oxygenBreaks = false,
-        bool oxygenIsNarcotic = false) =>
-        new(
+        bool oxygenIsNarcotic = false)
+    {
+        return new DivePlanSettings(
             Pressure.FromBar(1),
             Salinity.Salt,
             descentRateMetersPerMinute,
@@ -64,6 +65,7 @@ public sealed class DivePlanSettingsTests
             switchAtRequiredStop,
             oxygenBreaks,
             oxygenIsNarcotic);
+    }
 
     [Fact]
     public void Constructor_ShouldSucceed_WhenAllValuesAreValid()
