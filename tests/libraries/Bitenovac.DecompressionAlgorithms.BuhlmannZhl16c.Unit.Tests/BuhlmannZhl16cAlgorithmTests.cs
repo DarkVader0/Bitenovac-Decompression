@@ -33,25 +33,19 @@ public sealed class BuhlmannZhl16cAlgorithmTests
         0.9092, 0.9222, 0.9319, 0.9403, 0.9477, 0.9544, 0.9602, 0.9653
     ];
 
-    private static double AmbientMillibar(double depthMeter)
-    {
-        return TestFactory.SurfacePressureMillibar + TestFactory.MillibarPerMeter * depthMeter;
-    }
+    private static double AmbientMillibar(double depthMeter) =>
+        TestFactory.SurfacePressureMillibar + TestFactory.MillibarPerMeter * depthMeter;
 
-    private static double SurfaceEquilibriumNitrogenMillibar()
-    {
-        return (TestFactory.SurfacePressureMillibar - TestFactory.WaterVaporPressureMillibar) *
-               GasMixture.Air.FractionN2;
-    }
+    private static double SurfaceEquilibriumNitrogenMillibar() =>
+        (TestFactory.SurfacePressureMillibar - TestFactory.WaterVaporPressureMillibar) *
+        GasMixture.Air.FractionN2;
 
     /// <summary>The instantaneous exponential: P(t) = Palv + (P0 - Palv) * e^(-ln2 * t / halfTime).</summary>
     private static double Haldane(double initial,
         double alveolar,
         double halfTimeMinutes,
-        double minutes)
-    {
-        return alveolar + (initial - alveolar) * Math.Exp(-Math.Log(2.0) * minutes / halfTimeMinutes);
-    }
+        double minutes) =>
+        alveolar + (initial - alveolar) * Math.Exp(-Math.Log(2.0) * minutes / halfTimeMinutes);
 
     [Theory]
     [InlineData(0.0)]
@@ -304,11 +298,9 @@ public sealed class BuhlmannZhl16cAlgorithmTests
         ]);
         var settings = TestFactory.CreateSettings();
 
-        PriorDive CreatePrior(int surfaceMinutes)
-        {
-            return new PriorDive(profile, [TestFactory.CreateCylinder()], settings,
+        PriorDive CreatePrior(int surfaceMinutes) =>
+            new(profile, [TestFactory.CreateCylinder()], settings,
                 TimeSpan.FromMinutes(surfaceMinutes), GasMixture.Air);
-        }
 
         // Act
         var shortIntervalState = Assert.IsType<BuhlmannState>(
@@ -596,12 +588,10 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void BeginDive_ShouldSkipZeroDurationSegments_WhenReplayingPriorDiveProfile()
     {
         // Arrange
-        static PriorDive CreatePrior(params DiveSegment[] segments)
-        {
-            return new PriorDive(new DiveProfile(segments), [TestFactory.CreateCylinder()],
+        static PriorDive CreatePrior(params DiveSegment[] segments) =>
+            new(new DiveProfile(segments), [TestFactory.CreateCylinder()],
                 TestFactory.CreateSettings(),
                 TimeSpan.FromMinutes(60), GasMixture.Air);
-        }
 
         var bottom = new DiveSegment(Depth.FromMeter(30), TimeSpan.FromMinutes(20), GasMixture.Air,
             SegmentKind.Bottom);
@@ -727,9 +717,8 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void BeginDive_ShouldRetainLessNitrogen_WhenPriorDiveProfileAscendsToShallowerLevel()
     {
         // Arrange
-        static PriorDive CreatePrior(double secondLevelMeter)
-        {
-            return new PriorDive(new DiveProfile([
+        static PriorDive CreatePrior(double secondLevelMeter) =>
+            new(new DiveProfile([
                     new DiveSegment(Depth.FromMeter(30), TimeSpan.FromMinutes(10), GasMixture.Air,
                         SegmentKind.Bottom),
                     new DiveSegment(Depth.FromMeter(secondLevelMeter), TimeSpan.FromMinutes(10), GasMixture.Air,
@@ -737,7 +726,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
                 ]),
                 [TestFactory.CreateCylinder()], TestFactory.CreateSettings(), TimeSpan.FromMinutes(60),
                 GasMixture.Air);
-        }
 
         var multilevel = new BuhlmannZhl16cAlgorithm(0.3, 0.85);
         var square = new BuhlmannZhl16cAlgorithm(0.3, 0.85);

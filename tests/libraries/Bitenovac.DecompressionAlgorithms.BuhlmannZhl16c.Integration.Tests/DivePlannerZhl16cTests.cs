@@ -10,10 +10,8 @@ public sealed class DivePlannerZhl16cTests
 
     private static DecoPlan Plan(DivePlanRequest request,
         double gradientFactorLow = 0.3,
-        double gradientFactorHigh = 0.7)
-    {
-        return new DivePlanner(new BuhlmannZhl16cAlgorithm(gradientFactorLow, gradientFactorHigh)).CreatePlan(request);
-    }
+        double gradientFactorHigh = 0.7) =>
+        new DivePlanner(new BuhlmannZhl16cAlgorithm(gradientFactorLow, gradientFactorHigh)).CreatePlan(request);
 
     [Fact]
     public void CreatePlan_ShouldBeValidAndEndAtSurface_WhenDiveNeedsNoDecompression()
@@ -108,12 +106,10 @@ public sealed class DivePlannerZhl16cTests
         // Arrange
         var nitrox50 = GasMixture.FromPercent(50, 0);
 
-        DecoPlan Run()
-        {
-            return Plan(new DivePlanRequest(TestFactory.CreateProfile((45, 25)),
+        DecoPlan Run() =>
+            Plan(new DivePlanRequest(TestFactory.CreateProfile((45, 25)),
                 [TestFactory.CreateCylinder(), TestFactory.CreateCylinder(nitrox50)],
                 TestFactory.CreateSettings()));
-        }
 
         // Act
         var first = Run();

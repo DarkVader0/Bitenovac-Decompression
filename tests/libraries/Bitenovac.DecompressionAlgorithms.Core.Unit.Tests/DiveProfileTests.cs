@@ -6,10 +6,8 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Unit.Tests;
 public sealed class DiveProfileTests
 {
     private static DiveSegment CreateSegment(SegmentKind kind,
-        double minutes)
-    {
-        return new DiveSegment(Depth.FromMeter(20), TimeSpan.FromMinutes(minutes), GasMixture.Air, kind);
-    }
+        double minutes) =>
+        new(Depth.FromMeter(20), TimeSpan.FromMinutes(minutes), GasMixture.Air, kind);
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenSegmentsIsNull()

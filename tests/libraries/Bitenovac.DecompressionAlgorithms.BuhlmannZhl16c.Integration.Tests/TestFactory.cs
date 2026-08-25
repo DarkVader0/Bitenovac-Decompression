@@ -12,9 +12,8 @@ namespace Bitenovac.DecompressionAlgorithms.Zhl16c.Integration.Tests;
 /// </summary>
 internal static class TestFactory
 {
-    public static DivePlanSettings CreateSettings(bool safetyStop = false)
-    {
-        return new DivePlanSettings(
+    public static DivePlanSettings CreateSettings(bool safetyStop = false) =>
+        new(
             Pressure.FromBar(1),
             Salinity.Fresh,
             20,
@@ -43,13 +42,10 @@ internal static class TestFactory
             false,
             false,
             false);
-    }
 
-    public static Cylinder CreateCylinder(GasMixture? gas = null)
-    {
-        return new Cylinder(gas ?? GasMixture.Air, Volume.FromLiter(24), Pressure.FromBar(200),
+    public static Cylinder CreateCylinder(GasMixture? gas = null) =>
+        new(gas ?? GasMixture.Air, Volume.FromLiter(24), Pressure.FromBar(200),
             CylinderPurpose.BottomGas);
-    }
 
     public static DiveProfile CreateProfile(params (double DepthMeter, double Minutes)[] levels)
     {

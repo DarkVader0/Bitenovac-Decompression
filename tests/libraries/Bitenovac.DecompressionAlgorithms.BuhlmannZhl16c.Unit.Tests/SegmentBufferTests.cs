@@ -11,11 +11,9 @@ public sealed class SegmentBufferTests
     // exercises the geometric growth of the backing array.
     private const int BeyondInitialCapacityCount = 65;
 
-    private static DiveSegment CreateSegment(double depthMeter)
-    {
-        return new DiveSegment(Depth.FromMeter(depthMeter), TimeSpan.FromMinutes(1), GasMixture.Air,
+    private static DiveSegment CreateSegment(double depthMeter) =>
+        new(Depth.FromMeter(depthMeter), TimeSpan.FromMinutes(1), GasMixture.Air,
             SegmentKind.Bottom);
-    }
 
     [Fact]
     public void Count_ShouldBeZero_WhenBufferIsNew()

@@ -39,10 +39,7 @@ internal sealed class SegmentBuffer : IReadOnlyList<DiveSegment>, ICollection<Di
         throw new NotSupportedException();
     }
 
-    bool ICollection<DiveSegment>.Remove(DiveSegment item)
-    {
-        throw new NotSupportedException();
-    }
+    bool ICollection<DiveSegment>.Remove(DiveSegment item) => throw new NotSupportedException();
 
     bool ICollection<DiveSegment>.Contains(DiveSegment item)
     {
@@ -84,10 +81,7 @@ internal sealed class SegmentBuffer : IReadOnlyList<DiveSegment>, ICollection<Di
         }
     }
 
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     /// <summary>Appends a segment, growing the backing array geometrically when full.</summary>
     /// <param name="segment">The segment to append.</param>

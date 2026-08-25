@@ -30,9 +30,8 @@ internal static class TestFactory
         Pressure? decoPo2 = null,
         MaximumOperatingDepthModel maximumOperatingDepthModel = MaximumOperatingDepthModel.Realistic,
         double reserveStressFactor = 1.5,
-        int reserveTeamSize = 2)
-    {
-        return new DivePlanSettings(
+        int reserveTeamSize = 2) =>
+        new(
             surfacePressure ?? Pressure.FromBar(1),
             salinity,
             descentRateMetersPerMinute,
@@ -61,29 +60,24 @@ internal static class TestFactory
             false,
             false,
             false);
-    }
 
     public static Cylinder CreateCylinder(
         GasMixture? gas = null,
         double sizeLiter = 12,
         double startPressureBar = 200,
-        CylinderPurpose purpose = CylinderPurpose.BottomGas)
-    {
-        return new Cylinder(gas ?? GasMixture.Air,
+        CylinderPurpose purpose = CylinderPurpose.BottomGas) =>
+        new(gas ?? GasMixture.Air,
             Volume.FromLiter(sizeLiter),
             Pressure.FromBar(startPressureBar),
             purpose);
-    }
 
     public static DiveSegment CreateSegment(
         double depthMeter,
         double minutes,
         GasMixture? gas = null,
-        SegmentKind kind = SegmentKind.Bottom)
-    {
-        return new DiveSegment(Depth.FromMeter(depthMeter),
+        SegmentKind kind = SegmentKind.Bottom) =>
+        new(Depth.FromMeter(depthMeter),
             TimeSpan.FromMinutes(minutes),
             gas ?? GasMixture.Air,
             kind);
-    }
 }

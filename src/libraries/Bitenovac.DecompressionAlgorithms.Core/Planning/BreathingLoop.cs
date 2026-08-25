@@ -88,10 +88,7 @@ public readonly struct BreathingLoop : IEquatable<BreathingLoop>
     /// <param name="setpoint">The partial pressure of oxygen the loop holds.</param>
     /// <returns>The closed-circuit loop.</returns>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="setpoint" /> is not greater than zero.</exception>
-    public static BreathingLoop ClosedCircuit(Pressure setpoint)
-    {
-        return ClosedCircuit(setpoint, setpoint);
-    }
+    public static BreathingLoop ClosedCircuit(Pressure setpoint) => ClosedCircuit(setpoint, setpoint);
 
     /// <summary>
     /// Creates a closed-circuit loop run at one oxygen setpoint on the bottom and raised to
@@ -129,12 +126,10 @@ public readonly struct BreathingLoop : IEquatable<BreathingLoop>
     /// leaves it as it is.
     /// </summary>
     /// <returns>The loop holding the setpoint that applies during decompression.</returns>
-    public BreathingLoop ForDecompression()
-    {
-        return Mode == DiveMode.CCR
+    public BreathingLoop ForDecompression() =>
+        Mode == DiveMode.CCR
             ? new BreathingLoop(DiveMode.CCR, DecoSetpoint, DecoSetpoint, default, 0.0)
             : this;
-    }
 
     /// <summary>
     /// Creates a passive semi-closed loop that vents the given fraction of each exhaled
@@ -234,12 +229,10 @@ public readonly struct BreathingLoop : IEquatable<BreathingLoop>
     /// </summary>
     /// <param name="supply">The supply gas fed into the loop.</param>
     /// <returns>The shortfall in the partial pressure of oxygen, constant over the dive.</returns>
-    public Pressure OxygenPressureDrop(GasMixture supply)
-    {
-        return Mode == DiveMode.PSCR
+    public Pressure OxygenPressureDrop(GasMixture supply) =>
+        Mode == DiveMode.PSCR
             ? Pressure.FromMillibar(OxygenDropCoefficient.InMillibar * (1.0 - supply.FractionO2))
             : default;
-    }
 
     /// <summary>
     /// Returns the fraction of oxygen in the gas the diver inspires from the given supply
@@ -281,10 +274,8 @@ public readonly struct BreathingLoop : IEquatable<BreathingLoop>
     /// <param name="supply">The gas held in the cylinder feeding the apparatus.</param>
     /// <param name="ambient">The absolute ambient pressure at the depth being breathed.</param>
     /// <returns>The inspired partial pressure of oxygen.</returns>
-    public Pressure InspiredOxygenPressure(GasMixture supply, Pressure ambient)
-    {
-        return Pressure.FromMillibar(InspiredOxygenFraction(supply, ambient) * ambient.InMillibar);
-    }
+    public Pressure InspiredOxygenPressure(GasMixture supply, Pressure ambient) =>
+        Pressure.FromMillibar(InspiredOxygenFraction(supply, ambient) * ambient.InMillibar);
 
     /// <summary>
     /// Returns the fraction of nitrogen in the gas the diver inspires from the given supply
@@ -293,12 +284,10 @@ public readonly struct BreathingLoop : IEquatable<BreathingLoop>
     /// <param name="supply">The gas held in the cylinder feeding the apparatus.</param>
     /// <param name="ambient">The absolute ambient pressure at the depth being breathed.</param>
     /// <returns>The inspired fraction of nitrogen, in [0, 1].</returns>
-    public double InspiredNitrogenFraction(GasMixture supply, Pressure ambient)
-    {
-        return Mode == DiveMode.OC
+    public double InspiredNitrogenFraction(GasMixture supply, Pressure ambient) =>
+        Mode == DiveMode.OC
             ? supply.FractionN2
             : InertFraction(supply, supply.FractionN2, InspiredOxygenFraction(supply, ambient));
-    }
 
     /// <summary>
     /// Returns the fraction of helium in the gas the diver inspires from the given supply
@@ -307,53 +296,38 @@ public readonly struct BreathingLoop : IEquatable<BreathingLoop>
     /// <param name="supply">The gas held in the cylinder feeding the apparatus.</param>
     /// <param name="ambient">The absolute ambient pressure at the depth being breathed.</param>
     /// <returns>The inspired fraction of helium, in [0, 1].</returns>
-    public double InspiredHeliumFraction(GasMixture supply, Pressure ambient)
-    {
-        return Mode == DiveMode.OC
+    public double InspiredHeliumFraction(GasMixture supply, Pressure ambient) =>
+        Mode == DiveMode.OC
             ? supply.FractionHe
             : InertFraction(supply, supply.FractionHe, InspiredOxygenFraction(supply, ambient));
-    }
 
     /// <inheritdoc />
-    public bool Equals(BreathingLoop other)
-    {
-        return Mode == other.Mode
-               && Setpoint.InMillibar.Equals(other.Setpoint.InMillibar)
-               && DecoSetpoint.InMillibar.Equals(other.DecoSetpoint.InMillibar)
-               && OxygenDropCoefficient.InMillibar.Equals(other.OxygenDropCoefficient.InMillibar)
-               && DumpRatio.Equals(other.DumpRatio);
-    }
+    public bool Equals(BreathingLoop other) =>
+        Mode == other.Mode
+        && Setpoint.InMillibar.Equals(other.Setpoint.InMillibar)
+        && DecoSetpoint.InMillibar.Equals(other.DecoSetpoint.InMillibar)
+        && OxygenDropCoefficient.InMillibar.Equals(other.OxygenDropCoefficient.InMillibar)
+        && DumpRatio.Equals(other.DumpRatio);
 
     /// <inheritdoc />
-    public override bool Equals(object? obj)
-    {
-        return obj is BreathingLoop other && Equals(other);
-    }
+    public override bool Equals(object? obj) => obj is BreathingLoop other && Equals(other);
 
     /// <inheritdoc />
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(Mode, Setpoint.InMillibar, DecoSetpoint.InMillibar, OxygenDropCoefficient.InMillibar,
+    public override int GetHashCode() =>
+        HashCode.Combine(Mode, Setpoint.InMillibar, DecoSetpoint.InMillibar, OxygenDropCoefficient.InMillibar,
             DumpRatio);
-    }
 
     /// <summary>Determines whether two loops describe the same apparatus.</summary>
     /// <param name="left">The first loop to compare.</param>
     /// <param name="right">The second loop to compare.</param>
     /// <returns><see langword="true" /> when the loops are equal; otherwise <see langword="false" />.</returns>
-    public static bool operator ==(BreathingLoop left, BreathingLoop right)
-    {
-        return left.Equals(right);
-    }
+    public static bool operator ==(BreathingLoop left, BreathingLoop right) => left.Equals(right);
 
     /// <summary>Determines whether two loops describe different apparatus.</summary>
     /// <param name="left">The first loop to compare.</param>
     /// <param name="right">The second loop to compare.</param>
     /// <returns><see langword="true" /> when the loops differ; otherwise <see langword="false" />.</returns>
-    public static bool operator !=(BreathingLoop left, BreathingLoop right)
-    {
-        return !left.Equals(right);
-    }
+    public static bool operator !=(BreathingLoop left, BreathingLoop right) => !left.Equals(right);
 
     /// <summary>Returns the diver's name for the apparatus, with its defining parameter.</summary>
     /// <returns>The apparatus and, on a rebreather, the setpoint or the dump ratio.</returns>

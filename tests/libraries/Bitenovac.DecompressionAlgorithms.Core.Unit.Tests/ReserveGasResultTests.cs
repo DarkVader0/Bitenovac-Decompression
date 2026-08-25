@@ -8,11 +8,9 @@ public sealed class ReserveGasResultTests
     private const int Precision = 5;
 
     private static CylinderReserveStatus CreateStatus(double requiredLiter,
-        double remainingLiter)
-    {
-        return new CylinderReserveStatus(TestFactory.CreateCylinder(), Volume.FromLiter(requiredLiter),
+        double remainingLiter) =>
+        new(TestFactory.CreateCylinder(), Volume.FromLiter(requiredLiter),
             Volume.FromLiter(remainingLiter));
-    }
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenCylinderStatusesIsNull()

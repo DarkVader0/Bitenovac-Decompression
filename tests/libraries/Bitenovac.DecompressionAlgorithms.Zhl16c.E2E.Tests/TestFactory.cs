@@ -47,9 +47,8 @@ internal static class TestFactory
         bool lastStopAtSixMeters = true,
         bool switchAtRequiredStop = false,
         bool oxygenBreaks = false,
-        bool oxygenIsNarcotic = true)
-    {
-        return new DivePlanSettings(
+        bool oxygenIsNarcotic = true) =>
+        new(
             Pressure.FromMillibar(surfacePressureMillibar),
             salinity,
             descentRateMetersPerMinute,
@@ -78,27 +77,22 @@ internal static class TestFactory
             switchAtRequiredStop,
             oxygenBreaks,
             oxygenIsNarcotic);
-    }
 
     /// <summary>Creates one cylinder from the mix in percent and the size and fill.</summary>
     public static Cylinder CreateCylinder(double percentO2,
         double percentHe,
         double sizeLiter,
         double startPressureBar,
-        CylinderPurpose purpose)
-    {
-        return new Cylinder(GasMixture.FromPercent(percentO2, percentHe), Volume.FromLiter(sizeLiter),
+        CylinderPurpose purpose) =>
+        new(GasMixture.FromPercent(percentO2, percentHe), Volume.FromLiter(sizeLiter),
             Pressure.FromBar(startPressureBar), purpose);
-    }
 
     /// <summary>Plans the requested dive with a fresh algorithm instance.</summary>
     public static DecoPlan CreatePlan(DivePlanRequest request,
         double gradientFactorLow,
-        double gradientFactorHigh)
-    {
-        return new DivePlanner(new BuhlmannZhl16cAlgorithm(gradientFactorLow, gradientFactorHigh))
+        double gradientFactorHigh) =>
+        new DivePlanner(new BuhlmannZhl16cAlgorithm(gradientFactorLow, gradientFactorHigh))
             .CreatePlan(request);
-    }
 
     public static DiveProfile CreateProfile(params (double DepthMeter, double Minutes)[] levels)
     {

@@ -9,20 +9,13 @@ public sealed class DecoPlanTests
 {
     private const int Precision = 5;
 
-    private static Cylinder CreateCylinder()
-    {
-        return new Cylinder(GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(200), CylinderPurpose.BottomGas);
-    }
+    private static Cylinder CreateCylinder() => new(GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(200),
+        CylinderPurpose.BottomGas);
 
-    private static DiveSegment CreateSegment()
-    {
-        return new DiveSegment(Depth.FromMeter(20), TimeSpan.FromMinutes(20), GasMixture.Air, SegmentKind.Bottom);
-    }
+    private static DiveSegment CreateSegment() =>
+        new(Depth.FromMeter(20), TimeSpan.FromMinutes(20), GasMixture.Air, SegmentKind.Bottom);
 
-    private static ReserveGasResult CreateReserveGas()
-    {
-        return new ReserveGasResult(Array.Empty<CylinderReserveStatus>());
-    }
+    private static ReserveGasResult CreateReserveGas() => new(Array.Empty<CylinderReserveStatus>());
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenExpandedSegmentsIsNull()

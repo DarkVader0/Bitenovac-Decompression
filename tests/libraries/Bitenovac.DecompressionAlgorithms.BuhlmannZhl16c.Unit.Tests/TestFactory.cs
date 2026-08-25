@@ -27,9 +27,8 @@ internal static class TestFactory
         TimeSpan? stopTimeIncrement = null,
         TimeSpan? minimumGasSwitchDuration = null,
         TimeSpan? oxygenBreakInterval = null,
-        TimeSpan? oxygenBreakDuration = null)
-    {
-        return new DivePlanSettings(
+        TimeSpan? oxygenBreakDuration = null) =>
+        new(
             Pressure.FromBar(1),
             salinity,
             20,
@@ -58,22 +57,18 @@ internal static class TestFactory
             switchAtRequiredStop,
             oxygenBreaks,
             false);
-    }
 
-    public static Cylinder CreateCylinder(GasMixture? gas = null)
-    {
-        return new Cylinder(gas ?? GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(200),
+    public static Cylinder CreateCylinder(GasMixture? gas = null) =>
+        new(gas ?? GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(200),
             CylinderPurpose.BottomGas);
-    }
 
     public static DivePlanRequest CreateRequest(
         double depthMeter,
         double bottomMinutes,
         IEnumerable<Cylinder>? cylinders = null,
         DivePlanSettings? settings = null,
-        IEnumerable<PriorDive>? priorDives = null)
-    {
-        return new DivePlanRequest(
+        IEnumerable<PriorDive>? priorDives = null) =>
+        new(
             new DiveProfile([
                 new DiveSegment(Depth.FromMeter(depthMeter), TimeSpan.FromMinutes(bottomMinutes), GasMixture.Air,
                     SegmentKind.Bottom)
@@ -81,5 +76,4 @@ internal static class TestFactory
             cylinders ?? [CreateCylinder()],
             settings ?? CreateSettings(),
             priorDives);
-    }
 }

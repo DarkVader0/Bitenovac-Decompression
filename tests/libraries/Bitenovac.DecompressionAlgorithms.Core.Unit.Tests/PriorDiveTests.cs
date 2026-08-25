@@ -5,10 +5,7 @@ namespace Bitenovac.DecompressionAlgorithms.Core.Unit.Tests;
 
 public sealed class PriorDiveTests
 {
-    private static DiveProfile CreateProfile()
-    {
-        return new DiveProfile([TestFactory.CreateSegment(20, 20)]);
-    }
+    private static DiveProfile CreateProfile() => new([TestFactory.CreateSegment(20, 20)]);
 
     [Fact]
     public void Constructor_ShouldThrowArgumentNullException_WhenProfileIsNull()

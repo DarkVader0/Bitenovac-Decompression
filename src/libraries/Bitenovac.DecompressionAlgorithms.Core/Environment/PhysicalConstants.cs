@@ -73,10 +73,8 @@ public static class PhysicalConstants
     /// <param name="salinity">The salinity model of the water.</param>
     /// <param name="depthMeters">The depth of the water column, in meters.</param>
     /// <returns>The hydrostatic pressure of the column, in millibars.</returns>
-    public static double HydrostaticPressureMillibar(Salinity salinity, double depthMeters)
-    {
-        return WaterDensity(salinity) * GravityMetersPerSecondSquared * depthMeters / PascalsPerMillibar;
-    }
+    public static double HydrostaticPressureMillibar(Salinity salinity, double depthMeters) => WaterDensity(salinity) *
+        GravityMetersPerSecondSquared * depthMeters / PascalsPerMillibar;
 
     /// <summary>
     /// Returns the atmospheric pressure, in millibars, at a given altitude above sea
