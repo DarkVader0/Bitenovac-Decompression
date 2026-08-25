@@ -29,6 +29,10 @@ public sealed class DivePlanner
         _algorithm = algorithm;
     }
 
+    /// <summary>
+    /// This is dummy thing for testing CI
+    /// </summary>
+    /// <exception cref="NotImplementedException"></exception>
     public DivePlanner() => throw new NotImplementedException();
 
     /// <summary>
