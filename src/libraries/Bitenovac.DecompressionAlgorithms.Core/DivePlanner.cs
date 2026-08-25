@@ -29,6 +29,8 @@ public sealed class DivePlanner
         _algorithm = algorithm;
     }
 
+    public DivePlanner() => throw new NotImplementedException();
+
     /// <summary>
     /// Creates the decompression plan for the given request. The working phase is built and
     /// loaded into the model level by level, each inter-level ascent is validated against
