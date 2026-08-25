@@ -331,15 +331,12 @@ public readonly struct BreathingLoop : IEquatable<BreathingLoop>
 
     /// <summary>Returns the diver's name for the apparatus, with its defining parameter.</summary>
     /// <returns>The apparatus and, on a rebreather, the setpoint or the dump ratio.</returns>
-    public override string ToString()
+    public override string ToString() => Mode switch
     {
-        return Mode switch
-        {
-            DiveMode.CCR => string.Create(CultureInfo.InvariantCulture, $"CCR @ {Setpoint.InBar:0.##}"),
-            DiveMode.PSCR => string.Create(CultureInfo.InvariantCulture, $"PSCR 1:{1.0 / DumpRatio:0.#}"),
-            _ => "OC"
-        };
-    }
+        DiveMode.CCR => string.Create(CultureInfo.InvariantCulture, $"CCR @ {Setpoint.InBar:0.##}"),
+        DiveMode.PSCR => string.Create(CultureInfo.InvariantCulture, $"PSCR 1:{1.0 / DumpRatio:0.#}"),
+        _ => "OC"
+    };
 
     /// <summary>
     /// Returns the inspired fraction of one inert gas, being the balance of the inspired

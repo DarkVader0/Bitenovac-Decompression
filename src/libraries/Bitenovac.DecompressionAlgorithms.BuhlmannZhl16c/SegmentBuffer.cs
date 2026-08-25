@@ -29,15 +29,9 @@ internal sealed class SegmentBuffer : IReadOnlyList<DiveSegment>, ICollection<Di
 
     bool ICollection<DiveSegment>.IsReadOnly => true;
 
-    void ICollection<DiveSegment>.Add(DiveSegment item)
-    {
-        throw new NotSupportedException();
-    }
+    void ICollection<DiveSegment>.Add(DiveSegment item) => throw new NotSupportedException();
 
-    void ICollection<DiveSegment>.Clear()
-    {
-        throw new NotSupportedException();
-    }
+    void ICollection<DiveSegment>.Clear() => throw new NotSupportedException();
 
     bool ICollection<DiveSegment>.Remove(DiveSegment item) => throw new NotSupportedException();
 
@@ -97,8 +91,5 @@ internal sealed class SegmentBuffer : IReadOnlyList<DiveSegment>, ICollection<Di
     }
 
     /// <summary>Empties the buffer without releasing the backing array.</summary>
-    public void Clear()
-    {
-        Count = 0;
-    }
+    public void Clear() => Count = 0;
 }

@@ -54,17 +54,14 @@ public static class PhysicalConstants
     /// <paramref name="salinity" /> is not a defined <see cref="Salinity" />
     /// value.
     /// </exception>
-    public static double WaterDensity(Salinity salinity)
+    public static double WaterDensity(Salinity salinity) => salinity switch
     {
-        return salinity switch
-        {
-            Salinity.Fresh => FreshWaterDensity,
-            Salinity.Salt => SaltWaterDensity,
-            Salinity.Brackish => BrackishWaterDensity,
-            Salinity.EN13319 => En13319WaterDensity,
-            _ => throw new ArgumentOutOfRangeException(nameof(salinity), salinity, null)
-        };
-    }
+        Salinity.Fresh => FreshWaterDensity,
+        Salinity.Salt => SaltWaterDensity,
+        Salinity.Brackish => BrackishWaterDensity,
+        Salinity.EN13319 => En13319WaterDensity,
+        _ => throw new ArgumentOutOfRangeException(nameof(salinity), salinity, null)
+    };
 
     /// <summary>
     /// Returns the hydrostatic pressure, in millibars, of a water column of the given
