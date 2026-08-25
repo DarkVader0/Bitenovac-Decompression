@@ -96,6 +96,11 @@ readonly SCOPING_FILES=(
 readonly PROJECTS_PER_SHARD=8
 readonly MAX_SHARDS=16
 
+# MSBuild schedules across every core it can see. That is right for one job on a machine and wrong
+# for several: N agents on one host would each build as though they owned it. CI_MAX_CPU bounds a
+# single job, and wants to be about cores / agents. Unset keeps the default of all cores.
+readonly MAX_CPU_ARG="-maxCpuCount${CI_MAX_CPU:+:${CI_MAX_CPU}}"
+
 cd "${REPO_ROOT}"
 
 log()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
@@ -317,7 +322,7 @@ project_info() {
     fi
 
     dotnet msbuild "${BUILD_DIR}/project-info.proj" \
-        -nologo -maxCpuCount \
+        -nologo "${MAX_CPU_ARG}" \
         -p:CiRepoRoot="${REPO_ROOT_NATIVE}" \
         -p:Configuration="${configuration}" \
         -p:CiProjectsFile="${REPO_ROOT_NATIVE}${projects_file}" \
@@ -560,7 +565,7 @@ cmd_restore() {
     # retests every project in the repository. What a lock file would add on top is protection
     # against a restore resolving differently for the same commit, which NuGet's lowest-applicable
     # rule already rules out for a single fixed feed.
-    dotnet msbuild "${project_file}" -t:Restore -nologo -maxCpuCount \
+    dotnet msbuild "${project_file}" -t:Restore -nologo "${MAX_CPU_ARG}" \
         -p:CiRepoRoot="${REPO_ROOT_NATIVE}" \
         -p:Configuration="${configuration}"
 }
@@ -581,7 +586,7 @@ cmd_build() {
 
     # Upstream dependencies are compiled by MSBuild as inputs even though they are not selected;
     # only their tests are skipped.
-    dotnet msbuild "${project_file}" -t:Build -nologo -maxCpuCount \
+    dotnet msbuild "${project_file}" -t:Build -nologo "${MAX_CPU_ARG}" \
         -p:CiRepoRoot="${REPO_ROOT_NATIVE}" \
         -p:Configuration="${configuration}"
 }
