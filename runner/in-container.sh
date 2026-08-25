@@ -46,7 +46,7 @@ run_args=(
 )
 
 # Passed through when set.
-for variable in BASE_SHA CHANGED_FILES CI_SHARD CI_SHARDS CI_STAGE CI_COVERAGE_HTML \
+for variable in BASE_SHA CHANGED_FILES CI_SHARD CI_SHARDS CI_STAGE CI_COVERAGE_HTML CI_MAX_CPU \
                 GITHUB_ACTIONS GITHUB_OUTPUT GITHUB_STEP_SUMMARY; do
     [[ -n "${!variable:-}" ]] && run_args+=(--env "${variable}=${!variable}")
 done
