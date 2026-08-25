@@ -33,7 +33,7 @@ jobs:
   plan:
     name: Plan
     runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 1
+    timeout-minutes: 5
     outputs:
       any: ${{ steps.plan.outputs.any }}
       shards: ${{ steps.plan.outputs.shards }}
@@ -60,7 +60,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.any == 'true'
     runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 1
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,7 +73,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.any == 'true'
     runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 1
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -129,7 +129,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.any == 'true'
     runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 1
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -172,7 +172,7 @@ jobs:
     needs: [plan, verify, debug, release]
     if: always()
     runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 1
+    timeout-minutes: 5
     steps:
       - name: Check results
         run: |
