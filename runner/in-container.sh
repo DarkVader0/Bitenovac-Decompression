@@ -39,6 +39,11 @@ run_args=(
     # Running as a non-root user leaves no writable home, so both are pointed somewhere writable
     # instead of relying on one. NUGET_PACKAGES is what puts the cache on the mounted volume.
     --env NUGET_PACKAGES=/cache/nuget
+    # NuGet arbitrates concurrent extraction with lock files under the temp directory, not under
+    # the packages folder. Agents share the volume but not /tmp, so leaving this unset lets two
+    # containers extract the same package into one directory with nothing between them, and the
+    # loser's rename target disappears mid-restore.
+    --env TMPDIR=/cache/tmp
     --env DOTNET_CLI_HOME=/tmp
     --env DOTNET_NOLOGO=true
     --env DOTNET_CLI_TELEMETRY_OPTOUT=true
@@ -61,4 +66,4 @@ fi
 # so it is bypassed. Tools are restored here because this is where they run: a second or two
 # against a warm volume, and nothing is installed on the host.
 exec docker run "${run_args[@]}" --entrypoint bash "${IMAGE}" \
-    -c 'dotnet tool restore > /dev/null && exec bash build/ci.sh "$@"' ci "$@"
+    -c 'mkdir -p "${TMPDIR}" && dotnet tool restore > /dev/null && exec bash build/ci.sh "$@"' ci "$@"

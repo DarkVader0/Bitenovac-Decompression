@@ -1,0 +1,203 @@
+:root {
+    color-scheme: light dark;
+
+    --brand: #03173d;
+    --brand-bright: #1b6ec2;
+
+    --surface: #ffffff;
+    --surface-sunken: #f4f5f7;
+    --border: #d6d5d5;
+    --text: #16181d;
+    --text-muted: #5b6068;
+    --link: #0060a8;
+
+    --danger: #b32121;
+    --success: #1c8043;
+
+    /* Deliberately generous: the primary use is a wet finger on a boat deck. */
+    --touch-target: 3rem;
+    --radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --surface: #14161a;
+        --surface-sunken: #1c1f25;
+        --border: #343841;
+        --text: #e9eaec;
+        --text-muted: #9aa0a9;
+        --link: #6cb6ff;
+    }
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    background-color: var(--surface);
+    color: var(--text);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+h1, h2, h3 {
+    line-height: 1.2;
+    margin: 0 0 0.5em;
+}
+
+h1 {
+    font-size: clamp(1.5rem, 1.2rem + 1.5vw, 2rem);
+}
+
+h1:focus {
+    outline: none;
+}
+
+a {
+    color: var(--link);
+}
+
+code {
+    color: #c02d76;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* --------------------------------------------------------------------- controls -- */
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+    color: inherit;
+}
+
+input,
+select,
+textarea {
+    min-height: var(--touch-target);
+    padding: 0.5rem 0.75rem;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+/* Depth, time and pressure are read at a glance and compared against a table, so they are
+   tabular and larger than body text even on the narrowest screen. */
+input[type="number"] {
+    font-size: 1.125rem;
+    font-variant-numeric: tabular-nums;
+}
+
+button {
+    min-height: var(--touch-target);
+    padding: 0.5rem 1.25rem;
+    background-color: var(--brand-bright);
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    color: #fff;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #1861ac;
+}
+
+button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+:focus-visible {
+    outline: 3px solid var(--brand-bright);
+    outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------- validation -- */
+
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid var(--success);
+}
+
+.invalid {
+    outline: 1px solid var(--danger);
+}
+
+.validation-message {
+    color: var(--danger);
+}
+
+/* ------------------------------------------------------------------ blazor ui -- */
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    color: #16181d;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+.blazor-error-boundary {
+    background: var(--danger);
+    padding: 1rem;
+    color: #fff;
+}
+
+.blazor-error-boundary::after {
+    content: "An error has occurred.";
+}
+
+/* Driven by --blazor-load-percentage, which the framework sets while the runtime downloads. */
+.loading-progress {
+    position: absolute;
+    display: block;
+    width: 8rem;
+    height: 8rem;
+    inset: 20vh 0 auto 0;
+    margin: 0 auto;
+}
+
+.loading-progress circle {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 0.6rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
+
+.loading-progress circle:last-child {
+    stroke: var(--brand-bright);
+    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+    transition: stroke-dasharray 0.05s ease-in-out;
+}
+
+.loading-progress-text {
+    position: absolute;
+    text-align: center;
+    font-weight: bold;
+    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+}
+
+.loading-progress-text::after {
+    content: var(--blazor-load-percentage-text, "Loading");
+}
