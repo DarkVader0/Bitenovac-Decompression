@@ -1,26 +1,16 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Bitenovac.DecompressionCalculator.Web</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
+<div class="brand-row">
+    <a class="brand" href="">Bitenovac</a>
+    <button class="toggle" type="button" title="Navigation menu" aria-expanded="@(!collapseNavMenu)" @onclick="ToggleNavMenu">☰</button>
 </div>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-    </nav>
-</div>
+<nav class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <NavLink href="" Match="NavLinkMatch.All">Plan</NavLink>
+</nav>
 
 @code {
     private bool collapseNavMenu = true;
 
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private string? NavMenuCssClass => collapseNavMenu ? "collapsed" : null;
 
     private void ToggleNavMenu()
     {

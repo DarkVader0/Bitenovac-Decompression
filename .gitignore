@@ -7,7 +7,6 @@ BenchmarkDotNet.Artifacts/*
 /**/bin/
 /**/obj/
 /**/TestResults/
-/**/wwwroot/lib/
 
 /**/packages.lock.json
 
