@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!--
+            Not under src/libraries, so Directory.Build.props would not otherwise classify this
+            as a library. It is one: a reusable, documented, fully covered core with no process
+            or filesystem I/O, consumed by Bitenovac.CloudBuild.
+        -->
+        <IsLibrary>true</IsLibrary>
+    </PropertyGroup>
+
+</Project>

@@ -54,7 +54,7 @@ log "Shell utilities"
 # runner/ and docker/ are written in these. They are always present on Linux and macOS; on
 # Windows they come with Git for Windows, so a missing one means this is not running under Git
 # Bash. awk is no longer among them: the pipeline logic it used to drive now lives in
-# src/tools/Bitenovac.Ci, which needs only the SDK checked for below.
+# src/tools/Bitenovac.CloudBuild, which needs only the SDK checked for below.
 for utility in git curl tar sed grep find sort; do
     if command -v "${utility}" > /dev/null 2>&1; then
         ok "${utility}"
@@ -135,16 +135,16 @@ if [[ "${restore}" == false ]]; then
 else
     log "Packages"
     # 'plan' restores every discovered project before it hashes anything, so this warms the
-    # package cache for the whole repository and smoke-tests the CI tool in one step. There is
+    # package cache for the whole repository and smoke-tests the CloudBuild tool in one step. There is
     # no solution file to restore instead — the tool discovers projects from the filesystem.
-    dotnet run --project src/tools/Bitenovac.Ci -- plan
+    dotnet run --project src/tools/Bitenovac.CloudBuild -- plan
     ok "restored packages"
 fi
 
 log "Ready"
 cat <<'EOF'
-  dotnet run --project src/tools/Bitenovac.Ci -- graph    What depends on what
-  dotnet run --project src/tools/Bitenovac.Ci -- plan     What this working tree would build
+  dotnet run --project src/tools/Bitenovac.CloudBuild -- graph    What depends on what
+  dotnet run --project src/tools/Bitenovac.CloudBuild -- plan     What this working tree would build
 
   docker/ci-local.sh                  The whole pipeline, in the runner image
   docker/ci-local.sh --cacheless      The same, ignoring the local cache

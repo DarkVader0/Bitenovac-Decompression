@@ -51,5 +51,5 @@ jobs:
           docker run --rm \
               --volume bitenovac-logs:/mnt/logs \
               --entrypoint find \
-              "bitenovac-ci-runner:${sdk_version}" \
+              "bitenovac-cloudbuild-runner:${sdk_version}" \
               /mnt/logs -mindepth 1 -maxdepth 1 -mtime +2 -exec rm -rf {} +

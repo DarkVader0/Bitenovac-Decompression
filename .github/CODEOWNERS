@@ -11,8 +11,8 @@
 *                          @DarkVader0
 
 # How the repository is built, tested and measured. Called out separately because a change here
-# governs every project in the repository rather than any one of them: the CI tool's own hash
-# folds into every target's fullHash (see ToolVersion in src/tools/Bitenovac.Ci), so a change
+# governs every project in the repository rather than any one of them: the CloudBuild tool's own hash
+# folds into every target's fullHash (see ToolVersion in src/tools/Bitenovac.CloudBuild), so a change
 # here invalidates the whole cache, and the reviewer should be someone who knows why.
 /src/tools/                @DarkVader0
 /.github/                  @DarkVader0

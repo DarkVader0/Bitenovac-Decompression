@@ -6,7 +6,7 @@
 #
 # Usage (as arguments to docker/ci-local.sh, or to 'docker run <image>'):
 #   <none>            Run the whole pull request pipeline: plan, then Debug and Release build+test
-#   ci <args...>      Run one Bitenovac.Ci command with these arguments and nothing else
+#   ci <args...>      Run one Bitenovac.CloudBuild command with these arguments and nothing else
 #   shell             Open an interactive bash in the prepared working copy
 #   exec <args...>    Run an arbitrary command in the prepared working copy
 #
@@ -56,9 +56,9 @@ prepare_working_copy() {
 }
 
 publish_tool() {
-    log "Publishing the CI tool"
+    log "Publishing the CloudBuild tool"
     dotnet tool restore > /dev/null
-    dotnet publish src/tools/Bitenovac.Ci -c Release -o /tool --nologo > /dev/null
+    dotnet publish src/tools/Bitenovac.CloudBuild -c Release -o /tool --nologo > /dev/null
 }
 
 export_artifacts() {
@@ -74,16 +74,16 @@ run_pipeline() {
     mkdir -p "${REPO_DIR}/artifacts"
     trap export_artifacts EXIT
 
-    export CI_REPO_ROOT="${REPO_DIR}"
-    export CI_MAIN_STORE="${MAIN_DIR}"
-    export CI_PR_STORE="${PR_DIR}"
+    export CLOUDBUILD_REPO_ROOT="${REPO_DIR}"
+    export CLOUDBUILD_MAIN_STORE="${MAIN_DIR}"
+    export CLOUDBUILD_PR_STORE="${PR_DIR}"
 
     publish_tool
 
     log "Plan"
     # Guarded rather than checked after the fact: 'set -e' would abort the script at a failing
     # plan before any status check below could report why.
-    if ! /tool/Bitenovac.Ci plan; then
+    if ! /tool/Bitenovac.CloudBuild plan; then
         printf '\nPR: \033[31mred\033[0m -- plan failed.\n'
         return 1
     fi
@@ -92,10 +92,10 @@ run_pipeline() {
     local configuration
     for configuration in Debug Release; do
         log "${configuration} build"
-        /tool/Bitenovac.Ci build "${configuration}" || failed=1
+        /tool/Bitenovac.CloudBuild build "${configuration}" || failed=1
 
         log "${configuration} test"
-        /tool/Bitenovac.Ci test "${configuration}" || failed=1
+        /tool/Bitenovac.CloudBuild test "${configuration}" || failed=1
     done
 
     if [[ "${failed}" -ne 0 ]]; then
@@ -117,9 +117,9 @@ case "${1:-pipeline}" in
     ci)
         shift
         trap export_artifacts EXIT
-        export CI_REPO_ROOT="${REPO_DIR}" CI_MAIN_STORE="${MAIN_DIR}" CI_PR_STORE="${PR_DIR}"
+        export CLOUDBUILD_REPO_ROOT="${REPO_DIR}" CLOUDBUILD_MAIN_STORE="${MAIN_DIR}" CLOUDBUILD_PR_STORE="${PR_DIR}"
         publish_tool
-        /tool/Bitenovac.Ci "$@"
+        /tool/Bitenovac.CloudBuild "$@"
         ;;
     shell) shift; exec bash "$@" ;;
     exec)  shift; trap export_artifacts EXIT; "$@" ;;

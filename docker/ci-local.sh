@@ -6,7 +6,7 @@
 # Usage:
 #   docker/ci-local.sh                          Plan, then build and test both configurations
 #   docker/ci-local.sh --cacheless              Ignore the local main cache; rebuild everything
-#   docker/ci-local.sh ci plan                  One Bitenovac.Ci command and nothing else
+#   docker/ci-local.sh ci plan                  One Bitenovac.CloudBuild command and nothing else
 #   docker/ci-local.sh ci graph
 #   docker/ci-local.sh shell                    A prompt inside the runner, on a copy of the tree
 #
@@ -35,7 +35,7 @@ set -euo pipefail
 readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly DOCKER_DIR="${REPO_ROOT}/docker"
 readonly OUT_DIR="${REPO_ROOT}/artifacts/local-ci"
-readonly NUGET_VOLUME="bitenovac-ci-nuget"
+readonly NUGET_VOLUME="bitenovac-cloudbuild-nuget"
 readonly MAIN_VOLUME="bitenovac-local-main"
 readonly PR_VOLUME="bitenovac-local-pr-$$"
 
@@ -76,7 +76,7 @@ docker info > /dev/null 2>&1 || fail "The Docker daemon is not reachable. Start 
 sdk_version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' global.json | head -n 1)"
 [[ -n "${sdk_version}" ]] || fail "Could not read the SDK version from global.json."
 
-readonly IMAGE="bitenovac-ci-runner:${sdk_version}"
+readonly IMAGE="bitenovac-cloudbuild-runner:${sdk_version}"
 
 if [[ "${rebuild}" == true ]] || ! docker image inspect "${IMAGE}" > /dev/null 2>&1; then
     log "Building ${IMAGE} (.NET SDK ${sdk_version})"
@@ -125,7 +125,7 @@ if [[ "${use_cache}" == true ]]; then
     run_args+=(--volume "${NUGET_VOLUME}:/root/.nuget/packages")
 fi
 
-[[ "${cacheless}" == true ]] && run_args+=(--env "CI_CACHELESS=true")
+[[ "${cacheless}" == true ]] && run_args+=(--env "CLOUDBUILD_CACHELESS=true")
 
 # Interactive only when attached to a terminal, so this stays usable from a script or a hook.
 if [[ -t 0 && -t 1 ]]; then

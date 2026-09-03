@@ -4,7 +4,7 @@ name: Verify
 # holds. The cache's soundness rests entirely on the hash covering every input that can change a
 # project's output; the whole pipeline trusts main's stored hash rather than checking output
 # against source the way a normal build's up-to-date check would (see 'BuildCommand.Touch' in the
-# CI tool for why that check is deliberately disabled for a hit). If any hash is under-specified,
+# CloudBuild tool for why that check is deliberately disabled for a hit). If any hash is under-specified,
 # main can end up holding a stale artifact under a hash that still looks correct, and no PR run
 # would ever notice — it would just keep hitting. This is the backstop that would: --cacheless
 # makes every project a miss and forces every gated project to be re-measured, so this run is the
@@ -23,9 +23,9 @@ permissions:
 env:
   DOTNET_NOLOGO: "true"
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
-  CI_CACHELESS: "true"
-  CI_PR_VOLUME: bitenovac-verify-${{ github.run_id }}
-  CI_TOOL_VOLUME: bitenovac-verify-tool-${{ github.run_id }}
+  CLOUDBUILD_CACHELESS: "true"
+  CLOUDBUILD_PR_VOLUME: bitenovac-verify-${{ github.run_id }}
+  CLOUDBUILD_TOOL_VOLUME: bitenovac-verify-tool-${{ github.run_id }}
 
 jobs:
   verify:
@@ -64,4 +64,4 @@ jobs:
       # so this is only ever cleaning up this run's own volumes, never touching main.
       - name: Drop this run's volumes
         if: always()
-        run: docker volume rm -f "${CI_PR_VOLUME}" "${CI_TOOL_VOLUME}"
+        run: docker volume rm -f "${CLOUDBUILD_PR_VOLUME}" "${CLOUDBUILD_TOOL_VOLUME}"

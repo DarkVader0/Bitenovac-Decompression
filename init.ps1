@@ -222,10 +222,10 @@ try
     {
         Write-Log 'Packages'
         # 'plan' restores every discovered project before it hashes anything, so this warms the
-        # package cache for the whole repository and smoke-tests the CI tool in one step. There
+        # package cache for the whole repository and smoke-tests the CloudBuild tool in one step. There
         # is no solution file to restore instead -- the tool discovers projects from the
         # filesystem.
-        & dotnet run --project 'src/tools/Bitenovac.Ci' -- plan
+        & dotnet run --project 'src/tools/Bitenovac.CloudBuild' -- plan
         if ($LASTEXITCODE -ne 0)
         {
             Stop-WithError 'dotnet run -- plan failed.'
@@ -235,8 +235,8 @@ try
 
     Write-Log 'Ready'
     @'
-  dotnet run --project src/tools/Bitenovac.Ci -- graph    What depends on what
-  dotnet run --project src/tools/Bitenovac.Ci -- plan     What this working tree would build
+  dotnet run --project src/tools/Bitenovac.CloudBuild -- graph    What depends on what
+  dotnet run --project src/tools/Bitenovac.CloudBuild -- plan     What this working tree would build
 
   bash docker/ci-local.sh                  The whole pipeline, in the runner image
   bash docker/ci-local.sh --cacheless      The same, ignoring the local cache

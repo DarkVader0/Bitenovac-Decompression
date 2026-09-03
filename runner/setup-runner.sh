@@ -39,8 +39,8 @@
 # requests at that concurrency, the rest queued.
 #
 # Every agent shares this machine's cores, so past that point they only contend. MSBuild claims
-# the whole box by default: set CI_MAX_CPU to roughly cores / instances in the agent environment
-# and the CI tool bounds each job to that instead (see MsBuildRunner in src/tools/Bitenovac.Ci).
+# the whole box by default: set CLOUDBUILD_MAX_CPU to roughly cores / instances in the agent environment
+# and the CloudBuild tool bounds each job to that instead (see MsBuildRunner in src/tools/Bitenovac.CloudBuild).
 #
 # This is also the only machine in the pool: main and the tool's own build cache both live on
 # volumes local to this host (see runner/in-container.sh), so there is currently no sound way to
@@ -217,11 +217,11 @@ host_cores="$(nproc)"
 sdk_version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${REPO_ROOT}/global.json" | head -n 1)"
 [[ -n "${sdk_version}" ]] || fail "Could not read the SDK version from ${REPO_ROOT}/global.json."
 
-log "Building bitenovac-ci-runner:${sdk_version} (.NET SDK ${sdk_version})"
+log "Building bitenovac-cloudbuild-runner:${sdk_version} (.NET SDK ${sdk_version})"
 docker build \
     --file "${REPO_ROOT}/docker/ci-runner.Dockerfile" \
     --build-arg "DOTNET_SDK_VERSION=${sdk_version}" \
-    --tag "bitenovac-ci-runner:${sdk_version}" \
+    --tag "bitenovac-cloudbuild-runner:${sdk_version}" \
     "${REPO_ROOT}/docker"
 
 docker volume create "${NUGET_VOLUME}" > /dev/null
@@ -234,7 +234,7 @@ docker run --rm --user 0 --entrypoint chown \
     --volume "${NUGET_VOLUME}:/cache" \
     --volume "${MAIN_VOLUME}:/mnt/main" \
     --volume "${LOGS_VOLUME}:/mnt/logs" \
-    "bitenovac-ci-runner:${sdk_version}" -R "${RUN_UID}:${RUN_GID}" /cache /mnt/main /mnt/logs
+    "bitenovac-cloudbuild-runner:${sdk_version}" -R "${RUN_UID}:${RUN_GID}" /cache /mnt/main /mnt/logs
 ok "volumes ready: ${NUGET_VOLUME}, ${MAIN_VOLUME}, ${LOGS_VOLUME} — owned by ${run_as}"
 
 # ------------------------------------------------------------------------------------- agent ----
@@ -279,7 +279,7 @@ for (( instance = 1; instance <= instances; instance++ )); do
     # core count that is only true of this machine out of the repository.
     cpu_share=$(( host_cores / instances ))
     (( cpu_share < 1 )) && cpu_share=1
-    printf 'CI_MAX_CPU=%s\n' "${cpu_share}" > "${agent_dir}/.env"
+    printf 'CLOUDBUILD_MAX_CPU=%s\n' "${cpu_share}" > "${agent_dir}/.env"
 
     chown -R "${run_as}:${run_as}" "${agent_dir}"
 

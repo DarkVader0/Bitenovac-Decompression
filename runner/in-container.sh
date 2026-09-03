@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Runs one Bitenovac.Ci command in a fresh container, discarded when the command returns.
+# Runs one Bitenovac.CloudBuild command in a fresh container, discarded when the command returns.
 #
 # Usage, from a workflow step with the repository checked out:
 #   bash runner/in-container.sh plan
@@ -14,8 +14,8 @@
 # Bootstrap
 # ---------
 # The tool is published to a scratch directory OUTSIDE the checkout before it runs, rather than
-# invoked with `dotnet run --project` in place. src/tools/Bitenovac.Ci and
-# src/tools/Bitenovac.Ci.Core are projects in this same repository, so a run whose plan selects
+# invoked with `dotnet run --project` in place. src/tools/Bitenovac.CloudBuild and
+# src/tools/Bitenovac.CloudBuild.Core are projects in this same repository, so a run whose plan selects
 # them (any run, once the tool itself has changed — see ToolVersion in the tool's own source, and
 # note this is also why a change here invalidates the whole cache) tries to materialise or
 # recompile its own currently-loaded assemblies. On the file locking every mainstream OS applies
@@ -25,24 +25,24 @@
 set -euo pipefail
 
 readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-readonly NUGET_VOLUME="${CI_NUGET_VOLUME:-bitenovac-runner-nuget}"
-readonly MAIN_VOLUME="${CI_MAIN_VOLUME:-bitenovac-main}"
-readonly LOGS_VOLUME="${CI_LOGS_VOLUME:-bitenovac-logs}"
+readonly NUGET_VOLUME="${CLOUDBUILD_NUGET_VOLUME:-bitenovac-runner-nuget}"
+readonly MAIN_VOLUME="${CLOUDBUILD_MAIN_VOLUME:-bitenovac-main}"
+readonly LOGS_VOLUME="${CLOUDBUILD_LOGS_VOLUME:-bitenovac-logs}"
 # Keyed on the run id, not the PR number, so a re-run of the same PR gets a clean volume instead
 # of reading stale state a cancelled attempt left behind.
-readonly PR_VOLUME="${CI_PR_VOLUME:-bitenovac-pr-${GITHUB_RUN_ID:-local}}"
-readonly TOOL_PUBLISH_VOLUME="${CI_TOOL_VOLUME:-bitenovac-tool-${GITHUB_RUN_ID:-local}}"
+readonly PR_VOLUME="${CLOUDBUILD_PR_VOLUME:-bitenovac-pr-${GITHUB_RUN_ID:-local}}"
+readonly TOOL_PUBLISH_VOLUME="${CLOUDBUILD_TOOL_VOLUME:-bitenovac-tool-${GITHUB_RUN_ID:-local}}"
 
 cd "${REPO_ROOT}"
 
 fail() { printf '\nerror: %s\n' "$*" >&2; exit 1; }
 
-[[ $# -gt 0 ]] || fail "No command given. Pass a Bitenovac.Ci command, for example: test Debug"
+[[ $# -gt 0 ]] || fail "No command given. Pass a Bitenovac.CloudBuild command, for example: test Debug"
 
 sdk_version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' global.json | head -n 1)"
 [[ -n "${sdk_version}" ]] || fail "Could not read the SDK version from global.json."
 
-readonly IMAGE="bitenovac-ci-runner:${sdk_version}"
+readonly IMAGE="bitenovac-cloudbuild-runner:${sdk_version}"
 
 docker image inspect "${IMAGE}" > /dev/null 2>&1 \
     || fail "The image ${IMAGE} is missing. Re-run runner/setup-runner.sh; it builds the image from global.json."
@@ -76,13 +76,13 @@ run_args=(
     --env DOTNET_NOLOGO=true
     --env DOTNET_CLI_TELEMETRY_OPTOUT=true
     --env TESTINGPLATFORM_TELEMETRY_OPTOUT=1
-    --env CI_REPO_ROOT=/repo
-    --env CI_MAIN_STORE=/mnt/main
-    --env CI_PR_STORE=/mnt/pr
+    --env CLOUDBUILD_REPO_ROOT=/repo
+    --env CLOUDBUILD_MAIN_STORE=/mnt/main
+    --env CLOUDBUILD_PR_STORE=/mnt/pr
 )
 
 # Passed through when set.
-for variable in GITHUB_ACTIONS GITHUB_RUN_ID CI_MAX_CPU CI_CACHELESS CI_COVERAGE_HTML; do
+for variable in GITHUB_ACTIONS GITHUB_RUN_ID CLOUDBUILD_MAX_CPU CLOUDBUILD_CACHELESS CLOUDBUILD_COVERAGE_HTML; do
     [[ -n "${!variable:-}" ]] && run_args+=(--env "${variable}=${!variable}")
 done
 
@@ -94,9 +94,9 @@ exec docker run "${run_args[@]}" --entrypoint bash "${IMAGE}" -c '
     # The tool is published once per container into the volume every stage of this run shares,
     # not rebuilt per stage: same cost as one dotnet run, paid once instead of four times, and
     # it is what keeps the published binary outside the checkout the tool itself operates on.
-    if [[ ! -x /tool/Bitenovac.Ci ]]; then
-        dotnet publish src/tools/Bitenovac.Ci -c Release -o /tool --nologo > /dev/null
+    if [[ ! -x /tool/Bitenovac.CloudBuild ]]; then
+        dotnet publish src/tools/Bitenovac.CloudBuild -c Release -o /tool --nologo > /dev/null
     fi
 
-    exec /tool/Bitenovac.Ci "$@"
+    exec /tool/Bitenovac.CloudBuild "$@"
 ' ci "$@"

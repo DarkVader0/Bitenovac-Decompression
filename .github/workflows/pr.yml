@@ -36,8 +36,8 @@ env:
   # 'promote' job below — never a pull_request run. Both go through this same workflow so the
   # merge queue tests exactly what it is about to land, but only the queue's run is asked to
   # promote.
-  CI_PR_VOLUME: bitenovac-pr-${{ github.run_id }}
-  CI_TOOL_VOLUME: bitenovac-tool-${{ github.run_id }}
+  CLOUDBUILD_PR_VOLUME: bitenovac-pr-${{ github.run_id }}
+  CLOUDBUILD_TOOL_VOLUME: bitenovac-tool-${{ github.run_id }}
 
 jobs:
   # Every timeout below is sized to catch a hang, not to bound how long the work takes.
@@ -116,7 +116,7 @@ jobs:
     timeout-minutes: 2
     steps:
       - name: Drop this run's volumes
-        run: docker volume rm -f "${CI_PR_VOLUME}" "${CI_TOOL_VOLUME}"
+        run: docker volume rm -f "${CLOUDBUILD_PR_VOLUME}" "${CLOUDBUILD_TOOL_VOLUME}"
 
   # Mark this as the required check: 'debug' and 'release' are stable names now that sharding is
   # gone, but this still exists so a future change to the job graph does not also require editing

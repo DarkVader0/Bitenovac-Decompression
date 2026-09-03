@@ -3,7 +3,7 @@
     <!--
         Extra inputs to fold into a project's own hash.
 
-        The CI tool reads a project's properties and items straight from MSBuild's evaluation
+        The CloudBuild tool reads a project's properties and items straight from MSBuild's evaluation
         API (see MsBuildProjectEvaluator), so nothing here has to report them: an item or
         property is queryable without running any target, which is why the CiProjectInfo target
         this file used to declare, and the build/project-info.proj that invoked it, are both gone.
@@ -14,7 +14,7 @@
         a change to one invalidates the project's cache entry the way a source edit would:
 
             <ItemGroup>
-                <CiHashInput Include="schema-version=3"/>
+                <CloudBuildHashInput Include="schema-version=3"/>
             </ItemGroup>
 
         Anything not declared and not otherwise covered is, by definition, an input the cache
