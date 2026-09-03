@@ -10,7 +10,7 @@
 #
 # What it does
 # ------------
-#   1. Checks the shell utilities build/ci.sh depends on (git, awk, curl, tar).
+#   1. Checks the shell utilities the runner scripts depend on (git, curl, tar).
 #   2. Ensures a .NET SDK that satisfies global.json, installing one under ~/.dotnet if the
 #      machine has none. The version is never chosen here: it is read from global.json, which
 #      is the same file CI hands to actions/setup-dotnet.
@@ -51,9 +51,11 @@ missing=0
 
 log "Shell utilities"
 
-# build/ci.sh is written in these. They are always present on Linux and macOS; on Windows they
-# come with Git for Windows, so a missing one means this is not running under Git Bash.
-for utility in git awk curl tar sed grep find sort; do
+# runner/ and docker/ are written in these. They are always present on Linux and macOS; on
+# Windows they come with Git for Windows, so a missing one means this is not running under Git
+# Bash. awk is no longer among them: the pipeline logic it used to drive now lives in
+# src/tools/Bitenovac.Ci, which needs only the SDK checked for below.
+for utility in git curl tar sed grep find sort; do
     if command -v "${utility}" > /dev/null 2>&1; then
         ok "${utility}"
     else
@@ -132,17 +134,20 @@ if [[ "${restore}" == false ]]; then
     log "Skipping the package restore (--no-restore)."
 else
     log "Packages"
-    # The whole solution, not the affected set: this is a first-run bootstrap, so it warms the
-    # package cache for every project rather than for whichever ones a plan happens to select.
-    dotnet restore Bitenovac-Decompression.slnx
+    # 'plan' restores every discovered project before it hashes anything, so this warms the
+    # package cache for the whole repository and smoke-tests the CI tool in one step. There is
+    # no solution file to restore instead — the tool discovers projects from the filesystem.
+    dotnet run --project src/tools/Bitenovac.Ci -- plan
     ok "restored packages"
 fi
 
 log "Ready"
 cat <<'EOF'
-  dotnet build Bitenovac-Decompression.slnx
-  dotnet test .\tests\libraries\Bitenovac.DecompressionAlgorithms.Core.Unit.Tests\Bitenovac.DecompressionAlgorithms.Core.Unit.Tests.csproj
+  dotnet run --project src/tools/Bitenovac.Ci -- graph    What depends on what
+  dotnet run --project src/tools/Bitenovac.Ci -- plan     What this working tree would build
 
-  bash build/ci.sh graph              What depends on what
-  bash build/ci.sh plan               What a pull request from HEAD would run
+  docker/ci-local.sh                  The whole pipeline, in the runner image
+  docker/ci-local.sh --cacheless      The same, ignoring the local cache
+
+  dotnet test ./tests/libraries/Bitenovac.DecompressionAlgorithms.Core.Unit.Tests/Bitenovac.DecompressionAlgorithms.Core.Unit.Tests.csproj
 EOF

@@ -1,0 +1,55 @@
+name: Janitor
+
+# Sweeps what pr.yml's own cleanup job should already have removed but, on a cancelled or
+# abruptly killed run, sometimes cannot reach — 'if: always()' still does not run when the whole
+# job is killed rather than failed. Runs on the same self-hosted machine as everything else, so
+# 'docker volume ls' here sees the exact volumes CI created.
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  janitor:
+    name: Sweep orphaned volumes and old logs
+    runs-on: [self-hosted, linux, x64, bitenovac]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prune orphaned per-run volumes
+        run: |
+          now="$(date +%s)"
+          swept=0
+
+          for volume in $(docker volume ls -q --filter 'name=^bitenovac-pr-' ) \
+                        $(docker volume ls -q --filter 'name=^bitenovac-tool-' ) \
+                        $(docker volume ls -q --filter 'name=^bitenovac-verify-' ); do
+              created="$(docker volume inspect --format '{{.CreatedAt}}' "${volume}" 2>/dev/null)" || continue
+              created_epoch="$(date -d "${created}" +%s 2>/dev/null)" || continue
+              age_hours=$(( (now - created_epoch) / 3600 ))
+
+              # Six hours comfortably exceeds any real run; a volume still attached to a running
+              # container fails to remove here and is left for the next sweep rather than forced.
+              if (( age_hours > 6 )); then
+                  if docker volume rm "${volume}" > /dev/null 2>&1; then
+                      echo "removed ${volume} (${age_hours}h old)"
+                      swept=$(( swept + 1 ))
+                  fi
+              fi
+          done
+
+          echo "Swept ${swept} orphaned volume(s)."
+
+      - name: Prune logs older than 2 days
+        run: |
+          sdk_version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' global.json | head -n 1)"
+          docker run --rm \
+              --volume bitenovac-logs:/mnt/logs \
+              --entrypoint find \
+              "bitenovac-ci-runner:${sdk_version}" \
+              /mnt/logs -mindepth 1 -maxdepth 1 -mtime +2 -exec rm -rf {} +

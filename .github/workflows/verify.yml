@@ -1,0 +1,67 @@
+name: Verify
+
+# A full, uncached rebuild and retest of master every night, ignoring every entry the cache
+# holds. The cache's soundness rests entirely on the hash covering every input that can change a
+# project's output; the whole pipeline trusts main's stored hash rather than checking output
+# against source the way a normal build's up-to-date check would (see 'BuildCommand.Touch' in the
+# CI tool for why that check is deliberately disabled for a hit). If any hash is under-specified,
+# main can end up holding a stale artifact under a hash that still looks correct, and no PR run
+# would ever notice — it would just keep hitting. This is the backstop that would: --cacheless
+# makes every project a miss and forces every gated project to be re-measured, so this run is the
+# same work a from-scratch clone would do.
+
+on:
+  schedule:
+    # 03:00 UTC. Late enough that it does not compete with the day's PR traffic for the runner,
+    # early enough that a break it finds is waiting when the day starts.
+    - cron: '0 3 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+  CI_CACHELESS: "true"
+  CI_PR_VOLUME: bitenovac-verify-${{ github.run_id }}
+  CI_TOOL_VOLUME: bitenovac-verify-tool-${{ github.run_id }}
+
+jobs:
+  verify:
+    name: Verify (cacheless)
+    runs-on: [self-hosted, linux, x64, bitenovac]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Plan
+        run: bash runner/in-container.sh plan
+
+      - name: Debug build
+        run: bash runner/in-container.sh build Debug
+
+      - name: Debug test + coverage gate
+        run: bash runner/in-container.sh test Debug
+
+      - name: Release build
+        run: bash runner/in-container.sh build Release
+
+      - name: Release test
+        run: bash runner/in-container.sh test Release
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-Debug-verify
+          path: artifacts/coverage-report/Debug
+          if-no-files-found: ignore
+
+      # --cacheless never promotes on its own — this run's store stays local to it regardless —
+      # so this is only ever cleaning up this run's own volumes, never touching main.
+      - name: Drop this run's volumes
+        if: always()
+        run: docker volume rm -f "${CI_PR_VOLUME}" "${CI_TOOL_VOLUME}"

@@ -8,8 +8,8 @@
 # mcr.microsoft.com/dotnet/sdk image would pin whatever SDK its tag carries rather than the one
 # global.json asks for.
 #
-# Only what build/ci.sh invokes is installed, so a tool the image lacks cannot pass here and fail
-# on a machine that has it.
+# Only what the pipeline invokes is installed, so a tool the image lacks cannot pass here and
+# fail on a machine that has it.
 
 FROM ubuntu:24.04
 
@@ -24,11 +24,7 @@ RUN apt-get update \
         ca-certificates \
         curl \
         git \
-        gawk \
         tzdata \
-        # The .NET globalization stack needs ICU. Without it every dotnet command fails on
-        # start-up unless DOTNET_SYSTEM_GLOBALIZATION_INVARIANT is set, which changes how the
-        # code under test formats and compares strings.
         libicu74 \
     && rm -rf /var/lib/apt/lists/*
 

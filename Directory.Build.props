@@ -5,6 +5,15 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+        <!--
+            Roslyn embeds the absolute source path of every file into the PDB unless told
+            otherwise, so building the same commit from two different working-copy paths (this
+            machine vs. a CI worker vs. someone else's clone) produces byte-different output
+            under an identical hash. Conditioned on CI rather than set unconditionally, because
+            it also disables the debugger's "edit and continue" style source stepping locally.
+        -->
+        <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
     </PropertyGroup>
 
     <!--
@@ -59,6 +68,15 @@
         <OutputType>Exe</OutputType>
         <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
         <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+
+        <!--
+            Whether a cache hit on this test project may serve its stored result instead of
+            re-running it. True by default: a test project's hash already covers everything it
+            depends on, so "same hash" genuinely means "same result" for anything hermetic. A
+            project whose result depends on something the hash cannot see — a live service, the
+            network, wall-clock time — should set this to false in its own file.
+        -->
+        <CacheTestResults Condition="'$(CacheTestResults)' == ''">true</CacheTestResults>
     </PropertyGroup>
 
     <!--

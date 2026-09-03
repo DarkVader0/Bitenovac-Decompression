@@ -9,8 +9,9 @@
 
     What it does:
 
-      1. Checks the shell utilities build/ci.sh depends on. They are not installable from here --
-         they ship with Git for Windows -- so a missing one is reported as a missing Git install.
+      1. Checks the shell utilities the runner scripts depend on. They are not installable from
+         here -- they ship with Git for Windows -- so a missing one is reported as a missing Git
+         install.
       2. Ensures a .NET SDK that satisfies global.json, installing one under
          $env:USERPROFILE\.dotnet if the machine has none. The version is never chosen here: it
          is read from global.json, which is the same file CI hands to actions/setup-dotnet.
@@ -86,8 +87,8 @@ try
 
     Write-Log 'Shell utilities'
 
-    # build/ci.sh and docker/ci-local.sh are bash scripts driving awk. On Windows these all come
-    # from Git for Windows, so they are checked together and reported as one install.
+    # runner/in-container.sh and docker/ci-local.sh are bash scripts. On Windows bash comes from
+    # Git for Windows, so it stands in for the whole set and is reported as one install.
     $gitBash = $null
     foreach ($candidate in @(
         (Join-Path $env:ProgramFiles 'Git\bin\bash.exe'),
@@ -110,7 +111,7 @@ try
     {
         Write-Ok "bash ($gitBash)"
 
-        foreach ($utility in @('git', 'awk', 'curl', 'tar', 'sed', 'grep', 'find', 'sort'))
+        foreach ($utility in @('git', 'curl', 'tar', 'sed', 'grep', 'find', 'sort'))
         {
             & $gitBash -lc "command -v $utility" *> $null
             if ($LASTEXITCODE -eq 0)
@@ -127,7 +128,7 @@ try
     else
     {
         Write-Miss 'bash was not found'
-        Write-Warn 'Install Git for Windows (winget install --id Git.Git) -- it provides bash, awk and the rest of the utilities build/ci.sh runs on.'
+        Write-Warn 'Install Git for Windows (winget install --id Git.Git) -- it provides bash and the rest of the utilities the runner scripts need.'
         $missing = $true
     }
 
@@ -220,23 +221,27 @@ try
     else
     {
         Write-Log 'Packages'
-        # The whole solution, not the affected set: this is a first-run bootstrap, so it warms the
-        # package cache for every project rather than for whichever ones a plan happens to select.
-        & dotnet restore 'Bitenovac-Decompression.slnx'
+        # 'plan' restores every discovered project before it hashes anything, so this warms the
+        # package cache for the whole repository and smoke-tests the CI tool in one step. There
+        # is no solution file to restore instead -- the tool discovers projects from the
+        # filesystem.
+        & dotnet run --project 'src/tools/Bitenovac.Ci' -- plan
         if ($LASTEXITCODE -ne 0)
         {
-            Stop-WithError 'dotnet restore failed.'
+            Stop-WithError 'dotnet run -- plan failed.'
         }
         Write-Ok 'restored packages'
     }
 
     Write-Log 'Ready'
     @'
-  dotnet build Bitenovac-Decompression.slnx
-  dotnet test .\tests\libraries\Bitenovac.DecompressionAlgorithms.Core.Unit.Tests\Bitenovac.DecompressionAlgorithms.Core.Unit.Tests.csproj
+  dotnet run --project src/tools/Bitenovac.Ci -- graph    What depends on what
+  dotnet run --project src/tools/Bitenovac.Ci -- plan     What this working tree would build
 
-  bash build/ci.sh graph              What depends on what
-  bash build/ci.sh plan               What a pull request from HEAD would run
+  bash docker/ci-local.sh                  The whole pipeline, in the runner image
+  bash docker/ci-local.sh --cacheless      The same, ignoring the local cache
+
+  dotnet test .\tests\libraries\Bitenovac.DecompressionAlgorithms.Core.Unit.Tests\Bitenovac.DecompressionAlgorithms.Core.Unit.Tests.csproj
 '@ | Write-Host
 }
 finally

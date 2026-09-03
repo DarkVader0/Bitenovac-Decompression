@@ -1,25 +1,43 @@
 #!/usr/bin/env bash
 #
-# Runs one build/ci.sh command in a fresh container, discarded when the command returns.
+# Runs one Bitenovac.Ci command in a fresh container, discarded when the command returns.
 #
 # Usage, from a workflow step with the repository checked out:
 #   bash runner/in-container.sh plan
 #   bash runner/in-container.sh test Debug
 #
-# The workspace is mounted read-write: the build writes artifacts/ there and later steps read it.
-# Packages go to a named volume instead, so they outlive the container. The container runs as the
-# calling user, so the next checkout can delete what it leaves behind.
+# The workspace is mounted read-write: the tool writes obj/ and bin/ there for real projects to
+# use. Three more volumes carry what does not belong in the workspace or does not survive the
+# container: NuGet packages, main's artifact store, this run's own artifact store, and logs.
+# The container runs as the calling user, so the next checkout can delete what it leaves behind.
+#
+# Bootstrap
+# ---------
+# The tool is published to a scratch directory OUTSIDE the checkout before it runs, rather than
+# invoked with `dotnet run --project` in place. src/tools/Bitenovac.Ci and
+# src/tools/Bitenovac.Ci.Core are projects in this same repository, so a run whose plan selects
+# them (any run, once the tool itself has changed — see ToolVersion in the tool's own source, and
+# note this is also why a change here invalidates the whole cache) tries to materialise or
+# recompile its own currently-loaded assemblies. On the file locking every mainstream OS applies
+# to a loaded assembly, that fails outright; a self-contained publish first means the running
+# process's files and the checkout's build output never alias.
 
 set -euo pipefail
 
 readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly NUGET_VOLUME="${CI_NUGET_VOLUME:-bitenovac-runner-nuget}"
+readonly MAIN_VOLUME="${CI_MAIN_VOLUME:-bitenovac-main}"
+readonly LOGS_VOLUME="${CI_LOGS_VOLUME:-bitenovac-logs}"
+# Keyed on the run id, not the PR number, so a re-run of the same PR gets a clean volume instead
+# of reading stale state a cancelled attempt left behind.
+readonly PR_VOLUME="${CI_PR_VOLUME:-bitenovac-pr-${GITHUB_RUN_ID:-local}}"
+readonly TOOL_PUBLISH_VOLUME="${CI_TOOL_VOLUME:-bitenovac-tool-${GITHUB_RUN_ID:-local}}"
 
 cd "${REPO_ROOT}"
 
 fail() { printf '\nerror: %s\n' "$*" >&2; exit 1; }
 
-[[ $# -gt 0 ]] || fail "No command given. Pass a build/ci.sh command, for example: test Debug"
+[[ $# -gt 0 ]] || fail "No command given. Pass a Bitenovac.Ci command, for example: test Debug"
 
 sdk_version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' global.json | head -n 1)"
 [[ -n "${sdk_version}" ]] || fail "Could not read the SDK version from global.json."
@@ -29,12 +47,22 @@ readonly IMAGE="bitenovac-ci-runner:${sdk_version}"
 docker image inspect "${IMAGE}" > /dev/null 2>&1 \
     || fail "The image ${IMAGE} is missing. Re-run runner/setup-runner.sh; it builds the image from global.json."
 
+# main is read-only everywhere except 'promote': a PR run must not be able to write to it no
+# matter what the tool does, and the only thing that ever calls 'promote' is a merge_group run
+# that already passed every other stage — see .github/workflows/pr.yml.
+main_mount="${MAIN_VOLUME}:/mnt/main:ro"
+[[ "${1}" == "promote" ]] && main_mount="${MAIN_VOLUME}:/mnt/main"
+
 run_args=(
     --rm
     --init
     --user "$(id -u):$(id -g)"
     --volume "${REPO_ROOT}:/repo"
     --volume "${NUGET_VOLUME}:/cache"
+    --volume "${main_mount}"
+    --volume "${PR_VOLUME}:/mnt/pr"
+    --volume "${LOGS_VOLUME}:/mnt/logs"
+    --volume "${TOOL_PUBLISH_VOLUME}:/tool"
     --workdir /repo
     # Running as a non-root user leaves no writable home, so both are pointed somewhere writable
     # instead of relying on one. NUGET_PACKAGES is what puts the cache on the mounted volume.
@@ -48,22 +76,27 @@ run_args=(
     --env DOTNET_NOLOGO=true
     --env DOTNET_CLI_TELEMETRY_OPTOUT=true
     --env TESTINGPLATFORM_TELEMETRY_OPTOUT=1
+    --env CI_REPO_ROOT=/repo
+    --env CI_MAIN_STORE=/mnt/main
+    --env CI_PR_STORE=/mnt/pr
 )
 
 # Passed through when set.
-for variable in BASE_SHA CHANGED_FILES CI_SHARD CI_SHARDS CI_STAGE CI_COVERAGE_HTML CI_MAX_CPU \
-                GITHUB_ACTIONS GITHUB_OUTPUT GITHUB_STEP_SUMMARY; do
+for variable in GITHUB_ACTIONS GITHUB_RUN_ID CI_MAX_CPU CI_CACHELESS CI_COVERAGE_HTML; do
     [[ -n "${!variable:-}" ]] && run_args+=(--env "${variable}=${!variable}")
 done
 
-# GITHUB_OUTPUT and GITHUB_STEP_SUMMARY are files under RUNNER_TEMP, outside the workspace.
-# Without this mount those writes go nowhere.
-if [[ -n "${RUNNER_TEMP:-}" && -d "${RUNNER_TEMP}" ]]; then
-    run_args+=(--volume "${RUNNER_TEMP}:${RUNNER_TEMP}")
-fi
+exec docker run "${run_args[@]}" --entrypoint bash "${IMAGE}" -c '
+    set -euo pipefail
+    mkdir -p "${TMPDIR}"
+    dotnet tool restore > /dev/null
 
-# The image entrypoint expects a read-only mount to copy from; the workspace is already in place,
-# so it is bypassed. Tools are restored here because this is where they run: a second or two
-# against a warm volume, and nothing is installed on the host.
-exec docker run "${run_args[@]}" --entrypoint bash "${IMAGE}" \
-    -c 'mkdir -p "${TMPDIR}" && dotnet tool restore > /dev/null && exec bash build/ci.sh "$@"' ci "$@"
+    # The tool is published once per container into the volume every stage of this run shares,
+    # not rebuilt per stage: same cost as one dotnet run, paid once instead of four times, and
+    # it is what keeps the published binary outside the checkout the tool itself operates on.
+    if [[ ! -x /tool/Bitenovac.Ci ]]; then
+        dotnet publish src/tools/Bitenovac.Ci -c Release -o /tool --nologo > /dev/null
+    fi
+
+    exec /tool/Bitenovac.Ci "$@"
+' ci "$@"

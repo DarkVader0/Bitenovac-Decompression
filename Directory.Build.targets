@@ -1,27 +1,26 @@
-﻿<Project>
+<Project>
 
     <!--
-        Reports the properties CI reads, so nothing downstream parses project XML or guesses an
-        output path. Evaluated rather than built: it depends on no restore and no compilation, so
-        it can be queried before anything is restored.
+        Extra inputs to fold into a project's own hash.
 
-        TargetPath is the authoritative location of a project's output. Deriving it from a
-        hard-coded target framework breaks as soon as a project moves its output or is written in
-        another language.
+        The CI tool reads a project's properties and items straight from MSBuild's evaluation
+        API (see MsBuildProjectEvaluator), so nothing here has to report them: an item or
+        property is queryable without running any target, which is why the CiProjectInfo target
+        this file used to declare, and the build/project-info.proj that invoked it, are both gone.
+
+        What the tool cannot infer is an input that changes a project's output without appearing
+        among its sources, packages or build properties — a code generator reading a file the
+        project does not list, say, or a value baked in from the environment. Declare those, and
+        a change to one invalidates the project's cache entry the way a source edit would:
+
+            <ItemGroup>
+                <CiHashInput Include="schema-version=3"/>
+            </ItemGroup>
+
+        Anything not declared and not otherwise covered is, by definition, an input the cache
+        cannot see — which is how a stale artifact gets served under a hash that still looks
+        correct. When in doubt, declare it: an unnecessary entry costs one rebuild, a missing
+        one costs a green build that tested nothing.
     -->
-    <Target Name="CiProjectInfo" Returns="@(CiProjectInfoResult)">
-        <ItemGroup>
-            <CiProjectInfoResult Include="$(MSBuildProjectFullPath)">
-                <RelativePath>$([MSBuild]::MakeRelative('$(CiRepoRoot)', '$(MSBuildProjectFullPath)').Replace('\', '/'))</RelativePath>
-                <AssemblyName>$(AssemblyName)</AssemblyName>
-                <IsTestProject>$(IsTestProject)</IsTestProject>
-                <ExcludeFromCoverage>$(ExcludeFromCoverage)</ExcludeFromCoverage>
-                <MinimumLineCoverage>$(MinimumLineCoverage)</MinimumLineCoverage>
-                <MinimumBranchCoverage>$(MinimumBranchCoverage)</MinimumBranchCoverage>
-                <TargetPath>$(TargetPath)</TargetPath>
-                <TargetFrameworks>$(TargetFrameworks)</TargetFrameworks>
-            </CiProjectInfoResult>
-        </ItemGroup>
-    </Target>
 
 </Project>

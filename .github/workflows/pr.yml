@@ -1,13 +1,21 @@
 name: PR
 
-# Builds and tests the projects a pull request's changes reach, in both Debug and Release, and
-# holds any changed library to full line and branch coverage.
+# Hashes every project against the shared cache and builds, tests, and coverage-gates only what
+# a hash miss selects.
 #
-#   plan ──┬──► debug  shard 0..N ──► restore, build, test, coverage gate
-#          │
-#          └──► release shard 0..N ──► restore, build, test
+#   plan ──┬──► debug   build ──► debug   test + coverage gate ──┐
+#          │                                                     ├──► cleanup (always) ──► pr
+#          └──► release build ──► release test ───────────────────┘
 #
-# Which projects each shard owns is decided by build/ci.sh plan.
+# Every job in this workflow lands on the same self-hosted machine — there is one, see
+# runner/setup-runner.sh — so 'plan', 'debug' and 'release' share this run's own artifact store
+# through a Docker volume keyed by the run id, with no actions/upload-artifact round trip. That
+# volume, and the tool's own published copy alongside it, are dropped by 'cleanup' whatever the
+# other jobs did.
+#
+# There is no "any affected" gate any more: 'plan' hashes every project regardless, and a hash
+# hit costs 'build' and 'test' a file copy, not a skip. What used to be conditional is now just
+# fast.
 
 on:
   pull_request:
@@ -22,177 +30,121 @@ permissions:
   contents: read
 
 env:
-  # A merge group is tested against the queue's base, applying the affected-set narrowing to
-  # queued merges. Left empty, every merge becomes a full-repository build.
-  BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
   DOTNET_NOLOGO: "true"
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+  # A merge_group run promotes its own qualifying entries into main afterwards — see the
+  # 'promote' job below — never a pull_request run. Both go through this same workflow so the
+  # merge queue tests exactly what it is about to land, but only the queue's run is asked to
+  # promote.
+  CI_PR_VOLUME: bitenovac-pr-${{ github.run_id }}
+  CI_TOOL_VOLUME: bitenovac-tool-${{ github.run_id }}
 
 jobs:
   # Every timeout below is sized to catch a hang, not to bound how long the work takes.
   plan:
     name: Plan
     runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 0.6
-    outputs:
-      any: ${{ steps.plan.outputs.any }}
-      shards: ${{ steps.plan.outputs.shards }}
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        with:
-          # Diffing against the merge base needs history but not file contents.
-          fetch-depth: 0
-          filter: blob:none
 
-      - id: plan
-        run: bash runner/in-container.sh plan
-
-      # Every later job downloads this rather than planning again, so all stages shard alike.
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ci-plan
-          path: artifacts/ci
-          retention-days: 1
-          if-no-files-found: error
-
-  verify:
-    name: Verify build assumptions
-    needs: plan
-    if: needs.plan.outputs.any == 'true'
-    runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 0.6
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          filter: blob:none
-
-      - run: bash runner/in-container.sh verify
+      - run: bash runner/in-container.sh plan
 
   debug:
-    name: Debug (shard ${{ matrix.shard }})
+    name: Debug
     needs: plan
-    if: needs.plan.outputs.any == 'true'
     runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 0.6
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: ${{ fromJson(needs.plan.outputs.shards) }}
-    env:
-      CI_SHARD: ${{ matrix.shard }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          filter: blob:none
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: ci-plan
-          path: artifacts/ci
-
-      - id: restore
-        name: Restore
-        run: bash runner/in-container.sh restore Debug
 
       - id: build
         name: Build
         run: bash runner/in-container.sh build Debug
 
       - id: test
-        name: Test
+        name: Test + coverage gate
         run: bash runner/in-container.sh test Debug
-
-      # Debug only: optimised IL does not map onto the source well enough to measure branches.
-      # No if: always(), because coverage from a part-way test run measures nothing useful.
-      - id: gate
-        name: Coverage gate
-        run: bash runner/in-container.sh coverage-gate Debug
-
-      - name: Summarise
-        if: always()
-        run: CI_STAGE=Debug bash runner/in-container.sh summarise
-            "restore=${{ steps.restore.outcome }}"
-            "build=${{ steps.build.outcome }}"
-            "test=${{ steps.test.outcome }}"
-            "coverage-gate=${{ steps.gate.outcome }}"
 
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-Debug-shard-${{ matrix.shard }}
+          name: coverage-Debug
           path: artifacts/coverage-report/Debug
           if-no-files-found: ignore
 
   release:
-    name: Release (shard ${{ matrix.shard }})
+    name: Release
     needs: plan
-    if: needs.plan.outputs.any == 'true'
     runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 0.6
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: ${{ fromJson(needs.plan.outputs.shards) }}
-    env:
-      CI_SHARD: ${{ matrix.shard }}
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          filter: blob:none
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: ci-plan
-          path: artifacts/ci
-
-      - id: restore
-        name: Restore
-        run: bash runner/in-container.sh restore Release
-
-      - id: build
-        name: Build
+      - name: Build
         run: bash runner/in-container.sh build Release
 
-      - id: test
-        name: Test
+      - name: Test
         run: bash runner/in-container.sh test Release
 
-      - name: Summarise
-        if: always()
-        run: CI_STAGE=Release bash runner/in-container.sh summarise
-            "restore=${{ steps.restore.outcome }}"
-            "build=${{ steps.build.outcome }}"
-            "test=${{ steps.test.outcome }}"
+  # Only a merge_group run reaches here, and only when every stage above it passed: a red build's
+  # artifacts must never be promoted. This is what makes "a PR cannot write to main unless
+  # merged" true — nothing in a pull_request run's job graph ever calls 'promote'.
+  #
+  # Runs before cleanup, not after: promotion reads this run's own artifact store, which cleanup
+  # deletes. See docker/entrypoint.sh's local equivalent for the same ordering.
+  promote:
+    name: Promote
+    needs: [plan, debug, release]
+    if: github.event_name == 'merge_group' && needs.plan.result == 'success' && needs.debug.result == 'success' && needs.release.result == 'success'
+    runs-on: [self-hosted, linux, x64, bitenovac]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
 
-  # Mark this as the required check. The shard count varies per pull request, so the matrix jobs
-  # cannot be named in the ruleset, and a skipped job must not read as a failure.
-  pr:
-    name: PR
-    needs: [plan, verify, debug, release]
+      - run: bash runner/in-container.sh promote
+
+  # Runs whatever the jobs above did, so this run's volumes never outlive it even when a job
+  # upstream failed or the run was cancelled. A janitor (see janitor.yml) is the backstop for the
+  # cases even this cannot reach — cancellation abrupt enough to skip 'if: always()' jobs too.
+  cleanup:
+    name: Cleanup
+    needs: [debug, release, promote]
     if: always()
     runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 0.6
+    timeout-minutes: 2
+    steps:
+      - name: Drop this run's volumes
+        run: docker volume rm -f "${CI_PR_VOLUME}" "${CI_TOOL_VOLUME}"
+
+  # Mark this as the required check: 'debug' and 'release' are stable names now that sharding is
+  # gone, but this still exists so a future change to the job graph does not also require editing
+  # the master ruleset.
+  pr:
+    name: PR
+    needs: [plan, debug, release]
+    if: always()
+    runs-on: [self-hosted, linux, x64, bitenovac]
+    timeout-minutes: 2
     steps:
       - name: Check results
         run: |
-          echo "plan:    ${{ needs.plan.result }} (any: ${{ needs.plan.outputs.any }})"
-          echo "verify:  ${{ needs.verify.result }}"
+          echo "plan:    ${{ needs.plan.result }}"
           echo "debug:   ${{ needs.debug.result }}"
           echo "release: ${{ needs.release.result }}"
 
           failed=0
-          for result in "${{ needs.plan.result }}" "${{ needs.verify.result }}" \
-                        "${{ needs.debug.result }}" "${{ needs.release.result }}"; do
+          for result in "${{ needs.plan.result }}" "${{ needs.debug.result }}" "${{ needs.release.result }}"; do
             case "${result}" in
-              success|skipped) ;;
+              success) ;;
               *) failed=1 ;;
             esac
           done
 
           if [ "${failed}" -ne 0 ]; then
-            echo "::error::At least one required job did not succeed. The run summary lists each stage and shard with the phase that failed."
+            echo "::error::At least one required job did not succeed."
             exit 1
           fi
 
-          echo "All required jobs succeeded or were skipped."
+          echo "All required jobs succeeded."

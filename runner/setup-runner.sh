@@ -33,19 +33,26 @@
 #
 # Sizing --instances
 # ------------------
-# One pull request runs plan, then verify plus a Debug and a Release job per shard, then the PR
-# aggregator. Peak demand is therefore (2 x shards) + 1, and 'build/ci.sh plan' prints the shard
-# count for a given change.
+# One pull request runs a fixed four jobs — plan, debug, release, cleanup — with no shard count
+# to multiply by: plan, then debug and release in parallel, then cleanup. Peak demand per open
+# pull request is therefore 2 (debug and release running at once); N instances runs N pull
+# requests at that concurrency, the rest queued.
 #
 # Every agent shares this machine's cores, so past that point they only contend. MSBuild claims
 # the whole box by default: set CI_MAX_CPU to roughly cores / instances in the agent environment
-# and build/ci.sh bounds each job to that instead.
+# and the CI tool bounds each job to that instead (see MsBuildRunner in src/tools/Bitenovac.Ci).
+#
+# This is also the only machine in the pool: main and the tool's own build cache both live on
+# volumes local to this host (see runner/in-container.sh), so there is currently no sound way to
+# add a second one without first giving those a shared backing store.
 
 set -euo pipefail
 
 readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly RUNNER_HOME="/opt/bitenovac-runner"
 readonly NUGET_VOLUME="bitenovac-runner-nuget"
+readonly MAIN_VOLUME="bitenovac-main"
+readonly LOGS_VOLUME="bitenovac-logs"
 
 # Every agent lives in its own directory under RUNNER_HOME. The glob is what uninstall and
 # reinstall sweep, so it must match every layout this script has ever produced.
@@ -131,10 +138,10 @@ if [[ "${uninstall}" == true ]]; then
     ok "removed ${RUNNER_HOME}"
 
     if [[ "${purge}" == true ]]; then
-        docker volume rm "${NUGET_VOLUME}" > /dev/null 2>&1 || true
-        ok "deleted the package cache volume"
+        docker volume rm "${NUGET_VOLUME}" "${MAIN_VOLUME}" "${LOGS_VOLUME}" > /dev/null 2>&1 || true
+        ok "deleted the package cache, main artifact store and logs"
     else
-        warn "kept the package cache volume ${NUGET_VOLUME}; pass --purge to delete it"
+        warn "kept ${NUGET_VOLUME}, ${MAIN_VOLUME} and ${LOGS_VOLUME}; pass --purge to delete them"
     fi
 
     log "Uninstalled."
@@ -218,12 +225,17 @@ docker build \
     "${REPO_ROOT}/docker"
 
 docker volume create "${NUGET_VOLUME}" > /dev/null
+docker volume create "${MAIN_VOLUME}" > /dev/null
+docker volume create "${LOGS_VOLUME}" > /dev/null
 # A new volume is owned by root, and the job containers run as the agent's user. Without this
-# they cannot write to the cache and every restore downloads everything again.
+# they cannot write to it, and for the NuGet cache specifically every restore downloads
+# everything again.
 docker run --rm --user 0 --entrypoint chown \
     --volume "${NUGET_VOLUME}:/cache" \
-    "bitenovac-ci-runner:${sdk_version}" -R "${RUN_UID}:${RUN_GID}" /cache
-ok "package cache volume ${NUGET_VOLUME}, owned by ${run_as}"
+    --volume "${MAIN_VOLUME}:/mnt/main" \
+    --volume "${LOGS_VOLUME}:/mnt/logs" \
+    "bitenovac-ci-runner:${sdk_version}" -R "${RUN_UID}:${RUN_GID}" /cache /mnt/main /mnt/logs
+ok "volumes ready: ${NUGET_VOLUME}, ${MAIN_VOLUME}, ${LOGS_VOLUME} — owned by ${run_as}"
 
 # ------------------------------------------------------------------------------------- agent ----
 
@@ -306,13 +318,18 @@ cat <<EOF
 
   The workflow selects them with:  runs-on: [${labels//,/, }]
 
-  ${instances} job(s) run at once. A pull request needs (2 x shard count) + 1 to reach full
-  parallelism; 'build/ci.sh plan' prints the shard count.
+  ${instances} job(s) run at once. A pull request peaks at 2 (debug and release together), so
+  ${instances} instance(s) run ${instances} pull request(s) at that concurrency; the rest queue.
 
   systemctl status 'actions.runner.*'    Service state, one unit per agent
   journalctl -u 'actions.runner.*' -f    Follow every agent
   docker ps                              The containers holding the current steps
+  docker volume ls --filter 'name=bitenovac-'   Every volume this setup owns
 
-  Jobs build in throwaway containers; only ${NUGET_VOLUME} persists. Re-run this script after
-  changing global.json or docker/ci-runner.Dockerfile, since the image is built here.
+  Jobs build in throwaway containers; ${NUGET_VOLUME}, ${MAIN_VOLUME} and ${LOGS_VOLUME} persist.
+  A per-run store (bitenovac-pr-<run id>) and the tool's own published copy
+  (bitenovac-tool-<run id>) are created and dropped by the workflow itself — see
+  .github/workflows/pr.yml and janitor.yml, which sweeps anything a cancelled run left behind.
+  Re-run this script after changing global.json or docker/ci-runner.Dockerfile, since the image
+  is built here.
 EOF

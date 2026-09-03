@@ -4,29 +4,31 @@
 # Linux and without pushing anything.
 #
 # Usage:
-#   docker/ci-local.sh                          The whole pipeline, everything treated as affected
-#   docker/ci-local.sh --base master            The whole pipeline for a pull request into master
-#   docker/ci-local.sh --changed src/libraries/Bitenovac.DecompressionAlgorithms.Core/Foo.cs
-#                                               What CI would do if those files had changed
-#   docker/ci-local.sh ci plan                  One build/ci.sh command and nothing else
+#   docker/ci-local.sh                          Plan, then build and test both configurations
+#   docker/ci-local.sh --cacheless              Ignore the local main cache; rebuild everything
+#   docker/ci-local.sh ci plan                  One Bitenovac.Ci command and nothing else
 #   docker/ci-local.sh ci graph
 #   docker/ci-local.sh shell                    A prompt inside the runner, on a copy of the tree
 #
+# There is no --base or --changed here any more: the old affected-set model answered "what would
+# CI do if X changed?" by diffing against a commit. The cache answers the same question directly
+# — change the file on disk and run this; the tool hashes what it finds. What each project's
+# fullHash is doing is visible with 'docker/ci-local.sh ci graph'.
+#
 # Options:
-#   -b, --base REF        Diff against this commit, as BASE_SHA does in CI. Resolved on the host,
-#                         so branch names and HEAD~1 work; the container sees a commit id.
-#   -c, --changed LIST    A comma or newline separated list of paths to treat as changed, for
-#                         answering "what would CI run if I touched this?" without a commit.
-#   -s, --shards N        Pin the shard count instead of deriving it from the project count.
-#       --shard N         Run only this shard.
-#       --rebuild         Rebuild the runner image even if it is already present.
-#       --no-cache        Do not reuse the NuGet package cache between runs.
+#       --cacheless        Ignore the local main cache entirely; every project is a miss. Never
+#                          promotes — this run's cache stays local to it.
+#       --keep-artifacts   Do not delete this run's own artifact store on exit.
+#       --rebuild          Rebuild the runner image even if it is already present.
+#       --no-cache         Do not reuse the NuGet package cache between runs.
 #
 # The image is built from docker/ci-runner.Dockerfile with the SDK version read from global.json,
 # and is rebuilt when that version or a docker/ file changes.
 #
-# The run's output lands on the host under artifacts/local-ci: the coverage report, the plan, and
-# the markdown that would have been the job summary. The repository is mounted read-only.
+# main here is a Docker volume local to this machine, not the shared one CI promotes into. It
+# persists between local runs so repeated local iteration stays warm, and 'docker volume rm
+# bitenovac-local-main' resets it. The run's output lands on the host under artifacts/local-ci:
+# the coverage report and the merged plan. The repository is mounted read-only.
 
 set -euo pipefail
 
@@ -34,6 +36,8 @@ readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly DOCKER_DIR="${REPO_ROOT}/docker"
 readonly OUT_DIR="${REPO_ROOT}/artifacts/local-ci"
 readonly NUGET_VOLUME="bitenovac-ci-nuget"
+readonly MAIN_VOLUME="bitenovac-local-main"
+readonly PR_VOLUME="bitenovac-local-pr-$$"
 
 cd "${REPO_ROOT}"
 
@@ -42,27 +46,22 @@ fail() { printf '\n\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
 # ------------------------------------------------------------------------------- arguments ----
 
-base_ref=""
-changed=""
-shards=""
-shard=""
+cacheless=false
+keep_artifacts=false
 rebuild=false
 use_cache=true
 command_args=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -b|--base)    base_ref="${2:-}"; shift 2 ;;
-        -c|--changed) changed="${2:-}";  shift 2 ;;
-        -s|--shards)  shards="${2:-}";   shift 2 ;;
-        --shard)      shard="${2:-}";    shift 2 ;;
-        --rebuild)    rebuild=true;      shift ;;
-        --no-cache)   use_cache=false;   shift ;;
-        -h|--help)    sed -n '2,29p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 0 ;;
-        --)           shift; command_args+=("$@"); break ;;
+        --cacheless)      cacheless=true;      shift ;;
+        --keep-artifacts) keep_artifacts=true; shift ;;
+        --rebuild)        rebuild=true;        shift ;;
+        --no-cache)       use_cache=false;     shift ;;
+        -h|--help)        sed -n '2,32p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 0 ;;
+        --)               shift; command_args+=("$@"); break ;;
         # Option parsing stops at the command; everything after it belongs to the command.
-        # Otherwise 'ci-local.sh exec bash -c ...' loses the -c to --changed.
-        *)            command_args+=("$@"); break ;;
+        *)                command_args+=("$@"); break ;;
     esac
 done
 
@@ -96,22 +95,6 @@ else
         "${DOCKER_DIR}" > /dev/null
 fi
 
-# ----------------------------------------------------------------------------------- inputs ----
-
-base_sha=""
-if [[ -n "${base_ref}" ]]; then
-    # Resolved on the host so 'master', 'HEAD~1' and remote branches work; the container's copy
-    # of .git has no remotes configured.
-    base_sha="$(git rev-parse --verify "${base_ref}^{commit}" 2>/dev/null)" \
-        || fail "Could not resolve '${base_ref}' to a commit."
-    log "Diffing against ${base_ref} (${base_sha:0:12})"
-elif [[ -n "${changed}" ]]; then
-    log "Treating these as the changed files:"
-    printf '  %s\n' ${changed//,/ }
-else
-    log "No --base and no --changed: every project is treated as affected, which is what CI does when it cannot work out a merge base."
-fi
-
 mkdir -p "${OUT_DIR}"
 
 # ------------------------------------------------------------------------------------ mounts ----
@@ -131,6 +114,8 @@ run_args=(
     --init
     --volume "${host_repo}:/host:ro"
     --volume "${host_out}:/out"
+    --volume "${MAIN_VOLUME}:/mnt/main"
+    --volume "${PR_VOLUME}:/mnt/pr"
     --workdir /repo
 )
 
@@ -140,15 +125,18 @@ if [[ "${use_cache}" == true ]]; then
     run_args+=(--volume "${NUGET_VOLUME}:/root/.nuget/packages")
 fi
 
-[[ -n "${base_sha}" ]] && run_args+=(--env "BASE_SHA=${base_sha}")
-[[ -n "${changed}"  ]] && run_args+=(--env "CHANGED_FILES=$(printf '%s' "${changed}" | tr ',' '\n')")
-[[ -n "${shards}"   ]] && run_args+=(--env "CI_SHARDS=${shards}")
-[[ -n "${shard}"    ]] && run_args+=(--env "CI_SHARD=${shard}")
+[[ "${cacheless}" == true ]] && run_args+=(--env "CI_CACHELESS=true")
 
 # Interactive only when attached to a terminal, so this stays usable from a script or a hook.
 if [[ -t 0 && -t 1 ]]; then
     run_args+=(--interactive --tty)
 fi
+
+cleanup_volume() {
+    [[ "${keep_artifacts}" == true ]] && { log "--keep-artifacts: leaving ${PR_VOLUME} in place."; return 0; }
+    docker volume rm "${PR_VOLUME}" > /dev/null 2>&1 || true
+}
+trap cleanup_volume EXIT
 
 log "Running the pipeline in ${IMAGE}"
 

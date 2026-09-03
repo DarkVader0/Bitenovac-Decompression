@@ -11,16 +11,18 @@
 *                          @DarkVader0
 
 # How the repository is built, tested and measured. Called out separately because a change here
-# governs every project in the repository rather than any one of them: 'build/ci.sh' treats a
-# pipeline change as affecting everything, and the reviewer should be someone who knows why.
-/build/                    @DarkVader0
+# governs every project in the repository rather than any one of them: the CI tool's own hash
+# folds into every target's fullHash (see ToolVersion in src/tools/Bitenovac.Ci), so a change
+# here invalidates the whole cache, and the reviewer should be someone who knows why.
+/src/tools/                @DarkVader0
 /.github/                  @DarkVader0
 /runner/*.sh               @DarkVader0
+/docker/                   @DarkVader0
 /Directory.Build.props     @DarkVader0
 /Directory.Build.targets   @DarkVader0
 /Directory.Packages.props  @DarkVader0
 /global.json               @DarkVader0
-/nuget.config              @DarkVader0
+/nuget.config               @DarkVader0
 
 # The decompression algorithms themselves. Getting these wrong is a diver safety issue, not a
 # build failure, so they are worth naming explicitly once there is more than one maintainer.
