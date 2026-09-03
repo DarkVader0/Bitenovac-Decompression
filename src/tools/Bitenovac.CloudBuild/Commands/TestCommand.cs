@@ -23,26 +23,26 @@ internal static class TestCommand
     /// <summary>The part of a stored entry holding a cached test result.</summary>
     private static readonly string[] TestResultPrefixes = ["tests/"];
 
-    public static int Run(PipelineOptions options, string configuration)
+    public static int Run(PipelineOptions options, string configuration, PipelineOutput output)
     {
         var plan = PlanState.Load(options.PlanFile);
         var entries = plan.For(configuration);
         if (entries.Count == 0)
         {
-            Console.WriteLine("Nothing selected; nothing to test.");
+            output.WriteLine("Nothing selected; nothing to test.");
             return 0;
         }
 
         var prStore = new LocalVolumeArtifactStore(options.PrStoreRoot);
         var mainStore = new LocalVolumeArtifactStore(options.MainStoreRoot);
 
-        if (!MaterialiseBuildOutputs(options, entries, configuration, prStore, mainStore))
+        if (!MaterialiseBuildOutputs(output, options, entries, configuration, prStore, mainStore))
             return 1;
 
         var testEntries = entries.Where(entry => entry.IsTestProject).ToList();
         if (testEntries.Count == 0)
         {
-            Console.WriteLine("No selected test projects; nothing to run.");
+            output.WriteLine("No selected test projects; nothing to run.");
             return 0;
         }
 
@@ -51,7 +51,7 @@ internal static class TestCommand
             Directory.Delete(coverageDirectory, recursive: true);
         Directory.CreateDirectory(coverageDirectory);
 
-        Console.WriteLine($"==> Testing {testEntries.Count} project(s) ({configuration})");
+        output.WriteLine($"==> Testing {testEntries.Count} project(s) ({configuration})");
 
         var failed = new List<string>();
         var noTestsRan = new List<string>();
@@ -63,11 +63,11 @@ internal static class TestCommand
 
             if (entry.Hit && entry.CacheTestResults && ReuseCachedResult(projectId, configuration, name, mainStore, coverageDirectory))
             {
-                Console.WriteLine($"--- {name} (reused)");
+                output.WriteLine($"--- {name} (reused)");
                 continue;
             }
 
-            Console.WriteLine($"--- {name}");
+            output.WriteLine($"--- {name}");
             var assemblyPath = ResolveAssemblyPath(entry, configuration);
             var result = TestRunner.Run(assemblyPath, name, coverageDirectory);
 
@@ -87,23 +87,24 @@ internal static class TestCommand
         }
 
         if (noTestsRan.Count > 0)
-            Console.WriteLine($"warning: test projects that ran no tests: {string.Join(", ", noTestsRan)}");
+            output.WriteLine($"warning: test projects that ran no tests: {string.Join(", ", noTestsRan)}");
 
         if (failed.Count > 0)
         {
-            Console.Error.WriteLine($"Test projects with failing tests:\n  {string.Join("\n  ", failed)}");
+            output.WriteError($"Test projects with failing tests:\n  {string.Join("\n  ", failed)}");
             return 1;
         }
 
-        Console.WriteLine($"All selected tests passed ({configuration}).");
+        output.WriteLine($"All selected tests passed ({configuration}).");
 
         if (configuration != "Debug")
             return 0;
 
-        return RunCoverageGate(entries, coverageDirectory, options);
+        return RunCoverageGate(entries, coverageDirectory, options, output);
     }
 
     private static bool MaterialiseBuildOutputs(
+        PipelineOutput output,
         PipelineOptions options,
         IReadOnlyList<PlanEntry> entries,
         string configuration,
@@ -128,7 +129,7 @@ internal static class TestCommand
 
             if (!source.TryGet(project, configuration, projectDirectory, out _, MaterialisedPrefixes))
             {
-                Console.Error.WriteLine($"error: no build output available for {entry.ProjectPath}. Run 'build {configuration}' first.");
+                output.WriteError($"error: no build output available for {entry.ProjectPath}. Run 'build {configuration}' first.");
                 return false;
             }
 
@@ -137,7 +138,7 @@ internal static class TestCommand
         }
 
         if (materialised > 0 || skipped > 0)
-            Console.WriteLine($"{configuration}: materialised {materialised} project(s)"
+            output.WriteLine($"{configuration}: materialised {materialised} project(s)"
                 + (skipped > 0 ? $", {skipped} already present" : "") + ".");
 
         return true;
@@ -195,7 +196,7 @@ internal static class TestCommand
         }
     }
 
-    private static int RunCoverageGate(IReadOnlyList<PlanEntry> entries, string coverageDirectory, PipelineOptions options)
+    private static int RunCoverageGate(IReadOnlyList<PlanEntry> entries, string coverageDirectory, PipelineOptions options, PipelineOutput output)
     {
         var gated = entries
             .Where(entry => entry.ShouldGateCoverage && !entry.ExcludeFromCoverage)
@@ -205,17 +206,17 @@ internal static class TestCommand
 
         if (gated.Count == 0)
         {
-            Console.WriteLine("No selected project is under the coverage gate; nothing to check.");
+            output.WriteLine("No selected project is under the coverage gate; nothing to check.");
             return 0;
         }
 
         if (!Directory.EnumerateFiles(coverageDirectory, "*cobertura*.xml").Any())
         {
-            Console.Error.WriteLine($"error: no coverage reports under {coverageDirectory}. Did 'test' run?");
+            output.WriteError($"error: no coverage reports under {coverageDirectory}. Did 'test' run?");
             return 1;
         }
 
-        Console.WriteLine("==> Merging coverage reports");
+        output.WriteLine("==> Merging coverage reports");
         var reportDirectory = options.CoverageReportDirectory("Debug");
         var merged = CoverageReportGenerator.Merge(options.RepositoryRoot, coverageDirectory, reportDirectory, options.CoverageHtml);
         var measuredByAssembly = CoverageReportReader.Read(merged);
@@ -229,15 +230,15 @@ internal static class TestCommand
         var failures = results.Where(result => !result.Passed).ToList();
 
         foreach (var result in results)
-            Console.WriteLine(result.Passed ? $"  OK   {result.Project}: {result.Reason}" : $"  FAIL {result.Reason}");
+            output.WriteLine(result.Passed ? $"  OK   {result.Project}: {result.Reason}" : $"  FAIL {result.Reason}");
 
         if (failures.Count > 0)
         {
-            Console.Error.WriteLine($"Open {reportDirectory}/index.html to see which lines are uncovered.");
+            output.WriteError($"Open {reportDirectory}/index.html to see which lines are uncovered.");
             return 1;
         }
 
-        Console.WriteLine("Every gated project meets its coverage policy.");
+        output.WriteLine("Every gated project meets its coverage policy.");
         return 0;
     }
 }

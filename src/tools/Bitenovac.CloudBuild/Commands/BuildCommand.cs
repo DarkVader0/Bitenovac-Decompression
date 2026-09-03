@@ -17,13 +17,13 @@ internal static class BuildCommand
     /// <summary>The parts of a stored entry that belong in a source tree. <c>tests/</c> does not.</summary>
     private static readonly string[] MaterialisedPrefixes = ["bin/", "obj/"];
 
-    public static int Run(PipelineOptions options, string configuration)
+    public static int Run(PipelineOptions options, string configuration, PipelineOutput output)
     {
         var plan = PlanState.Load(options.PlanFile);
         var entries = plan.For(configuration);
         if (entries.Count == 0)
         {
-            Console.WriteLine("Nothing selected; skipping build.");
+            output.WriteLine("Nothing selected; skipping build.");
             return 0;
         }
 
@@ -31,10 +31,10 @@ internal static class BuildCommand
         var prStore = new LocalVolumeArtifactStore(options.PrStoreRoot);
 
         var (materialised, skipped) = MaterialiseHits(options, entries, configuration, mainStore);
-        Console.WriteLine($"{configuration}: materialised {materialised} cache hit(s) from main"
+        output.WriteLine($"{configuration}: materialised {materialised} cache hit(s) from main"
             + (skipped > 0 ? $", {skipped} already present" : "") + ".");
 
-        Console.WriteLine($"==> Building {entries.Count} project(s) ({configuration})");
+        output.WriteLine($"==> Building {entries.Count} project(s) ({configuration})");
         var exitCode = MsBuildRunner.Build(
             options.RepositoryRoot,
             entries.Select(entry => entry.FullPath),
@@ -43,7 +43,7 @@ internal static class BuildCommand
 
         if (exitCode != 0)
         {
-            Console.Error.WriteLine($"error: build failed (exit {exitCode}).");
+            output.WriteError($"error: build failed (exit {exitCode}).");
             return exitCode;
         }
 
@@ -52,7 +52,7 @@ internal static class BuildCommand
         foreach (var entry in entries)
             MaterialisedMarker.Write(options.RepositoryRoot, new ProjectId(entry.ProjectPath), configuration, entry.FullHash);
 
-        Console.WriteLine($"{configuration}: build complete, staged {staged} rebuilt project(s).");
+        output.WriteLine($"{configuration}: build complete, staged {staged} rebuilt project(s).");
         return 0;
     }
 

@@ -14,30 +14,30 @@ namespace Bitenovac.CloudBuild.Commands;
 /// </summary>
 internal static class PlanCommand
 {
-    public static int Run(PipelineOptions options)
+    public static int Run(PipelineOptions options, PipelineOutput output)
     {
-        Console.WriteLine("==> Discovering projects");
+        output.WriteLine("==> Discovering projects");
         var relativePaths = ProjectDiscovery.FindRelativePaths(options.RepositoryRoot);
         if (relativePaths.Count == 0)
         {
-            Console.Error.WriteLine("error: no projects found in the repository.");
+            output.WriteError("error: no projects found in the repository.");
             return 1;
         }
 
-        Console.WriteLine($"Found {relativePaths.Count} project(s).");
+        output.WriteLine($"Found {relativePaths.Count} project(s).");
 
         using var evaluator = new MsBuildProjectEvaluator(options.RepositoryRoot);
         var evaluated = EvaluateAll(evaluator, relativePaths);
 
-        var verifyExitCode = Verify(evaluated["Debug"].Values);
+        var verifyExitCode = Verify(evaluated["Debug"].Values, output);
         if (verifyExitCode != 0)
             return verifyExitCode;
 
-        Console.WriteLine("==> Restoring");
+        output.WriteLine("==> Restoring");
         var restoreExitCode = Restore(options, evaluated["Debug"].Values);
         if (restoreExitCode != 0)
         {
-            Console.Error.WriteLine($"error: restore failed (exit {restoreExitCode}).");
+            output.WriteError($"error: restore failed (exit {restoreExitCode}).");
             return restoreExitCode;
         }
 
@@ -57,11 +57,11 @@ internal static class PlanCommand
             planState.ByConfiguration[configuration] = entries;
 
             var hits = entries.Count(entry => entry.Hit);
-            Console.WriteLine($"{configuration}: {entries.Count} project(s), {hits} cache hit(s), {entries.Count - hits} to build.");
+            output.WriteLine($"{configuration}: {entries.Count} project(s), {hits} cache hit(s), {entries.Count - hits} to build.");
         }
 
         planState.Save(options.PlanFile);
-        Console.WriteLine($"Plan written to {options.PlanFile}");
+        output.WriteLine($"Plan written to {options.PlanFile}");
         return 0;
     }
 
@@ -75,20 +75,20 @@ internal static class PlanCommand
         return result;
     }
 
-    private static int Verify(IEnumerable<EvaluatedProject> projects)
+    private static int Verify(IEnumerable<EvaluatedProject> projects, PipelineOutput output)
     {
-        Console.WriteLine("==> Verifying build assumptions");
+        output.WriteLine("==> Verifying build assumptions");
 
         var offenders = projects.Where(project => project.HasTargetFrameworks).ToList();
         if (offenders.Count > 0)
         {
-            Console.Error.WriteLine("error: these projects declare <TargetFrameworks>. Set a single <TargetFramework>, or change RepositoryTargetFramework in Directory.Build.props.");
+            output.WriteError("error: these projects declare <TargetFrameworks>. Set a single <TargetFramework>, or change RepositoryTargetFramework in Directory.Build.props.");
             foreach (var project in offenders)
-                Console.Error.WriteLine($"  {project.Id}");
+                output.WriteError($"  {project.Id}");
             return 1;
         }
 
-        Console.WriteLine("OK: every project targets a single framework.");
+        output.WriteLine("OK: every project targets a single framework.");
         return 0;
     }
 

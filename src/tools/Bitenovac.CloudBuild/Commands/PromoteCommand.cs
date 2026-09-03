@@ -12,7 +12,7 @@ namespace Bitenovac.CloudBuild.Commands;
 /// </summary>
 internal static class PromoteCommand
 {
-    public static int Run(PipelineOptions options)
+    public static int Run(PipelineOptions options, PipelineOutput output)
     {
         var plan = PlanState.Load(options.PlanFile);
         var mainStore = new LocalVolumeArtifactStore(options.MainStoreRoot);
@@ -30,17 +30,17 @@ internal static class PromoteCommand
 
                 mainStore.Promote(project, configuration, prStore);
                 promoted++;
-                Console.WriteLine($"  promoted {configuration}/{entry.ProjectPath}");
+                output.WriteLine($"  promoted {configuration}/{entry.ProjectPath}");
             }
         }
 
-        Console.WriteLine($"Promoted {promoted} entr{(promoted == 1 ? "y" : "ies")} into main.");
+        output.WriteLine($"Promoted {promoted} entr{(promoted == 1 ? "y" : "ies")} into main.");
 
         if (promoted > 0)
         {
             var removed = mainStore.Prune();
             if (removed > 0)
-                Console.WriteLine($"Pruned {removed} unreferenced blob(s).");
+                output.WriteLine($"Pruned {removed} unreferenced blob(s).");
         }
 
         return 0;

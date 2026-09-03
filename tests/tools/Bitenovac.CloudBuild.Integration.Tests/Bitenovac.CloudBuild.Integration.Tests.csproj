@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <RootNamespace>Bitenovac.CloudBuild.Integration.Tests</RootNamespace>
+        <CacheTestResults>false</CacheTestResults>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Using Include="Xunit"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="xunit.v3.mtp-v2"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\src\tools\Bitenovac.CloudBuild\Bitenovac.CloudBuild.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Build.Locator"/>
+        <PackageReference Include="Microsoft.Build" ExcludeAssets="runtime"/>
+        <PackageReference Include="Microsoft.Build.Utilities.Core" ExcludeAssets="runtime"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\..\Directory.Packages.props" Link="Directory.Packages.props" CopyToOutputDirectory="PreserveNewest"/>
+        <None Include="..\..\..\global.json" Link="global.json" CopyToOutputDirectory="PreserveNewest"/>
+        <None Include="..\..\..\nuget.config" Link="nuget.config" CopyToOutputDirectory="PreserveNewest"/>
+        <None Include="..\..\..\.config\dotnet-tools.json" Link="dotnet-tools.json" CopyToOutputDirectory="PreserveNewest"/>
+    </ItemGroup>
+
+</Project>

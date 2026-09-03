@@ -3,10 +3,17 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <RootNamespace>Bitenovac.CloudBuild</RootNamespace>
+        <MinimumLineCoverage>95</MinimumLineCoverage>
+        <MinimumBranchCoverage>90</MinimumBranchCoverage>
     </PropertyGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\Bitenovac.CloudBuild.Core\Bitenovac.CloudBuild.Core.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Bitenovac.CloudBuild.Unit.Tests"/>
+        <InternalsVisibleTo Include="Bitenovac.CloudBuild.Integration.Tests"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -5,11 +5,11 @@ namespace Bitenovac.CloudBuild;
 /// <summary>Dispatches to one pipeline command. Kept separate from <c>Program.cs</c> so nothing here runs before <c>MSBuildLocator.RegisterDefaults()</c> does.</summary>
 internal static class CommandLine
 {
-    public static int Run(string[] args)
+    public static int Run(string[] args, PipelineOutput output)
     {
         if (args.Length == 0)
         {
-            PrintUsage();
+            PrintUsage(output);
             return 1;
         }
 
@@ -18,48 +18,48 @@ internal static class CommandLine
         {
             return args[0] switch
             {
-                "plan" => PlanCommand.Run(options),
-                "build" => WithConfiguration(args, configuration => BuildCommand.Run(options, configuration)),
-                "test" => WithConfiguration(args, configuration => TestCommand.Run(options, configuration)),
-                "promote" => PromoteCommand.Run(options),
-                "cleanup" => CleanupCommand.Run(options, args.Contains("--keep-artifacts")),
-                "graph" => GraphCommand.Run(options),
-                "--help" or "-h" => Usage(),
-                _ => Fail($"Unknown command '{args[0]}'."),
+                "plan" => PlanCommand.Run(options, output),
+                "build" => WithConfiguration(args, output, configuration => BuildCommand.Run(options, configuration, output)),
+                "test" => WithConfiguration(args, output, configuration => TestCommand.Run(options, configuration, output)),
+                "promote" => PromoteCommand.Run(options, output),
+                "cleanup" => CleanupCommand.Run(options, args.Contains("--keep-artifacts"), output),
+                "graph" => GraphCommand.Run(options, output),
+                "--help" or "-h" => Usage(output),
+                _ => Fail(output, $"Unknown command '{args[0]}'."),
             };
         }
         catch (InvalidOperationException exception)
         {
-            return Fail(exception.Message);
+            return Fail(output, exception.Message);
         }
     }
 
-    private static int WithConfiguration(string[] args, Func<string, int> run)
+    private static int WithConfiguration(string[] args, PipelineOutput output, Func<string, int> run)
     {
         if (args.Length < 2)
-            return Fail("A configuration is required: 'Debug' or 'Release'.");
+            return Fail(output, "A configuration is required: 'Debug' or 'Release'.");
 
         return args[1] switch
         {
             "Debug" or "Release" => run(args[1]),
-            _ => Fail($"Configuration must be 'Debug' or 'Release', got '{args[1]}'."),
+            _ => Fail(output, $"Configuration must be 'Debug' or 'Release', got '{args[1]}'."),
         };
     }
 
-    private static int Usage()
+    private static int Usage(PipelineOutput output)
     {
-        PrintUsage();
+        PrintUsage(output);
         return 0;
     }
 
-    private static int Fail(string message)
+    private static int Fail(PipelineOutput output, string message)
     {
-        Console.Error.WriteLine($"error: {message}");
+        output.WriteError($"error: {message}");
         return 1;
     }
 
-    private static void PrintUsage() =>
-        Console.WriteLine("""
+    private static void PrintUsage(PipelineOutput output) =>
+        output.WriteLine("""
             Bitenovac CloudBuild
 
             Usage:
