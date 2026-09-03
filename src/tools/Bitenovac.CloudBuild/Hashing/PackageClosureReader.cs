@@ -25,8 +25,6 @@ internal static class PackageClosureReader
         if (!document.RootElement.TryGetProperty("libraries", out var libraries))
             return [];
 
-        // Each key is already "Id/Version" — the resolved identity is the entry; nothing else
-        // about a library needs to be read for hashing purposes.
         return libraries.EnumerateObject()
             .Select(library => $"package:{library.Name}")
             .OrderBy(entry => entry, StringComparer.Ordinal)

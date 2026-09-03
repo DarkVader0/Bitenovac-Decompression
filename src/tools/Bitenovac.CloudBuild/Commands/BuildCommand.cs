@@ -49,9 +49,6 @@ internal static class BuildCommand
 
         var staged = StageMisses(entries, configuration, prStore);
 
-        // Every project's output now sits in the workspace at its planned hash, whether it was
-        // materialised or compiled. Recording that lets 'test' skip materialising it again when
-        // it shares this workspace, which it does locally though not in CI.
         foreach (var entry in entries)
             MaterialisedMarker.Write(options.RepositoryRoot, new ProjectId(entry.ProjectPath), configuration, entry.FullHash);
 
@@ -76,17 +73,9 @@ internal static class BuildCommand
                 continue;
             }
 
-            // Written straight into the project, filtered to bin/ and obj/. An entry also carries
-            // tests/ — its cached test result — which does not belong in a source tree; filtering
-            // at the store avoids unpacking the entry to a temporary directory just to copy two
-            // of its three folders out, which was a second full copy of everything.
             if (!mainStore.TryGet(project, configuration, projectDirectory, out _, MaterialisedPrefixes))
                 continue;
 
-            // actions/checkout writes every source file with mtime "now". A restored bin/obj
-            // carries its original build time, which is older, so MSBuild would see
-            // input-newer-than-output and recompile anyway without this: the one line that
-            // makes the cache real, at the cost of MSBuild's own check becoming a rubber stamp.
             Touch(Path.Combine(projectDirectory, "bin"));
             Touch(Path.Combine(projectDirectory, "obj"));
             materialised++;
@@ -109,8 +98,6 @@ internal static class BuildCommand
         {
             var projectDirectory = Path.GetDirectoryName(entry.FullPath)!;
 
-            // Hashed where the files lie. Copying bin/ and obj/ into a staging directory first,
-            // only to read them straight back out, was the single largest cost of a cold run.
             var files = LocalVolumeArtifactStore.EnumerateAsSources(Path.Combine(projectDirectory, "bin"), "bin/")
                 .Concat(LocalVolumeArtifactStore.EnumerateAsSources(Path.Combine(projectDirectory, "obj"), "obj/"));
 

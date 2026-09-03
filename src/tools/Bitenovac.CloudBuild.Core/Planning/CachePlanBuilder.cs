@@ -78,11 +78,6 @@ public static class CachePlanBuilder
                 ? CacheOutcome.Hit
                 : CacheOutcome.Miss;
 
-            // A forced project is always re-gated too, not only rebuilt: forcing exists for
-            // --cacheless, whose whole purpose is to ignore main and re-verify from nothing, so
-            // a project whose ownHash happens to still match main's stored value must not be
-            // read as "provably unchanged, skip re-measuring" the way it correctly is when the
-            // hash comparison is real.
             var shouldGateCoverage = isForced || !hasStored || storedHash.OwnHash != ownHash;
 
             decisions[project] = new TargetDecision

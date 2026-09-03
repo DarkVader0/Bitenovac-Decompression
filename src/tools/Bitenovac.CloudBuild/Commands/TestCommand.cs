@@ -118,21 +118,14 @@ internal static class TestCommand
             var project = new ProjectId(entry.ProjectPath);
             var projectDirectory = Path.GetDirectoryName(entry.FullPath)!;
 
-            // 'build' left this workspace holding exactly this hash. True locally, where both
-            // stages share a checkout; false in CI, where 'test' runs in its own container
-            // against its own checkout and no marker exists — so it materialises there.
             if (MaterialisedMarker.Matches(options.RepositoryRoot, project, configuration, entry.FullHash, projectDirectory))
             {
                 skipped++;
                 continue;
             }
 
-            // A hit was never staged into this run's store — its bytes are already in main under
-            // this exact hash, so that is where it comes from. Only rebuilt projects are staged.
             var source = entry.Hit ? mainStore : prStore;
 
-            // Written straight into the project, filtered to bin/ and obj/: an entry also holds
-            // tests/, which does not belong in a source tree.
             if (!source.TryGet(project, configuration, projectDirectory, out _, MaterialisedPrefixes))
             {
                 Console.Error.WriteLine($"error: no build output available for {entry.ProjectPath}. Run 'build {configuration}' first.");
@@ -152,10 +145,6 @@ internal static class TestCommand
 
     private static string ResolveAssemblyPath(PlanEntry entry, string configuration)
     {
-        // Scoped to bin/<Configuration>: a project built in both configurations (as every one
-        // is, across the Debug and Release jobs) has both subfolders on disk at once, and
-        // searching all of bin/ for a matching file name would find whichever configuration's
-        // build happened to run first rather than the one this test run is actually for.
         var binDirectory = Path.Combine(Path.GetDirectoryName(entry.FullPath)!, "bin", configuration);
         var candidates = Directory.Exists(binDirectory)
             ? Directory.EnumerateFiles(binDirectory, $"{entry.AssemblyName}.dll", SearchOption.AllDirectories)
@@ -170,8 +159,6 @@ internal static class TestCommand
         var staging = Directory.CreateTempSubdirectory("bitenovac-cloudbuild-reuse-").FullName;
         try
         {
-            // Only tests/: unpacking the whole entry here would copy the project's entire bin and
-            // obj out to a temporary directory purely to read a couple of coverage reports.
             if (!mainStore.TryGet(project, configuration, staging, out _, TestResultPrefixes))
                 return false;
 
@@ -195,16 +182,11 @@ internal static class TestCommand
         var staging = Directory.CreateTempSubdirectory("bitenovac-cloudbuild-stage-").FullName;
         try
         {
-            // Only the coverage files: 'build' already stored this project's bin and obj under
-            // the same hash, so AddFiles extends that entry rather than re-hashing all of it.
             var testsDirectory = Path.Combine(staging, "tests");
             Directory.CreateDirectory(testsDirectory);
             foreach (var file in Directory.EnumerateFiles(coverageDirectory, $"{name}*"))
                 File.Copy(file, Path.Combine(testsDirectory, Path.GetFileName(file)), overwrite: true);
 
-            // False for a cache hit whose tests were re-run anyway (CacheTestResults=false):
-            // 'build' never staged it, because main already holds it. Nothing to extend, and
-            // nothing to promote either, so there is nothing to do.
             prStore.AddFiles(project, configuration, new StoredTargetHash(entry.OwnHash, entry.FullHash), staging);
         }
         finally
@@ -212,7 +194,6 @@ internal static class TestCommand
             Directory.Delete(staging, recursive: true);
         }
     }
-
 
     private static int RunCoverageGate(IReadOnlyList<PlanEntry> entries, string coverageDirectory, PipelineOptions options)
     {

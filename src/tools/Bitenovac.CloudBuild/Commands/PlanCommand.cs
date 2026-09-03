@@ -41,8 +41,6 @@ internal static class PlanCommand
             return restoreExitCode;
         }
 
-        // Fold the now-resolved package closure into what was already evaluated, rather than
-        // evaluating every project a second time — see MsBuildProjectEvaluator.RefreshPackageClosure.
         evaluated = evaluated.ToDictionary(
             byConfiguration => byConfiguration.Key,
             byConfiguration => (IReadOnlyDictionary<ProjectId, EvaluatedProject>)byConfiguration.Value.ToDictionary(
@@ -77,8 +75,6 @@ internal static class PlanCommand
         return result;
     }
 
-    // TargetPath goes empty under an outer multi-targeting build, and the whole
-    // artifact-location scheme this tool relies on depends on it.
     private static int Verify(IEnumerable<EvaluatedProject> projects)
     {
         Console.WriteLine("==> Verifying build assumptions");

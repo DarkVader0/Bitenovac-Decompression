@@ -3,11 +3,6 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <RootNamespace>Bitenovac.CloudBuild</RootNamespace>
-        <!--
-            Process launching and filesystem I/O, not the hashing and planning logic itself.
-            That logic lives in Bitenovac.CloudBuild.Core, gated at the repository's default 100%.
-        -->
-        <ExcludeFromCoverage>true</ExcludeFromCoverage>
     </PropertyGroup>
 
     <ItemGroup>
@@ -15,12 +10,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <!--
-            MSBuildLocator finds and loads the real MSBuild assemblies from the installed SDK at
-            startup (see Program.cs), so the ones NuGet would otherwise place next to this
-            executable are excluded: two copies on the load path is how you get
-            "could not load file or assembly" at a version that looks like it should have worked.
-        -->
         <PackageReference Include="Microsoft.Build.Locator"/>
         <PackageReference Include="Microsoft.Build" ExcludeAssets="runtime"/>
         <PackageReference Include="Microsoft.Build.Utilities.Core" ExcludeAssets="runtime"/>

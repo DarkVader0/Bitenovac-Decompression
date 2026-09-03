@@ -41,8 +41,6 @@ internal static class MaterialisedMarker
         if (!File.Exists(marker))
             return false;
 
-        // The marker is a claim about the workspace, and a claim is not evidence: someone may
-        // have deleted bin/ since. Cheap corroboration beats trusting it alone.
         if (!Directory.Exists(Path.Combine(projectDirectory, "bin")))
             return false;
 

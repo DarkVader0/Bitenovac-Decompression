@@ -26,9 +26,6 @@ internal static class TestRunner
             ],
             Path.GetDirectoryName(assemblyPath)!);
 
-        // Microsoft.Testing.Platform returns 8 when a run discovers no tests and 5 when a filter
-        // selects none. Neither is a failing assertion — a suite scaffolded ahead of its tests
-        // is a normal transient state, worth a warning from the caller but not a build failure.
         var outcome = exitCode switch
         {
             0 => TestRunOutcome.Passed,

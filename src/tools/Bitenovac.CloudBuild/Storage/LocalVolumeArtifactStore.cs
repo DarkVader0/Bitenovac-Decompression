@@ -106,9 +106,6 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
             var blob = BlobPath(file.Blob);
             if (!File.Exists(blob))
             {
-                // A blob the manifest names has gone missing — a store pruned too aggressively,
-                // or one interrupted mid-write. Serving a partial entry would be worse than
-                // serving none, so this reads as a miss and the caller rebuilds.
                 hash = default;
                 return false;
             }
@@ -289,10 +286,6 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
         return removed;
     }
 
-    // Above this, a file is hashed by streaming and copied separately; below it, the bytes are
-    // held in memory so a new blob is written without reading the source a second time. Build
-    // output is overwhelmingly small files — assemblies, pdbs, json — so the in-memory path is
-    // the one that runs, and it halves the I/O of staging a cold run.
     private const long InMemoryHashLimit = 8 * 1024 * 1024;
 
     private string WriteBlob(string sourceFile)
@@ -317,9 +310,6 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
     {
         var blobPath = BlobPath(digest);
 
-        // Already stored: identical content by definition, so there is nothing to write. This is
-        // where the saving comes from — the same assembly copied into a dozen projects' bin
-        // folders is hashed a dozen times and written once.
         if (File.Exists(blobPath))
             return digest;
 
@@ -333,16 +323,12 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
         }
         catch (IOException) when (File.Exists(blobPath))
         {
-            // Another process wrote the same blob first. Content-addressed, so its copy is
-            // identical and equally valid; discard the redundant one rather than the winner's.
             File.Delete(temporary);
         }
 
         return digest;
     }
 
-    // Sharded one level by the first two hex characters: a flat directory of tens of thousands
-    // of blobs is slow to enumerate on every filesystem worth naming.
     private string BlobPath(string digest) =>
         Path.Combine(_root, BlobsDirectoryName, digest[..2], digest);
 
@@ -354,7 +340,7 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
 
     private bool TryReadManifest(ProjectId project, string configuration, out Manifest manifest, out StoredTargetHash hash)
     {
-        manifest = default!;
+        manifest = null!;
         hash = default;
 
         var currentFile = CurrentFile(project, configuration);

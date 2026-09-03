@@ -22,10 +22,6 @@ internal static class SyntheticBuildProject
         var document = new XDocument(
             new XElement("Project",
                 items,
-                // Restore runs serially: each project restores its own reference closure, and
-                // MSBuild's project cache does not dedupe those the way it dedupes Build, so two
-                // parallel entry points sharing an upstream project race to write the same obj/
-                // files and one fails with "Cannot create a file when that file already exists".
                 new XElement("Target", new XAttribute("Name", "Restore"),
                     new XElement("MSBuild",
                         new XAttribute("Projects", "@(CloudBuildProject)"),

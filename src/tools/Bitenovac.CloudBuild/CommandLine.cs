@@ -14,12 +14,6 @@ internal static class CommandLine
         }
 
         var options = PipelineOptions.FromEnvironment();
-
-        // A pipeline whose own failure output is a .NET stack trace is a pipeline nobody can
-        // read at 2am. Anything this tool raises deliberately — a missing plan, an unreadable
-        // store — is reported as one line and a non-zero exit, the way every other CI step
-        // reports. Unexpected exception types still surface in full, because those are bugs
-        // here rather than conditions worth explaining to the caller.
         try
         {
             return args[0] switch
