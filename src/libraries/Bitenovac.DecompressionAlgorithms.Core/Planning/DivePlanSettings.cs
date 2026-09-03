@@ -149,9 +149,6 @@ public sealed class DivePlanSettings
                 "The decompression partial pressure of oxygen must be greater than zero.");
         }
 
-        // Checked against the known values rather than with Enum.IsDefined, so that adding a
-        // model without updating the calculations fails here at construction rather than
-        // being planned as one of the existing models.
         if (maximumOperatingDepthModel is not (MaximumOperatingDepthModel.Realistic
             or MaximumOperatingDepthModel.Simplified))
         {

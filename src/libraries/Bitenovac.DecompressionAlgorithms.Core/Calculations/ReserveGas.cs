@@ -64,8 +64,6 @@ public static class ReserveGas
             throw new ArgumentException("At least one cylinder must be available.", nameof(cylinders));
         }
 
-        // The volume consumed from each cylinder, so that the projected remaining gas can
-        // be derived without recomputing consumption for each rule.
         var usage = GasConsumption.Calculate(segments, cylinders, settings);
 
         var statuses = new CylinderReserveStatus[cylinders.Count];
@@ -224,8 +222,6 @@ public static class ReserveGas
 
         var requiredMilliliters = EmergencyAscentMilliliters(deepestMeter, shallowestMeter, settings);
 
-        // The unusable first-stage pressure is excluded from the gas that remains, since it
-        // cannot be breathed in an emergency.
         var unusableMilliliters = FreeGasMilliliters(cylinder, UnusableFirstStagePressure, settings.SurfacePressure);
         var remainingMilliliters = Math.Max(startMilliliters - consumedMilliliters - unusableMilliliters, 0.0);
 
@@ -278,8 +274,6 @@ public static class ReserveGas
                 continue;
             }
 
-            // A segment carries a single depth (the depth held, or the depth reached at
-            // its end), so that depth is both the deepest and shallowest point it covers.
             var depthMeter = segment.Depth.InMeter;
 
             if (!found)
@@ -318,11 +312,6 @@ public static class ReserveGas
             return 0.0;
         }
 
-        // Split the ascent at the final band boundary so each portion uses its own rate.
-        // The portion below the final band (deeper than six meters) uses the to-stops rate;
-        // the portion within the final six meters uses the last-six-meters rate. An ascent
-        // that lies wholly within one band leaves the other portion empty, which the
-        // portion calculation reports as no gas rather than a negative volume.
         var lowerBound = Math.Max(shallowestMeter, LastBandCeilingMeter);
         var finalBandTop = Math.Min(deepestMeter, LastBandCeilingMeter);
 
@@ -362,7 +351,6 @@ public static class ReserveGas
 
         var ascentMinutes = portionMeters / ascentRateMetersPerMinute;
 
-        // Mean ambient pressure ratio over the portion, using its midpoint depth.
         var midpointMeter = (fromMeter + toMeter) / 2.0;
         var meanAmbientRatio = AmbientPressure(midpointMeter, settings).InMillibar
                                / settings.SurfacePressure.InMillibar;

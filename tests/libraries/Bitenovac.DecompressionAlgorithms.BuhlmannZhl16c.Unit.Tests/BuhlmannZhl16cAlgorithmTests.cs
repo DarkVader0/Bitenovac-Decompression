@@ -12,9 +12,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     private const int Precision = 6;
     private const int CompartmentCount = 16;
 
-    // The published ZH-L16C tables (compartment 1 as the 1b variant), retyped here so
-    // that expected values are derived from the documented coefficients and formulas
-    // rather than from the implementation.
     private static readonly double[] NitrogenHalfTimeMinutes =
     [
         5.0, 8.0, 12.5, 18.5, 27.0, 38.3, 54.3, 77.0,
@@ -175,8 +172,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void LoadSegment_ShouldApplySchreinerEquation_WhenSegmentIsDescent()
     {
         // Arrange
-        // Schreiner: P(t) = Palv0 + R*(t - 1/k) - (Palv0 - P0 - R/k) * e^(-k*t), with
-        // Palv0 the alveolar inert pressure at the start depth and R its rate of change.
         var algorithm = new BuhlmannZhl16cAlgorithm(1.0, 1.0);
         var state = Assert.IsType<BuhlmannState>(algorithm.BeginDive(TestFactory.CreateRequest(30, 20)));
         const double minutes = 3.0;
@@ -217,8 +212,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CurrentCeiling_ShouldMatchMValueFormula_AfterLoadedBottomSegment()
     {
         // Arrange
-        // With pure nitrogen loading and gf = 1 the tolerated ambient pressure of a
-        // compartment is (P - a) * b; the ceiling is the deepest compartment ceiling.
         var algorithm = new BuhlmannZhl16cAlgorithm(1.0, 1.0);
         var state = algorithm.BeginDive(TestFactory.CreateRequest(40, 30));
         var initial = SurfaceEquilibriumNitrogenMillibar();
@@ -449,8 +442,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CalculateFinalAscent_ShouldSwitchToRicherGas_AtItsOperatingDepth()
     {
         // Arrange
-        // EAN50 at a deco PO2 of 1.6 bar has its operating limit at an ambient pressure of
-        // 3200 mbar, i.e. 22.43 m in fresh water, so the switch lands on the 21 m grid depth.
         var nitrox50 = GasMixture.FromPercent(50, 0);
         var cylinders = new[] { TestFactory.CreateCylinder(), TestFactory.CreateCylinder(nitrox50) };
         var algorithm = new BuhlmannZhl16cAlgorithm(0.3, 0.7);
@@ -799,9 +790,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CalculateFinalAscent_ShouldNotSwitchAtOperatingDepth_WhenSwitchAtRequiredStopIsEnabled()
     {
         // Arrange
-        // Nitrox 50 at the deco limit of 1.6 bar has an operating pressure of 3.2 bar,
-        // which is 22.4 m in fresh water at one bar, flooring to 21 m on the stop grid.
-        // With the switch deferred to the required stop, no switch may occur there.
         const double OperatingGridDepthMeter = 21.0;
         var nitrox50 = GasMixture.FromPercent(50, 0);
         var settings = TestFactory.CreateSettings(switchAtRequiredStop: true);
@@ -847,8 +835,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
         var ascent = algorithm.CalculateFinalAscent(state, request);
 
         // Assert
-        // Regular stops at six meters and shallower are breathed on pure oxygen, so a stop
-        // on the richest non-oxygen gas at those depths can only be an oxygen break.
         Assert.Contains(ascent, segment => segment.Kind == SegmentKind.Stop
                                            && segment.Depth.InMeter <= 6.0 + 1e-9
                                            && segment.Gas == nitrox50);
@@ -877,8 +863,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CalculateFinalAscent_ShouldTakeTheOxygenBreakOnTheBottomGas_WhenItIsTheOnlyGasThatIsNotOxygen()
     {
         // Arrange
-        // Only air and oxygen are carried, so the leanest gas on the diver is also the only
-        // one the break can fall back to.
         var settings = TestFactory.CreateSettings(oxygenBreaks: true,
             oxygenBreakInterval: TimeSpan.FromMinutes(1), oxygenBreakDuration: TimeSpan.FromMinutes(1));
         var cylinders = new[] { TestFactory.CreateCylinder(), TestFactory.CreateCylinder(GasMixture.Oxygen) };
@@ -892,8 +876,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
         var ascent = algorithm.CalculateFinalAscent(state, request);
 
         // Assert
-        // A stop breathed on air at six meters or shallower can only be an oxygen break,
-        // since the regular stops there are breathed on oxygen.
         Assert.Contains(ascent, segment => segment.Kind == SegmentKind.Stop
                                            && segment.Depth.InMeter <= 6.0 + 1e-9
                                            && segment.Gas == GasMixture.Air);
@@ -904,8 +886,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CalculateFinalAscent_ShouldNotTakeTheOxygenBreakOnTheLoopOxygenSupply_WhenOneIsCarried()
     {
         // Arrange
-        // The rebreather's oxygen supply carries no second stage to breathe from, so the
-        // break must fall back to the air even though the supply holds a richer break gas.
         var settings = TestFactory.CreateSettings(oxygenBreaks: true,
             oxygenBreakInterval: TimeSpan.FromMinutes(1), oxygenBreakDuration: TimeSpan.FromMinutes(1));
         var cylinders = new[]
@@ -938,8 +918,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CalculateFinalAscent_ShouldNotTakeTheOxygenBreakOnAMixAtThePureOxygenThreshold()
     {
         // Arrange
-        // A mix of 99.9% oxygen counts as oxygen, so it cannot serve as a break from oxygen
-        // and the break falls back to the air.
         var nearlyPureOxygen = GasMixture.FromPercent(99.9, 0);
         var settings = TestFactory.CreateSettings(oxygenBreaks: true,
             oxygenBreakInterval: TimeSpan.FromMinutes(1), oxygenBreakDuration: TimeSpan.FromMinutes(1));
@@ -1004,8 +982,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CalculateFinalAscent_ShouldInsertAFurtherOxygenBreak_WhenTheStopOutlastsASecondInterval()
     {
         // Arrange
-        // The interval and the break are one minute each, and the six meter stop on this
-        // profile runs far longer than the two intervals a second break requires.
         var nitrox50 = GasMixture.FromPercent(50, 0);
         var settings = TestFactory.CreateSettings(lastStopAtSixMeters: true, oxygenBreaks: true,
             oxygenBreakInterval: TimeSpan.FromMinutes(1), oxygenBreakDuration: TimeSpan.FromMinutes(1));
@@ -1062,8 +1038,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CalculateFinalAscent_ShouldNotInsertOxygenBreaks_WhenBreathingARebreatherLoop()
     {
         // Arrange
-        // The loop is breathed on its diluent, never on pure oxygen, so no break is ever due
-        // however rich the loop runs.
         var settings = TestFactory.CreateSettings(lastStopAtSixMeters: true, oxygenBreaks: true,
             oxygenBreakInterval: TimeSpan.FromMinutes(1), oxygenBreakDuration: TimeSpan.FromMinutes(1));
         var cylinders = new[]
@@ -1114,8 +1088,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CalculateFinalAscent_ShouldShortenDecompression_WhenTheDecompressionSetpointIsRaised()
     {
         // Arrange
-        // A richer loop during the ascent leaves less room for inert gas, so the tissues
-        // offgas faster and the stops are shorter.
         var cylinders = new[]
         {
             new Cylinder(GasMixture.Air, Volume.FromLiter(12), Pressure.FromBar(200), CylinderPurpose.Diluent),
@@ -1158,9 +1130,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CalculateFinalAscent_ShouldSwitchToOxygenAtThreeMeters_WhenTheDepthModelIsRealistic()
     {
         // Arrange
-        // In salt water off a one bar surface the 1.6 bar limit on pure oxygen is reached at
-        // (1600 - 1000) / 101.008 = 5.94 m, which is short of the six meter stop and floors
-        // onto the three meter stop instead.
         const double ExpectedSwitchDepthMeter = 3.0;
         var settings = TestFactory.CreateSettings(
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic,
@@ -1190,9 +1159,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CalculateFinalAscent_ShouldSwitchToOxygenAtSixMeters_WhenTheDepthModelIsSimplified()
     {
         // Arrange
-        // The published depth of pure oxygen at 1.6 bar is exactly (1.6 / 1.00 - 1) * 10 = 6 m,
-        // which lands on the six meter stop regardless of the salinity that shifts the
-        // realistic depth below it.
         const double ExpectedSwitchDepthMeter = 6.0;
         var settings = TestFactory.CreateSettings(
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified,
@@ -1222,8 +1188,6 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     public void CalculateFinalAscent_ShouldSwitchToNitroxFiftyAtTwentyOneMeters_WhenTheDepthModelIsSimplified()
     {
         // Arrange
-        // Nitrox 50 at 1.6 bar has a published depth of (1.6 / 0.50 - 1) * 10 = 22 m, which
-        // floors onto the twenty-one meter stop.
         const double ExpectedSwitchDepthMeter = 21.0;
         var settings = TestFactory.CreateSettings(
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified,

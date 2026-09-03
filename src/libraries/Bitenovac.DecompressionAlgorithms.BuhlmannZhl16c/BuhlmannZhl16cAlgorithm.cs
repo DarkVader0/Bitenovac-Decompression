@@ -231,8 +231,6 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         ReplayWorkingPhase(priorDive.Profile, priorDive.Cylinders, priorDive.Settings);
         PlanFinalAscent(_state, priorDive.Cylinders, priorDive.Settings, null);
 
-        // The surface interval is always breathed open circuit, whatever apparatus the dive
-        // itself used.
         LoadConstantDepth(_state, 0.0, priorDive.SurfaceGas, BreathingLoop.OpenCircuit,
             priorDive.SurfaceInterval.TotalMinutes);
         _state.CurrentGas = priorDive.SurfaceGas;
@@ -459,8 +457,6 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
             return;
         }
 
-        // The ascent to the surface is the decompression phase: a closed-circuit loop is raised
-        // to its decompression setpoint here, and every segment emitted below carries it.
         state.CurrentLoop = state.CurrentLoop.ForDecompression();
 
         var averageDepthMeter = state.RuntimeMinutes > 0.0
@@ -484,11 +480,8 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
             firstStopMeter = Math.Max(entryStopMeter, StopIntervalMeter);
         }
 
-        // The gradient-factor slope is anchored at the first stop: gfLow there, gfHigh at
-        // the surface.
         var anchorMeter = firstStopMeter;
 
-        // Hold at the current depth first if even the first stop is not yet tolerated.
         if (firstStopMeter >= state.CurrentDepthMeter - DepthToleranceMeter
             || CeilingMeter(state, GradientFactorAt(firstStopMeter, anchorMeter)) > firstStopMeter)
         {
@@ -496,8 +489,6 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
                 GradientFactorAt(firstStopMeter, anchorMeter), cylinders, settings, output);
         }
 
-        // Descend the stop ladder: travel to each stop, switch gas, hold until the next
-        // stop is tolerated.
         var stopMeter = (double)firstStopMeter;
         while (state.CurrentDepthMeter > DepthToleranceMeter)
         {
@@ -808,8 +799,6 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     /// </summary>
     private double GradientFactorAt(double depthMeter, double anchorMeter)
     {
-        // The anchor is a stop on the three-meter grid, never shallower than the stop
-        // interval, so the division is always well defined.
         var fraction = Math.Clamp(depthMeter / anchorMeter, 0.0, 1.0);
         return _gradientFactorHigh - (_gradientFactorHigh - _gradientFactorLow) * fraction;
     }

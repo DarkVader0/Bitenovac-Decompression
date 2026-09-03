@@ -49,7 +49,6 @@ public sealed class ProjectGraphTests
     public void GetDependencies_ShouldReturnDirectReferencesOnly_WhenProjectHasTransitiveDependencies()
     {
         // Arrange
-        // A -> B -> C
         var graph = TestFactory.Graph("A -> B", "B -> C", "C");
 
         // Act
@@ -63,7 +62,6 @@ public sealed class ProjectGraphTests
     public void GetBuildOrder_ShouldPlaceEveryDependencyBeforeItsDependent()
     {
         // Arrange
-        // Benchmarks -> Buhlmann -> Core -> Units
         var graph = TestFactory.Graph(
             "Benchmarks -> Buhlmann, Core, Units",
             "Buhlmann -> Core, Units",
@@ -86,7 +84,6 @@ public sealed class ProjectGraphTests
     public void GetBuildOrder_ShouldIncludeEveryProjectExactlyOnce_WhenGraphIsDiamondShaped()
     {
         // Arrange
-        // A depends on B and C, both of which depend on D.
         var graph = TestFactory.Graph("A -> B, C", "B -> D", "C -> D", "D");
 
         // Act

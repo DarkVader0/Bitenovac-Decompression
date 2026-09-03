@@ -57,8 +57,6 @@ public sealed class BreathingLoopTests
     public void InspiredOxygenPressure_ShouldEqualTheSetpoint_WhenTheClosedCircuitLoopCanHoldIt()
     {
         // Arrange
-        // At 40 m the diluent alone gives 0.18 x 4.92266 = 0.886 bar and the ambient pressure
-        // is 4.92 bar, so a 1.3 bar setpoint lies between the two and is held exactly.
         var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
 
         // Act
@@ -72,8 +70,6 @@ public sealed class BreathingLoopTests
     public void InspiredOxygenPressure_ShouldFallBackToTheDiluent_WhenTheSetpointIsBelowWhatTheDiluentGives()
     {
         // Arrange
-        // At 100 m the diluent alone gives 0.18 x 10.80665 = 1.945 bar. Oxygen cannot be
-        // removed from the loop, so the setpoint cannot be reached.
         var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
 
         // Act
@@ -87,7 +83,6 @@ public sealed class BreathingLoopTests
     public void InspiredOxygenFraction_ShouldBePureOxygen_WhenTheSetpointExceedsTheAmbientPressure()
     {
         // Arrange
-        // A 1.3 bar setpoint cannot be reached at the surface, where pure oxygen gives 1 bar.
         var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
 
         // Act
@@ -109,8 +104,6 @@ public sealed class BreathingLoopTests
         var helium = loop.InspiredHeliumFraction(Trimix1845, At40Meters);
 
         // Assert
-        // The inspired mixture is complete, and the loop neither adds nor removes inert gas,
-        // so nitrogen and helium keep the 37:45 ratio of the diluent.
         Assert.Equal(1.0, oxygen + nitrogen + helium, Precision);
         Assert.Equal(0.45 / 0.37, helium / nitrogen, Precision);
     }
@@ -134,7 +127,6 @@ public sealed class BreathingLoopTests
     public void SemiClosedOxygenDropCoefficient_ShouldFollowTheSteadyStateBalance()
     {
         // Arrange
-        // The coefficient is V̇O₂ x Psurf / (r x RMV) = 1 x 1000 / (0.1 x 20) = 500 mbar.
 
         // Act
         var coefficient = BreathingLoop.SemiClosedOxygenDropCoefficient(0.1, 1.0, 20.0, Pressure.FromBar(1));
@@ -160,8 +152,6 @@ public sealed class BreathingLoopTests
     public void InspiredOxygenPressure_ShouldFallShortOfTheSupply_WhenTheLoopIsSemiClosed()
     {
         // Arrange
-        // At 30 m the supply gives 0.32 x 3.941995 = 1.2614 bar, from which the loop runs
-        // 0.34 bar short.
         var loop = BreathingLoop.SemiClosed(0.1, Pressure.FromMillibar(500));
 
         // Act
@@ -175,7 +165,6 @@ public sealed class BreathingLoopTests
     public void InspiredOxygenFraction_ShouldBeZero_WhenTheSemiClosedLoopCannotSustainAnyOxygen()
     {
         // Arrange
-        // At the surface the supply gives only 0.32 bar, less than the 0.34 bar shortfall.
         var loop = BreathingLoop.SemiClosed(0.1, Pressure.FromMillibar(500));
 
         // Act
@@ -394,8 +383,6 @@ public sealed class BreathingLoopTests
     public void InspiredOxygenFraction_ShouldReturnTheSupplyFraction_WhenTheAmbientPressureIsNotPositive()
     {
         // Arrange
-        // A degenerate ambient pressure leaves the loop nothing to work against, so the
-        // supply gas is reported unaltered rather than dividing by zero.
         var loop = BreathingLoop.ClosedCircuit(Pressure.FromBar(1.3));
 
         // Act

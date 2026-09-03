@@ -38,8 +38,6 @@ public static class OxygenExposure
         var cnsPercent = 0.0;
         var otu = 0.0;
 
-        // The partial pressure of oxygen at the start of the next segment. The first
-        // segment starts at the surface, breathing that segment's gas.
         var previousDepthMeter = 0.0;
 
         foreach (var segment in segments)
@@ -54,8 +52,6 @@ public static class OxygenExposure
             previousDepthMeter = segment.Depth.InMeter;
         }
 
-        // The central nervous system toxicity is accumulated as a percentage of the
-        // single-exposure limit; the result expresses it as a fraction of that limit.
         var cnsFraction = cnsPercent / 100.0;
 
         return new OxygenExposureResult(cnsFraction, otu);

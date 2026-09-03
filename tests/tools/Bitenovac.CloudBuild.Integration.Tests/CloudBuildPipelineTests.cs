@@ -30,7 +30,7 @@ public sealed class CloudBuildPipelineTests
         var entries = PlanState.Load(fixture.Options.PlanFile).For("Debug");
         Assert.All(entries, entry => Assert.False(entry.Hit));
         Assert.All(entries, entry => Assert.True(entry.ShouldGateCoverage));
-        
+
         Assert.True(File.Exists(fixture.Combine("src/Lib/bin/Debug/net10.0/Lib.dll")));
         Assert.True(File.Exists(fixture.Combine("artifacts/coverage-report/Debug/Cobertura.xml")));
 

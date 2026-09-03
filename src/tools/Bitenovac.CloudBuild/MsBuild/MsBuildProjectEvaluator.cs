@@ -129,7 +129,7 @@ internal sealed class MsBuildProjectEvaluator : IDisposable
             destination.Add($"source:{relative}={HashFile(fullPath)}");
         }
     }
-    
+
     private IEnumerable<string> RepositoryImports(Project project) =>
         project.Imports
             .Select(import => import.ImportedProject.FullPath)

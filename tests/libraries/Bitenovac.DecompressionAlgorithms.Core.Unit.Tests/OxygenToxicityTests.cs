@@ -205,10 +205,6 @@ public sealed class OxygenToxicityTests
     public void CalculateCnsTransition_ShouldUseTheUpperBranchAlone_WhenTheWholeRampIsAboveTheBranchPoint()
     {
         // Arrange
-        // The whole ramp lies at or above the 1500 mbar branch point, so only the upper
-        // branch of the fit is integrated: mean rate = [exp(-23.6349 + 0.00980829 x 1700)
-        // - exp(-23.6349 + 0.00980829 x 1500)] / 0.00980829 / 200, and the exposure is that
-        // rate held for 60 seconds, as a percentage.
 
         // Act
         var cns = OxygenToxicity.CalculateCnsTransition(1500, 1700, 60);

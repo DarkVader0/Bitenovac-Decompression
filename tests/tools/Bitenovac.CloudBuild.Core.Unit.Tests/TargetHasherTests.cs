@@ -144,8 +144,7 @@ public sealed class TargetHasherTests
     [Fact]
     public void ComputeFullHash_ShouldStayTheSame_WhenOnlyAnUnrelatedProjectsOwnHashChanges()
     {
-        // Arrange — the target's own hash and its dependencies' full hashes are unchanged; only
-        // some other project elsewhere in the graph moved, which this call never sees.
+        // Arrange
         var ownHash = TargetHasher.ComputeOwnHash(["own"]);
         string[] dependencyFullHashes = ["dep-hash-1"];
 

@@ -358,8 +358,6 @@ public sealed class DecoPlanTests
         var lines = plan.ToString().Split(System.Environment.NewLine);
 
         // Assert
-        // The two ascent hops merge into one row ending at the stop depth, and the final
-        // ascent to the surface is emitted after the last stop.
         Assert.Equal("Bottom        20 m    20 min    20 min  Air", lines[2]);
         Assert.Equal("Ascent         6 m     3 min    23 min  Air", lines[3]);
         Assert.Equal("Stop           6 m     3 min    26 min  NX50", lines[4]);

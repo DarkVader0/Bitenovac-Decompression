@@ -63,8 +63,6 @@ public sealed class DivePlannerZhl16cTests
     public void CreatePlan_ShouldRecordViolation_WhenProfileAscendsAboveCeiling()
     {
         // Arrange
-        // After 25 minutes at 40 m the ceiling is far deeper than 3 m, so the planned
-        // inter-level ascent to 3 m must be recorded as a violation.
         var request = new DivePlanRequest(TestFactory.CreateProfile((40, 25), (3, 5)),
             [TestFactory.CreateCylinder()],
             TestFactory.CreateSettings());

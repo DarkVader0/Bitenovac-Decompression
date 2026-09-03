@@ -247,11 +247,6 @@ public sealed class ReserveGasTests
     public void Calculate_ShouldRequireTheEmergencyAscentFromTheDeepestPoint_WhenTheCylinderIsBailout()
     {
         // Arrange
-        // The bailout gas is never breathed in the plan, so its band runs from the deepest
-        // point of the dive to the surface: 30 m to 6 m at 6 m/min and 6 m to the surface at
-        // 1 m/min, for a team of two at 20 L/min and a stress factor of 1.5, giving
-        // 2 x (20 x 1.5 x 2.765197 x 4 + 20 x 1.5 x 1.2941995 x 6) L. The gas that remains
-        // excludes the 12 L x 10 bar that the first stage can no longer deliver.
         var segments = new[] { TestFactory.CreateSegment(30, 10) };
         var cylinders = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Bailout) };
 
@@ -267,8 +262,6 @@ public sealed class ReserveGasTests
     public void Calculate_ShouldShortenTheBailoutBand_WhenARicherBailoutGasIsCarried()
     {
         // Arrange
-        // The richer gas is breathable from its maximum operating depth upwards, so the
-        // ascent on the leaner gas ends there rather than at the surface.
         var segments = new[] { TestFactory.CreateSegment(30, 10) };
         var alone = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Bailout) };
         var withRicherGas = new[]
@@ -291,8 +284,6 @@ public sealed class ReserveGasTests
     public void Calculate_ShouldNotShortenTheBailoutBand_WhenTheRicherGasIsNotCarriedForDecoOrBailout()
     {
         // Arrange
-        // Only a decompression or bailout gas can end the emergency ascent early, so a
-        // richer gas carried as bottom gas leaves the bailout band running to the surface.
         var segments = new[] { TestFactory.CreateSegment(30, 10) };
         var alone = new[] { TestFactory.CreateCylinder(GasMixture.Air, 12, 200, CylinderPurpose.Bailout) };
         var withRicherBottomGas = new[]

@@ -39,10 +39,6 @@ internal sealed record PipelineOptions(
     public string SyntheticProjectPath(string configuration) =>
         Path.Combine(PrStoreRoot, $"build-{configuration}.proj");
 
-    // Under the checkout, not the PR store: a GitHub Actions upload-artifact step reads from
-    // the runner's own filesystem, and the PR store is a separate Docker volume it cannot see
-    // into. Test runs in its own container per stage, so nothing here needs to survive between
-    // containers the way the store's content-addressed entries do.
     public string CoverageDirectory(string configuration) =>
         Path.Combine(RepositoryRoot, "artifacts", "coverage", configuration);
 

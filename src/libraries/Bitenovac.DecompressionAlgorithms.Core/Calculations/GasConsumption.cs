@@ -56,11 +56,8 @@ public static class GasConsumption
             throw new ArgumentException("At least one cylinder must be available.", nameof(cylinders));
         }
 
-        // Indexed in step with the supplied cylinder list.
         var consumedMilliliters = new double[cylinders.Count];
 
-        // Each segment begins where the previous one ended, which is what makes the loop
-        // make-up over a descent measurable. The first begins at the surface.
         var previousDepthMeter = 0.0;
 
         foreach (var segment in segments)
@@ -105,8 +102,6 @@ public static class GasConsumption
                 "A segment's supply gas does not match any supplied cylinder.");
         }
 
-        // Only decompression stops use the decompression rate. The metabolic demand of a
-        // rebreather diver is split the same way.
         var restingAtAStop = segment.Kind == SegmentKind.Stop;
         var sacLitersPerMinute = restingAtAStop
             ? settings.DecoSacLitersPerMinute
@@ -117,29 +112,21 @@ public static class GasConsumption
 
         if (mode == DiveMode.OC)
         {
-            // Free-gas volume (at surface conditions) = SAC × ambient-pressure-ratio × time.
             consumedMilliliters[supplyIndex] += sacLitersPerMinute * endAmbientRatio * minutes * 1000.0;
             return;
         }
 
-        // A rebreather loop is a fixed volume of gas held at ambient pressure, so descending
-        // compresses it and the difference must be made up from the diluent supply. Ascending
-        // vents the excess overboard and draws nothing.
         var startAmbientRatio = AmbientRatio(startDepthMeter, settings);
         var makeUpLiters = settings.LoopVolumeLiters * Math.Max(endAmbientRatio - startAmbientRatio, 0.0);
         consumedMilliliters[supplyIndex] += makeUpLiters * 1000.0;
 
         if (mode == DiveMode.PSCR)
         {
-            // The loop vents its dump ratio of every breath and replaces it from the supply.
             var ventedLiters = segment.Loop.DumpRatio * sacLitersPerMinute * endAmbientRatio * minutes;
             consumedMilliliters[supplyIndex] += ventedLiters * 1000.0;
             return;
         }
 
-        // A closed-circuit loop vents nothing, so the only gas it consumes beyond the descent
-        // make-up is the oxygen the diver metabolises, which is drawn from the oxygen supply
-        // at a rate that does not vary with depth.
         var metabolicRate = restingAtAStop
             ? settings.DecoMetabolicOxygenConsumptionLitersPerMinute
             : settings.BottomMetabolicOxygenConsumptionLitersPerMinute;
@@ -245,8 +232,6 @@ public static class GasConsumption
 
         var gasUsed = Volume.FromMilliliter(consumedMilliliters);
 
-        // Remaining pressure is the start pressure scaled by the fraction of free gas that
-        // remains, since free-gas volume is proportional to cylinder pressure.
         var remainingFraction = availableMilliliters > 0.0
             ? (availableMilliliters - consumedMilliliters) / availableMilliliters
             : 0.0;

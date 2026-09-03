@@ -52,7 +52,6 @@ public sealed class AmbientConditionsTests
     public void PressureAtDepth_ShouldAddHydrostaticColumn_WhenDepthIsPositive()
     {
         // Arrange
-        // Fresh water at 10 m: 1000 kg/m3 x 9.80665 m/s2 x 10 m / 100 Pa/mbar = 980.665 mbar.
         var settings = TestFactory.CreateSettings(salinity: Salinity.Fresh);
         const double expectedMillibar = 1000.0 + 1000.0 * 9.80665 * 10.0 / 100.0;
 

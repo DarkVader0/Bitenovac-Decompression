@@ -1,26 +1,2 @@
 <Project>
-
-    <!--
-        Extra inputs to fold into a project's own hash.
-
-        The CloudBuild tool reads a project's properties and items straight from MSBuild's evaluation
-        API (see MsBuildProjectEvaluator), so nothing here has to report them: an item or
-        property is queryable without running any target, which is why the CiProjectInfo target
-        this file used to declare, and the build/project-info.proj that invoked it, are both gone.
-
-        What the tool cannot infer is an input that changes a project's output without appearing
-        among its sources, packages or build properties — a code generator reading a file the
-        project does not list, say, or a value baked in from the environment. Declare those, and
-        a change to one invalidates the project's cache entry the way a source edit would:
-
-            <ItemGroup>
-                <CloudBuildHashInput Include="schema-version=3"/>
-            </ItemGroup>
-
-        Anything not declared and not otherwise covered is, by definition, an input the cache
-        cannot see — which is how a stale artifact gets served under a hash that still looks
-        correct. When in doubt, declare it: an unnecessary entry costs one rebuild, a missing
-        one costs a green build that tested nothing.
-    -->
-
 </Project>

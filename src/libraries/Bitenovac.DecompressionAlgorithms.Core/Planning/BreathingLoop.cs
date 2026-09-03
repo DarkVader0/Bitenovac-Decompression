@@ -256,8 +256,6 @@ public readonly struct BreathingLoop : IEquatable<BreathingLoop>
 
         var supplyOxygenMillibar = supply.FractionO2 * ambientMillibar;
 
-        // The loop can enrich the diluent up to pure oxygen but can never run leaner than
-        // the diluent itself, so the setpoint is bounded by both.
         var oxygenMillibar = Mode switch
         {
             DiveMode.CCR => Math.Clamp(Setpoint.InMillibar, supplyOxygenMillibar, ambientMillibar),

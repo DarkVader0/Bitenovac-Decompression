@@ -63,7 +63,6 @@ public static class OxygenToxicity
             return 0.0;
         }
 
-        // Two lines fitted to the logarithm of the NOAA single-exposure CNS table.
         return po2Mbar <= BranchMbar
             ? Math.Exp(LowerBranchIntercept + LowerBranchSlope * po2Mbar)
             : Math.Exp(UpperBranchIntercept + UpperBranchSlope * po2Mbar);
@@ -102,13 +101,11 @@ public static class OxygenToxicity
         int endPo2Mbar,
         int durationSec)
     {
-        // A flat segment has no ramp to integrate over: the rate held for the duration.
         if (startPo2Mbar == endPo2Mbar)
         {
             return CalculateCns(startPo2Mbar, durationSec);
         }
 
-        // The exposure depends only on the span the ramp covers, not on its direction.
         var lowerMbar = Math.Min(startPo2Mbar, endPo2Mbar);
         var upperMbar = Math.Max(startPo2Mbar, endPo2Mbar);
 
@@ -117,10 +114,6 @@ public static class OxygenToxicity
             return 0.0;
         }
 
-        // The mean rate over the segment is the integral of the rate across the toxic part
-        // of the ramp divided by the full span, since the part at or below the threshold
-        // accrues nothing. The partial pressure moves linearly in time, so the mean over
-        // the partial pressure is also the mean over time.
         var meanRate = RateIntegral(Math.Max(lowerMbar, ThresholdMbar), upperMbar)
                        / (upperMbar - lowerMbar);
 
@@ -203,14 +196,11 @@ public static class OxygenToxicity
         double po2f = endPo2Mbar;
         double t = durationSec;
 
-        // If the whole segment is at or below the threshold, no OTU accrues.
         if (po2i <= ThresholdMbar && po2f <= ThresholdMbar)
         {
             return 0.0;
         }
 
-        // Clip the segment to the portion strictly above the threshold, so that the ramp
-        // used for the integral covers only the toxic part of the exposure.
         if (po2i < ThresholdMbar)
         {
             t *= (po2f - ThresholdMbar) / (po2f - po2i);
@@ -224,16 +214,9 @@ public static class OxygenToxicity
 
         var durationMin = t / 60.0;
 
-        // Normalised toxicity variable x = (po2 - 0.5 bar) / 0.5 bar, evaluated in bar.
         var xi = (po2i / 1000.0 - 0.5) / 0.5;
         var xf = (po2f / 1000.0 - 0.5) / 0.5;
 
-        // The clipping above guarantees both endpoints are at or above the threshold, so
-        // xi and xf are non-negative and the power below is always well-defined.
-
-        // Exact integral of x^k over a linear ramp from xi to xf is
-        //   (xf^(k+1) - xi^(k+1)) / ((k + 1) * (xf - xi)).
-        // When the endpoints coincide the ramp is flat and the integral is simply x^k.
         if (Math.Abs(xf - xi) < 1e-12)
         {
             return durationMin * Math.Pow(xi, OtuExponent);

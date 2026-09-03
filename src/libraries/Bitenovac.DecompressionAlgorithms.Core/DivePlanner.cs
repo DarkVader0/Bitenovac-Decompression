@@ -57,7 +57,6 @@ public sealed class DivePlanner
 
             if (targetDepthMeter > currentDepthMeter)
             {
-                // Descend to the deeper level; a descent never incurs an obligation.
                 var descent = BuildTravel(currentDepthMeter, targetDepthMeter,
                     settings.DescentRateMetersPerMinute, SegmentKind.Descent, cylinders, settings, target.Loop);
                 segments.Add(descent);
@@ -66,8 +65,6 @@ public sealed class DivePlanner
             }
             else if (targetDepthMeter < currentDepthMeter)
             {
-                // Validate the inter-level ascent against the model's ceiling before making
-                // it. A ceiling deeper than the target means a stop would be required.
                 var ceiling = _algorithm.CurrentCeiling(state);
                 if (ceiling.InMeter > targetDepthMeter)
                 {
@@ -77,8 +74,6 @@ public sealed class DivePlanner
                         ceiling));
                 }
 
-                // The working ascent is emitted regardless so that the profile stays
-                // continuous for the shared calculators; the violation records the problem.
                 var ascent = BuildTravel(currentDepthMeter, targetDepthMeter,
                     settings.AscentRateBelow75PercentMetersPerMinute, SegmentKind.Ascent, cylinders, settings,
                     target.Loop);
@@ -100,12 +95,9 @@ public sealed class DivePlanner
             currentDepthMeter = targetDepthMeter;
         }
 
-        // The model computes the final ascent to the surface, including the decompression
-        // stops and any gas switches.
         var finalAscent = _algorithm.CalculateFinalAscent(state, request);
         segments.AddRange(finalAscent);
 
-        // Run the shared, model-agnostic calculators over the complete profile.
         var gasUsage = GasConsumption.Calculate(segments, cylinders, settings);
         var reserve = ReserveGas.Calculate(segments, cylinders, settings);
         var oxygen = OxygenExposure.Calculate(segments, settings);

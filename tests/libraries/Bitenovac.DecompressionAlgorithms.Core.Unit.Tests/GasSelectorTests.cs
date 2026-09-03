@@ -181,7 +181,6 @@ public sealed class GasSelectorTests
     public void SelectRichestGas_ShouldRestrictTheChoiceToTheRequiredPurpose_WhenOneIsSupplied()
     {
         // Arrange
-        // The nitrox 50 stage is richer, but a rebreather is fed from its diluent alone.
         var cylinders = new[]
         {
             TestFactory.CreateCylinder(GasMixture.FromPercent(50, 0), purpose: CylinderPurpose.DecoGas),
@@ -200,8 +199,6 @@ public sealed class GasSelectorTests
     public void SelectRichestGas_ShouldSkipTheOxygenSupply_WhenNoPurposeIsRequired()
     {
         // Arrange
-        // The rebreather's oxygen supply carries no second stage to breathe from, so open
-        // circuit falls back to the leaner bottom gas.
         var cylinders = new[]
         {
             TestFactory.CreateCylinder(GasMixture.Air),
@@ -318,8 +315,6 @@ public sealed class GasSelectorTests
     public void MaxOperatingDepthMeter_ShouldReturnTheDepthAtWhichTheLimitIsReached_WhenTheModelIsRealistic()
     {
         // Arrange
-        // The depth is the excess over the surface pressure divided by the hydrostatic
-        // pressure of one meter of fresh water: (1600 - 1000) / (1000 * 9.80665 / 100).
         const double MillibarPerMeter = 1000.0 * 9.80665 / 100.0;
         var expected = (1600.0 - 1000.0) / MillibarPerMeter;
         var settings = TestFactory.CreateSettings(
@@ -336,8 +331,6 @@ public sealed class GasSelectorTests
     public void MaxOperatingDepthMeter_ShouldReturnExactlySixMeters_WhenTheModelIsSimplifiedAndTheGasIsOxygen()
     {
         // Arrange
-        // The published depth is ten meters per bar above a one bar surface:
-        // (1.6 / 1.00 - 1) * 10 = 6.
         var settings = TestFactory.CreateSettings(
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
 
@@ -353,7 +346,6 @@ public sealed class GasSelectorTests
         MaxOperatingDepthMeter_ShouldReturnExactlyTwentyTwoMeters_WhenTheModelIsSimplifiedAndTheGasIsNitroxFifty()
     {
         // Arrange
-        // (1.6 / 0.50 - 1) * 10 = 22.
         var settings = TestFactory.CreateSettings(
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
 
@@ -369,7 +361,6 @@ public sealed class GasSelectorTests
     public void MaxOperatingDepthMeter_ShouldReturnTheTextbookDepth_WhenTheModelIsSimplifiedAndTheGasIsAir()
     {
         // Arrange
-        // (1.4 / 0.21 - 1) * 10 = 56.66667.
         var settings = TestFactory.CreateSettings(
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Simplified);
 
@@ -407,8 +398,6 @@ public sealed class GasSelectorTests
     public void MaxOperatingDepthMeter_ShouldReturnAShallowerDepthInSaltWater_WhenTheModelIsRealistic()
     {
         // Arrange
-        // Denser water reaches the same pressure in a shorter column, so the limit is met
-        // shallower.
         var freshSettings = TestFactory.CreateSettings(salinity: Salinity.Fresh,
             maximumOperatingDepthModel: MaximumOperatingDepthModel.Realistic);
         var saltSettings = TestFactory.CreateSettings(salinity: Salinity.Salt,
@@ -429,8 +418,6 @@ public sealed class GasSelectorTests
         MaximumOperatingDepthModel model)
     {
         // Arrange
-        // A limit of 0.5 bar on pure oxygen is met above the surface under either model, so
-        // the depth is clamped to zero rather than going negative.
         var settings = TestFactory.CreateSettings(maximumOperatingDepthModel: model);
 
         // Act
@@ -488,8 +475,6 @@ public sealed class GasSelectorTests
     public void IsBreathableAt_ShouldRejectOxygenAtSixMeters_WhenTheModelIsRealistic()
     {
         // Arrange
-        // In salt water off a 1000 mbar surface the ambient pressure at 6 m is
-        // 1000 + 1030 * 9.80665 * 6 / 100 = 1606.05 mbar, just beyond a 1.6 bar limit.
         var settings = TestFactory.CreateSettings(
             Pressure.FromMillibar(1000),
             Salinity.Salt,
@@ -506,8 +491,6 @@ public sealed class GasSelectorTests
     public void IsBreathableAt_ShouldAdmitOxygenAtSixMeters_WhenTheModelIsSimplified()
     {
         // Arrange
-        // The same depth and environment that the realistic model rejects, admitted because
-        // six meters is the published maximum operating depth of oxygen at 1.6 bar.
         var settings = TestFactory.CreateSettings(
             Pressure.FromMillibar(1000),
             Salinity.Salt,
@@ -538,7 +521,6 @@ public sealed class GasSelectorTests
     public void IsBreathableAt_ShouldReturnTrue_WhenTheModelIsRealisticAndThePartialPressureExactlyEqualsTheLimit()
     {
         // Arrange
-        // Fresh water off a 1000 mbar surface reaches 1400 mbar at 400 / 98.0665 meters.
         const double MillibarPerMeter = 1000.0 * 9.80665 / 100.0;
         var depthMeter = (1400.0 - 1000.0) / MillibarPerMeter;
         var settings = TestFactory.CreateSettings(
@@ -697,8 +679,6 @@ public sealed class GasSelectorTests
     public void SelectRichestGasAt_ShouldSkipTheOxygenSupply_WhenNoPurposeIsRequired()
     {
         // Arrange
-        // The rebreather's oxygen supply carries no second stage to breathe from, so open
-        // circuit falls back to the leaner bottom gas.
         var settings = TestFactory.CreateSettings();
         Cylinder[] cylinders =
         [

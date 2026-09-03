@@ -171,7 +171,6 @@ public static class GasSelector
 
         var operatingPressure = MaxOperatingPressure(gas, maxPo2);
 
-        // The settings admit no model beyond these two.
         var depthMeter = settings.MaximumOperatingDepthModel is MaximumOperatingDepthModel.Simplified
             ? (operatingPressure.InBar - SimplifiedSurfaceBar) * SimplifiedMetersPerBar
             : AmbientConditions.DepthAtPressure(settings, operatingPressure).InMeter;
@@ -208,8 +207,6 @@ public static class GasSelector
                 "The maximum partial pressure of oxygen must be greater than zero.");
         }
 
-        // Under the simplified model a gas holding no oxygen has no maximum operating depth, so
-        // the oxygen limit does not bound it at any depth.
         return settings.MaximumOperatingDepthModel is MaximumOperatingDepthModel.Simplified
             ? gas.FractionO2 <= 0.0
               || depthMeter <= MaxOperatingDepthMeter(gas, maxPo2, settings) + DepthToleranceMeter

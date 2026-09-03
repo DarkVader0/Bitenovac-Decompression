@@ -7,8 +7,6 @@ namespace Bitenovac.DecompressionAlgorithms.Zhl16c.Unit.Tests;
 
 public sealed class SegmentBufferTests
 {
-    // One more than the buffer's initial capacity of 64, so that filling past it
-    // exercises the geometric growth of the backing array.
     private const int BeyondInitialCapacityCount = 65;
 
     private static DiveSegment CreateSegment(double depthMeter) =>

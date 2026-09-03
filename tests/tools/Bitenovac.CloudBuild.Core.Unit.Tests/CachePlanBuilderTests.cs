@@ -84,8 +84,7 @@ public sealed class CachePlanBuilderTests
     [Fact]
     public void Build_ShouldHitAndNotGate_WhenComputedHashesMatchWhatIsStored()
     {
-        // Arrange — compute the real hashes first, so "stored" reflects a genuine prior run
-        // rather than a hand-picked string that happens to match by coincidence.
+        // Arrange
         var graph = TestFactory.Graph("A");
         var inputs = TestFactory.OwnInputs(("A", ["a=1"]));
         var ownHash = TargetHasher.ComputeOwnHash(["a=1"]);
@@ -123,9 +122,7 @@ public sealed class CachePlanBuilderTests
     [Fact]
     public void Build_ShouldMissDependentButNotGateIt_WhenOnlyItsDependencyChanged()
     {
-        // Arrange — Core changes; Buhlmann's own inputs are untouched. Buhlmann must rebuild and
-        // retest (fullHash moves, because Core is in its closure) but is not re-measured (its
-        // ownHash is unchanged) — "unchanged; rebuilt but not re-measured".
+        // Arrange
         var graph = TestFactory.Graph("Buhlmann -> Core", "Core");
 
         var coreOwnHashBefore = TargetHasher.ComputeOwnHash(["core:v1"]);
@@ -197,17 +194,13 @@ public sealed class CachePlanBuilderTests
         var decision = plan[TestFactory.Id("A")];
         Assert.Equal(CacheOutcome.Miss, decision.BuildOutcome);
         Assert.True(decision.Forced);
-        // --cacheless exists to re-verify from nothing, so a forced project is re-gated even
-        // though its ownHash still matches what main has stored — the real hash is still what
-        // gets recomputed, so the plan can be promoted normally if this run is a merge_group run.
         Assert.True(decision.ShouldGateCoverage);
     }
 
     [Fact]
     public void Build_ShouldMissButNotGate_WhenOnlyAGlobalFullHashInputChanges()
     {
-        // Arrange — a tool-version bump: nothing about the project or its dependencies moved,
-        // only the extra global entry folded into every fullHash.
+        // Arrange
         var graph = TestFactory.Graph("A");
         var inputs = TestFactory.OwnInputs(("A", ["a=1"]));
         var ownHash = TargetHasher.ComputeOwnHash(["a=1"]);
