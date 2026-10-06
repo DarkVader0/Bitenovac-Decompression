@@ -22,7 +22,6 @@ internal static class CommandLine
                 "build" => WithConfiguration(args, output, configuration => BuildCommand.Run(options, configuration, output)),
                 "test" => WithConfiguration(args, output, configuration => TestCommand.Run(options, configuration, output)),
                 "promote" => PromoteCommand.Run(options, output),
-                "cleanup" => CleanupCommand.Run(options, args.Contains("--keep-artifacts"), output),
                 "graph" => GraphCommand.Run(options, output),
                 "--help" or "-h" => Usage(output),
                 _ => Fail(output, $"Unknown command '{args[0]}'."),
@@ -67,7 +66,6 @@ internal static class CommandLine
               bitenovac-ci build <Config>        Materialise hits, compile misses
               bitenovac-ci test <Config>         Restore or run tests, gate coverage on Debug
               bitenovac-ci promote                Copy this run's qualifying entries into main
-              bitenovac-ci cleanup [--keep-artifacts]   Drop this run's own store
               bitenovac-ci graph                  Print the graph with each target's hashes
 
             Environment:

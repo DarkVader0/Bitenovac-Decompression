@@ -80,25 +80,6 @@ public sealed class CommandLineTests : IDisposable
     }
 
     [Theory]
-    [InlineData("cleanup")]
-    [InlineData("cleanup", "--keep-artifacts")]
-    public void Run_ShouldDispatchToCleanup_WhenTheCommandNamesIt(params string[] arguments)
-    {
-        // Arrange
-        using var repository = TestFactory.Directory();
-        var prStore = repository.Combine("pr");
-        Directory.CreateDirectory(prStore);
-        PointAt(repository, prStore);
-
-        // Act
-        var exitCode = CommandLine.Run(arguments, TestFactory.Silence());
-
-        // Assert
-        Assert.Equal(0, exitCode);
-        Assert.Equal(arguments.Contains("--keep-artifacts"), Directory.Exists(prStore));
-    }
-
-    [Theory]
     [InlineData("build", "Debug")]
     [InlineData("test", "Release")]
     [InlineData("promote")]

@@ -56,6 +56,7 @@ readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly RUNNER_HOME="/opt/bitenovac-runner"
 readonly NUGET_VOLUME="bitenovac-runner-nuget"
 readonly MAIN_VOLUME="bitenovac-main"
+#TODO: make this useful
 readonly LOGS_VOLUME="bitenovac-logs"
 
 # Every agent lives in its own directory under RUNNER_HOME. The glob is what uninstall and

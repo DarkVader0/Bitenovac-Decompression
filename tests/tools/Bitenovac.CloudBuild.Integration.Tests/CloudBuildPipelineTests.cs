@@ -154,23 +154,4 @@ public sealed class CloudBuildPipelineTests
         Assert.All(entries, entry => Assert.False(entry.Hit));
         Assert.All(entries, entry => Assert.True(entry.ShouldGateCoverage));
     }
-
-    [Fact]
-    public void Cleanup_ShouldDropTheRunVolumeAndLeaveMain_WhenThePipelineHasFinished()
-    {
-        // Arrange
-        using var fixture = FixtureRepository.Create();
-        Assert.Equal(0, PlanCommand.Run(fixture.Options, _output.Pipeline));
-        Assert.Equal(0, BuildCommand.Run(fixture.Options, "Debug", _output.Pipeline));
-        Assert.Equal(0, PromoteCommand.Run(fixture.Options, _output.Pipeline));
-
-        // Act
-        var exitCode = CleanupCommand.Run(fixture.Options, keepArtifacts: false, _output.Pipeline);
-
-        // Assert
-        Assert.Equal(0, exitCode);
-        Assert.False(Directory.Exists(fixture.Options.PrStoreRoot));
-        Assert.True(new LocalVolumeArtifactStore(fixture.Options.MainStoreRoot)
-            .Contains(new ProjectId(FixtureRepository.LibraryProject), "Debug"));
-    }
 }
