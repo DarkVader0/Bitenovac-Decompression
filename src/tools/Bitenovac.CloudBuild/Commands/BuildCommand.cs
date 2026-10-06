@@ -7,10 +7,10 @@ using Bitenovac.CloudBuild.Storage;
 namespace Bitenovac.CloudBuild.Commands;
 
 /// <summary>
-/// Materialises every cache hit from <c>main</c> into the checkout, then restores and compiles the whole
-/// selected set in one MSBuild session — the hits included, relying on MSBuild's own up-to-date
-/// check (made trustworthy by <see cref="Touch"/>) to skip real work on them and genuinely
-/// compile only the misses.
+/// Materialises every cache hit's <c>bin/</c> and <c>obj/</c> from <c>main</c>, then compiles
+/// only what is left — the misses, and any hit <c>main</c> could not supply — in one
+/// dependency-ordered MSBuild graph. A hit a miss references is part of that graph, and
+/// MSBuild's up-to-date check (made trustworthy by <see cref="Touch"/>) skips it.
 /// </summary>
 internal static class BuildCommand
 {
@@ -34,26 +34,8 @@ internal static class BuildCommand
         output.WriteLine($"{configuration}: materialised {materialised} cache hit(s) from main"
             + (skipped > 0 ? $", {skipped} already present" : "") + ".");
 
-        var restoreExitCode = MsBuildRunner.Restore(
-            options.RepositoryRoot,
-            entries.Select(entry => entry.FullPath),
-            configuration,
-            options.SyntheticProjectPath($"restore-{configuration}"));
-
-        if (restoreExitCode != 0)
-        {
-            output.WriteError($"error: restore failed (exit {restoreExitCode}).");
-            return restoreExitCode;
-        }
-
-        output.WriteLine($"==> Building {entries.Count} project(s) ({configuration})");
-        var exitCode = MsBuildRunner.Build(
-            options.RepositoryRoot,
-            entries.Select(entry => entry.FullPath),
-            configuration,
-            options.SyntheticProjectPath($"build-{configuration}"));
-
-        if (exitCode != 0)
+        var toBuild = entries.Where(entry => !entry.Hit || unavailable.Contains(entry)).ToList();
+        if (toBuild.Count > 0)
         {
             var exitCode = Compile(options, configuration, toBuild, output);
             if (exitCode != 0)
