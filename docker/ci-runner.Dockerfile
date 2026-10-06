@@ -57,7 +57,7 @@ COPY --from=tool /opt/cloudbuild /opt/cloudbuild
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-RUN mkdir -p /mnt/pr && chmod 1777 /mnt/pr
+RUN mkdir -p /mnt/pr /tool && chmod 1777 /mnt/pr /tool
 
 WORKDIR /repo
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
