@@ -5,98 +5,83 @@ namespace Bitenovac.CloudBuild.Unit.Tests;
 public sealed class ToolVersionTests
 {
     [Fact]
-    public void Compute_ShouldReportNoSources_WhenTheToolsDirectoryIsMissing()
-    {
-        // Arrange
-        using var repository = TestFactory.Directory();
-
-        // Act
-        var hash = ToolVersion.Compute(repository.Path);
-
-        // Assert
-        Assert.Equal("no-tool-sources", hash);
-    }
-
-    [Fact]
     public void Compute_ShouldReturnTheSameHash_WhenNothingChanged()
     {
         // Arrange
-        using var repository = TestFactory.Directory();
-        TestFactory.WriteFile(repository.Path, "src/tools/Tool/Tool.csproj", "<Project/>");
-        TestFactory.WriteFile(repository.Path, "src/tools/Tool/Program.cs", "return 0;");
-        var first = ToolVersion.Compute(repository.Path);
+        using var tool = TestFactory.Directory();
+        TestFactory.WriteFile(tool.Path, "Tool.dll", "assembly");
+        TestFactory.WriteFile(tool.Path, "Tool.Core.dll", "core");
+        var first = ToolVersion.Compute(tool.Path);
 
         // Act
-        var second = ToolVersion.Compute(repository.Path);
+        var second = ToolVersion.Compute(tool.Path);
 
         // Assert
         Assert.Equal(first, second);
     }
 
     [Fact]
-    public void Compute_ShouldChange_WhenASourceFileChanges()
+    public void Compute_ShouldChange_WhenAnAssemblyChanges()
     {
         // Arrange
-        using var repository = TestFactory.Directory();
-        TestFactory.WriteFile(repository.Path, "src/tools/Tool/Program.cs", "return 0;");
-        var before = ToolVersion.Compute(repository.Path);
+        using var tool = TestFactory.Directory();
+        TestFactory.WriteFile(tool.Path, "Tool.dll", "assembly");
+        var before = ToolVersion.Compute(tool.Path);
 
         // Act
-        TestFactory.WriteFile(repository.Path, "src/tools/Tool/Program.cs", "return 1;");
-        var after = ToolVersion.Compute(repository.Path);
+        TestFactory.WriteFile(tool.Path, "Tool.dll", "rebuilt assembly");
+        var after = ToolVersion.Compute(tool.Path);
 
         // Assert
         Assert.NotEqual(before, after);
     }
 
     [Fact]
-    public void Compute_ShouldChange_WhenASourceFileIsAdded()
+    public void Compute_ShouldChange_WhenAnAssemblyIsAdded()
     {
         // Arrange
-        using var repository = TestFactory.Directory();
-        TestFactory.WriteFile(repository.Path, "src/tools/Tool/Program.cs", "return 0;");
-        var before = ToolVersion.Compute(repository.Path);
+        using var tool = TestFactory.Directory();
+        TestFactory.WriteFile(tool.Path, "Tool.dll", "assembly");
+        var before = ToolVersion.Compute(tool.Path);
 
         // Act
-        TestFactory.WriteFile(repository.Path, "src/tools/Tool/Extra.cs", "return 0;");
-        var after = ToolVersion.Compute(repository.Path);
+        TestFactory.WriteFile(tool.Path, "Dependency.dll", "dependency");
+        var after = ToolVersion.Compute(tool.Path);
 
         // Assert
         Assert.NotEqual(before, after);
     }
 
     [Theory]
-    [InlineData("src/tools/Tool/bin/Debug/Generated.cs")]
-    [InlineData("src/tools/Tool/obj/Generated.cs")]
-    [InlineData("src/tools/Tool/README.md")]
+    [InlineData("Tool.pdb")]
+    [InlineData("Tool.deps.json")]
+    [InlineData("nested/Other.dll")]
     public void Compute_ShouldNotChange_WhenAFileOutsideTheHashedSetAppears(string relativePath)
     {
         // Arrange
-        using var repository = TestFactory.Directory();
-        TestFactory.WriteFile(repository.Path, "src/tools/Tool/Program.cs", "return 0;");
-        var before = ToolVersion.Compute(repository.Path);
+        using var tool = TestFactory.Directory();
+        TestFactory.WriteFile(tool.Path, "Tool.dll", "assembly");
+        var before = ToolVersion.Compute(tool.Path);
 
         // Act
-        TestFactory.WriteFile(repository.Path, relativePath, "anything at all");
-        var after = ToolVersion.Compute(repository.Path);
+        TestFactory.WriteFile(tool.Path, relativePath, "anything at all");
+        var after = ToolVersion.Compute(tool.Path);
 
         // Assert
         Assert.Equal(before, after);
     }
 
     [Fact]
-    public void Compute_ShouldDependOnThePathAsWellAsTheContent_WhenAFileIsRenamed()
+    public void Compute_ShouldDependOnTheNameAsWellAsTheContent_WhenAnAssemblyIsRenamed()
     {
         // Arrange
-        using var repository = TestFactory.Directory();
-        TestFactory.WriteFile(repository.Path, "src/tools/Tool/Program.cs", "return 0;");
-        var before = ToolVersion.Compute(repository.Path);
+        using var tool = TestFactory.Directory();
+        TestFactory.WriteFile(tool.Path, "Tool.dll", "assembly");
+        var before = ToolVersion.Compute(tool.Path);
 
         // Act
-        File.Move(
-            repository.Combine("src/tools/Tool/Program.cs"),
-            repository.Combine("src/tools/Tool/Entry.cs"));
-        var after = ToolVersion.Compute(repository.Path);
+        File.Move(tool.Combine("Tool.dll"), tool.Combine("Renamed.dll"));
+        var after = ToolVersion.Compute(tool.Path);
 
         // Assert
         Assert.NotEqual(before, after);

@@ -157,16 +157,61 @@ public sealed class PipelineOptionsTests : IDisposable
     }
 
     [Fact]
-    public void SyntheticProjectPath_ShouldSitInThePrStore_NamedAfterTheStage()
+    public void SyntheticSolutionPath_ShouldSitInThePrStore_NamedAfterTheStage()
     {
         // Arrange
         var options = TestFactory.Options("repo", "main", "pr");
 
         // Act
-        var path = options.SyntheticProjectPath("restore");
+        var path = options.SyntheticSolutionPath("restore");
 
         // Assert
-        Assert.Equal(Path.Combine("pr", "build-restore.proj"), path);
+        Assert.Equal(Path.Combine("pr", "restore.slnx"), path);
+    }
+
+    [Fact]
+    public void RestoreOutputsRoot_ShouldSitInThePrStore_WhenRead()
+    {
+        // Arrange
+        var options = TestFactory.Options("repo", "main", "pr");
+
+        // Act
+        var root = options.RestoreOutputsRoot;
+
+        // Assert
+        Assert.Equal(Path.Combine("pr", "restore"), root);
+    }
+
+    [Fact]
+    public void MaxParallelism_ShouldUseTheDeclaredValue_WhenMaxCpuIsSet()
+    {
+        // Arrange
+        _environment.Clear();
+        _environment.Set("CLOUDBUILD_MAX_CPU", "3");
+
+        // Act
+        var parallelism = PipelineOptions.MaxParallelism();
+
+        // Assert
+        Assert.Equal(3, parallelism);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("0")]
+    [InlineData("many")]
+    public void MaxParallelism_ShouldUseEveryCore_WhenMaxCpuIsMissingOrInvalid(string? value)
+    {
+        // Arrange
+        _environment.Clear();
+        _environment.Set("CLOUDBUILD_MAX_CPU", value);
+
+        // Act
+        var parallelism = PipelineOptions.MaxParallelism();
+
+        // Assert
+        Assert.Equal(Environment.ProcessorCount, parallelism);
     }
 
     [Fact]

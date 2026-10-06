@@ -18,7 +18,12 @@
 #   --instances N      How many agents to install. An agent accepts one job at a time, so this is
 #                      how many workflow jobs the machine runs at once; at 1 the Debug and Release
 #                      stages of a pull request serialise. Defaults to 1. See "Sizing" below.
-#   --repo URL         Repository to serve. Defaults to the origin remote of this checkout.
+#   --cpus N           Logical CPUs each agent's job containers may use. Defaults to the
+#                      machine's CPUs divided by --instances.
+#   --memory SIZE      Memory each agent's job containers may use, in docker's notation (6g).
+#                      Unlimited by default.
+#   --no-seed          Skip filling main's artifact store from this checkout (see seed-cache.sh).
+#   --repo URL        Repository to serve. Defaults to the origin remote of this checkout.
 #   --labels LIST      Comma separated labels the workflow selects on.
 #                      Defaults to self-hosted,linux,x64,bitenovac.
 #   --user NAME        Account the agents run as. Created if missing. Defaults to ci-runner.
@@ -27,9 +32,8 @@
 #                      --token as well, since deregistering asks GitHub too.
 #   --purge            With --uninstall, also delete the cached packages.
 #
-# Installs three things: the agents as systemd services, the image jobs build in, and the volume
-# their packages are cached in. The image is built here rather than per job, so re-run this after
-# changing global.json or docker/ci-runner.Dockerfile.
+# Installs three things: the agents as systemd services, the image jobs build in — with the
+# CloudBuild tool already published into it — and the volume their packages are cached in.
 #
 # Sizing --instances
 # ------------------
@@ -97,6 +101,9 @@ labels="self-hosted,linux,x64,bitenovac"
 run_as="ci-runner"
 runner_version=""
 instances=1
+cpus=""
+memory=""
+seed=true
 uninstall=false
 purge=false
 
@@ -108,9 +115,12 @@ while [[ $# -gt 0 ]]; do
         --user)           run_as="${2:-}";         shift 2 ;;
         --runner-version) runner_version="${2:-}"; shift 2 ;;
         --instances)      instances="${2:-}";      shift 2 ;;
+        --cpus)           cpus="${2:-}";           shift 2 ;;
+        --memory)         memory="${2:-}";         shift 2 ;;
+        --no-seed)        seed=false;              shift ;;
         --uninstall)      uninstall=true;          shift ;;
         --purge)          purge=true;              shift ;;
-        -h|--help)        sed -n '2,42p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 0 ;;
+        -h|--help)        sed -n '2,/^$/p' "${BASH_SOURCE[0]}" | sed 's/^# \?//'; exit 0 ;;
         *)                fail "Unknown argument: $1" ;;
     esac
 done
@@ -212,17 +222,22 @@ readonly RUN_GID="$(id -g "${run_as}")"
 
 host_cores="$(nproc)"
 
+if [[ -n "${cpus}" ]]; then
+    [[ "${cpus}" =~ ^[1-9][0-9]*$ ]] || fail "--cpus must be a positive integer, got '${cpus}'."
+    (( cpus * instances <= host_cores )) || warn "${instances} x ${cpus} CPUs exceeds the ${host_cores} this machine has; jobs will contend"
+    cpu_share="${cpus}"
+else
+    cpu_share=$(( host_cores / instances ))
+    (( cpu_share < 1 )) && cpu_share=1
+fi
+
 # ------------------------------------------------------------------------------------- image ----
 
 sdk_version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${REPO_ROOT}/global.json" | head -n 1)"
 [[ -n "${sdk_version}" ]] || fail "Could not read the SDK version from ${REPO_ROOT}/global.json."
 
-log "Building bitenovac-cloudbuild-runner:${sdk_version} (.NET SDK ${sdk_version})"
-docker build \
-    --file "${REPO_ROOT}/docker/ci-runner.Dockerfile" \
-    --build-arg "DOTNET_SDK_VERSION=${sdk_version}" \
-    --tag "bitenovac-cloudbuild-runner:${sdk_version}" \
-    "${REPO_ROOT}/docker"
+log "Building bitenovac-cloudbuild-runner:${sdk_version} (.NET SDK ${sdk_version}, CloudBuild tool)"
+bash "${REPO_ROOT}/runner/build-image.sh"
 
 docker volume create "${NUGET_VOLUME}" > /dev/null
 docker volume create "${MAIN_VOLUME}" > /dev/null
@@ -277,9 +292,11 @@ for (( instance = 1; instance <= instances; instance++ )); do
     # The agent exports this file's contents into every job, and runner/in-container.sh forwards
     # it into the container. Deriving the share here rather than naming it in the workflow keeps a
     # core count that is only true of this machine out of the repository.
-    cpu_share=$(( host_cores / instances ))
-    (( cpu_share < 1 )) && cpu_share=1
-    printf 'CLOUDBUILD_MAX_CPU=%s\n' "${cpu_share}" > "${agent_dir}/.env"
+    {
+        printf 'CLOUDBUILD_MAX_CPU=%s\n' "${cpu_share}"
+        printf 'CLOUDBUILD_CPUS=%s\n' "${cpu_share}"
+        [[ -n "${memory}" ]] && printf 'CLOUDBUILD_MEMORY=%s\n' "${memory}"
+    } > "${agent_dir}/.env"
 
     chown -R "${run_as}:${run_as}" "${agent_dir}"
 
@@ -309,6 +326,18 @@ done
 
 rm -f /tmp/actions-runner.tar.gz
 
+# -------------------------------------------------------------------------------------- seed ----
+
+if [[ "${seed}" == true ]]; then
+    log "Seeding main's artifact store from this checkout"
+    if CLOUDBUILD_MAX_CPU="${cpu_share}" CLOUDBUILD_CPUS="${cpu_share}" CLOUDBUILD_MEMORY="${memory}" \
+        bash "${REPO_ROOT}/runner/seed-cache.sh" --user "${run_as}"; then
+        ok "main is warm"
+    else
+        warn "seeding failed; the runners work, but the first pull request builds everything"
+    fi
+fi
+
 # ------------------------------------------------------------------------------------- ready ----
 
 log "Ready"
@@ -327,9 +356,9 @@ cat <<EOF
   docker volume ls --filter 'name=bitenovac-'   Every volume this setup owns
 
   Jobs build in throwaway containers; ${NUGET_VOLUME}, ${MAIN_VOLUME} and ${LOGS_VOLUME} persist.
-  A per-run store (bitenovac-pr-<run id>) and the tool's own published copy
-  (bitenovac-tool-<run id>) are created and dropped by the workflow itself — see
+  A per-run store (bitenovac-pr-<run id>) is created and dropped by the workflow itself — see
   .github/workflows/pr.yml and janitor.yml, which sweeps anything a cancelled run left behind.
-  Re-run this script after changing global.json or docker/ci-runner.Dockerfile, since the image
-  is built here.
+
+  Pull requests run the CloudBuild tool baked into the image. To update it without
+  re-registering the agents:  bash runner/build-image.sh
 EOF

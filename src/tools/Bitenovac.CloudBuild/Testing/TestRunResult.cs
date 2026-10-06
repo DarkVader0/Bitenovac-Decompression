@@ -13,5 +13,5 @@ internal enum TestRunOutcome
     Failed,
 }
 
-/// <summary>The result of one test project's run, and where its coverage report landed.</summary>
-internal sealed record TestRunResult(TestRunOutcome Outcome, int ExitCode, string ResultsDirectory);
+/// <summary>The result of one test project's run, where its coverage report landed, and what it printed.</summary>
+internal sealed record TestRunResult(TestRunOutcome Outcome, int ExitCode, string ResultsDirectory, string Output);

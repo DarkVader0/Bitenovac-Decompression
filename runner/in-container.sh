@@ -7,20 +7,12 @@
 #   bash runner/in-container.sh test Debug
 #
 # The workspace is mounted read-write: the tool writes obj/ and bin/ there for real projects to
-# use. Three more volumes carry what does not belong in the workspace or does not survive the
-# container: NuGet packages, main's artifact store, this run's own artifact store, and logs.
-# The container runs as the calling user, so the next checkout can delete what it leaves behind.
+# use. Volumes carry what does not belong in the workspace or does not survive the container:
+# NuGet packages, main's artifact store, this run's own artifact store, and logs. The container
+# runs as the calling user, so the next checkout can delete what it leaves behind.
 #
-# Bootstrap
-# ---------
-# The tool is published to a scratch directory OUTSIDE the checkout before it runs, rather than
-# invoked with `dotnet run --project` in place. src/tools/Bitenovac.CloudBuild and
-# src/tools/Bitenovac.CloudBuild.Core are projects in this same repository, so a run whose plan selects
-# them (any run, once the tool itself has changed — see ToolVersion in the tool's own source, and
-# note this is also why a change here invalidates the whole cache) tries to materialise or
-# recompile its own currently-loaded assemblies. On the file locking every mainstream OS applies
-# to a loaded assembly, that fails outright; a self-contained publish first means the running
-# process's files and the checkout's build output never alias.
+# The tool itself is not built from this checkout. It is the one published into the image (see
+# runner/build-image.sh), so a pull request cannot change the tool that judges it.
 
 set -euo pipefail
 
@@ -31,7 +23,6 @@ readonly LOGS_VOLUME="${CLOUDBUILD_LOGS_VOLUME:-bitenovac-logs}"
 # Keyed on the run id, not the PR number, so a re-run of the same PR gets a clean volume instead
 # of reading stale state a cancelled attempt left behind.
 readonly PR_VOLUME="${CLOUDBUILD_PR_VOLUME:-bitenovac-pr-${GITHUB_RUN_ID:-local}}"
-readonly TOOL_PUBLISH_VOLUME="${CLOUDBUILD_TOOL_VOLUME:-bitenovac-tool-${GITHUB_RUN_ID:-local}}"
 
 cd "${REPO_ROOT}"
 
@@ -45,7 +36,7 @@ sdk_version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
 readonly IMAGE="bitenovac-cloudbuild-runner:${sdk_version}"
 
 docker image inspect "${IMAGE}" > /dev/null 2>&1 \
-    || fail "The image ${IMAGE} is missing. Re-run runner/setup-runner.sh; it builds the image from global.json."
+    || fail "The image ${IMAGE} is missing. Run runner/build-image.sh on this machine; it builds the image from global.json."
 
 # main is read-only everywhere except 'promote': a PR run must not be able to write to it no
 # matter what the tool does, and the only thing that ever calls 'promote' is a merge_group run
@@ -62,7 +53,6 @@ run_args=(
     --volume "${main_mount}"
     --volume "${PR_VOLUME}:/mnt/pr"
     --volume "${LOGS_VOLUME}:/mnt/logs"
-    --volume "${TOOL_PUBLISH_VOLUME}:/tool"
     --workdir /repo
     # Running as a non-root user leaves no writable home, so both are pointed somewhere writable
     # instead of relying on one. NUGET_PACKAGES is what puts the cache on the mounted volume.
@@ -81,6 +71,11 @@ run_args=(
     --env CLOUDBUILD_PR_STORE=/mnt/pr
 )
 
+# The agent's share of the machine, from its .env (see runner/setup-runner.sh). Swap is capped to
+# the same value, so a job over its memory is killed rather than paging the host.
+[[ -n "${CLOUDBUILD_CPUS:-}" ]] && run_args+=(--cpus "${CLOUDBUILD_CPUS}")
+[[ -n "${CLOUDBUILD_MEMORY:-}" ]] && run_args+=(--memory "${CLOUDBUILD_MEMORY}" --memory-swap "${CLOUDBUILD_MEMORY}")
+
 # Passed through when set.
 for variable in GITHUB_ACTIONS GITHUB_RUN_ID CLOUDBUILD_MAX_CPU CLOUDBUILD_CACHELESS CLOUDBUILD_COVERAGE_HTML; do
     [[ -n "${!variable:-}" ]] && run_args+=(--env "${variable}=${!variable}")
@@ -89,14 +84,9 @@ done
 exec docker run "${run_args[@]}" --entrypoint bash "${IMAGE}" -c '
     set -euo pipefail
     mkdir -p "${TMPDIR}"
-    dotnet tool restore > /dev/null
 
-    # The tool is published once per container into the volume every stage of this run shares,
-    # not rebuilt per stage: same cost as one dotnet run, paid once instead of four times, and
-    # it is what keeps the published binary outside the checkout the tool itself operates on.
-    if [[ ! -x /tool/Bitenovac.CloudBuild ]]; then
-        dotnet publish src/tools/Bitenovac.CloudBuild -c Release -o /tool --nologo > /dev/null
-    fi
+    # reportgenerator, which only the coverage merge in "test" runs.
+    [[ "$1" == "test" ]] && dotnet tool restore > /dev/null
 
-    exec /tool/Bitenovac.CloudBuild "$@"
+    exec /opt/cloudbuild/Bitenovac.CloudBuild "$@"
 ' ci "$@"

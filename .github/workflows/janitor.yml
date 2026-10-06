@@ -27,7 +27,6 @@ jobs:
           swept=0
 
           for volume in $(docker volume ls -q --filter 'name=^bitenovac-pr-' ) \
-                        $(docker volume ls -q --filter 'name=^bitenovac-tool-' ) \
                         $(docker volume ls -q --filter 'name=^bitenovac-verify-' ); do
               created="$(docker volume inspect --format '{{.CreatedAt}}' "${volume}" 2>/dev/null)" || continue
               created_epoch="$(date -d "${created}" +%s 2>/dev/null)" || continue

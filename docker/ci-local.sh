@@ -23,7 +23,7 @@
 #       --no-cache         Do not reuse the NuGet package cache between runs.
 #
 # The image is built from docker/ci-runner.Dockerfile with the SDK version read from global.json,
-# and is rebuilt when that version or a docker/ file changes.
+# and is rebuilt when that version, a docker/ file or the CloudBuild tool changes.
 #
 # main here is a Docker volume local to this machine, not the shared one CI promotes into. It
 # persists between local runs so repeated local iteration stays warm, and 'docker volume rm
@@ -33,7 +33,6 @@
 set -euo pipefail
 
 readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-readonly DOCKER_DIR="${REPO_ROOT}/docker"
 readonly OUT_DIR="${REPO_ROOT}/artifacts/local-ci"
 readonly NUGET_VOLUME="bitenovac-cloudbuild-nuget"
 readonly MAIN_VOLUME="bitenovac-local-main"
@@ -80,19 +79,11 @@ readonly IMAGE="bitenovac-cloudbuild-runner:${sdk_version}"
 
 if [[ "${rebuild}" == true ]] || ! docker image inspect "${IMAGE}" > /dev/null 2>&1; then
     log "Building ${IMAGE} (.NET SDK ${sdk_version})"
-    docker build \
-        --file "${DOCKER_DIR}/ci-runner.Dockerfile" \
-        --build-arg "DOTNET_SDK_VERSION=${sdk_version}" \
-        --tag "${IMAGE}" \
-        "${DOCKER_DIR}"
+    bash "${REPO_ROOT}/runner/build-image.sh"
 else
-    # Mostly a cache hit. Re-running after editing the entrypoint must not run the old one.
+    # Mostly a cache hit. Re-running after editing the entrypoint or the tool must not run the old one.
     log "Refreshing ${IMAGE}"
-    docker build --quiet \
-        --file "${DOCKER_DIR}/ci-runner.Dockerfile" \
-        --build-arg "DOTNET_SDK_VERSION=${sdk_version}" \
-        --tag "${IMAGE}" \
-        "${DOCKER_DIR}" > /dev/null
+    bash "${REPO_ROOT}/runner/build-image.sh" --quiet > /dev/null
 fi
 
 mkdir -p "${OUT_DIR}"

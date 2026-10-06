@@ -15,7 +15,7 @@ internal static class TestRunner
     {
         Directory.CreateDirectory(resultsDirectory);
 
-        var exitCode = ProcessRunner.Run(
+        var (exitCode, output) = ProcessRunner.RunCaptured(
             "dotnet",
             [
                 "exec", assemblyPath,
@@ -33,6 +33,6 @@ internal static class TestRunner
             _ => TestRunOutcome.Failed,
         };
 
-        return new TestRunResult(outcome, exitCode, resultsDirectory);
+        return new TestRunResult(outcome, exitCode, resultsDirectory, output);
     }
 }

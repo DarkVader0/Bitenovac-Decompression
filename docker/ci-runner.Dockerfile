@@ -10,8 +10,11 @@
 #
 # Only what the pipeline invokes is installed, so a tool the image lacks cannot pass here and
 # fail on a machine that has it.
+#
+# The build context is the repository root, narrowed by ci-runner.Dockerfile.dockerignore. The
+# CloudBuild tool is published into /opt/cloudbuild here, once, so a pull request only runs it.
 
-FROM ubuntu:24.04
+FROM ubuntu:24.04 AS sdk
 
 # Read from global.json by whichever script builds the image, so it cannot drift from the
 # repository.
@@ -39,10 +42,22 @@ ENV DOTNET_ROOT=/usr/share/dotnet \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true \
     DOTNET_CLI_TELEMETRY_OPTOUT=true
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+FROM sdk AS tool
+
+WORKDIR /src
+COPY global.json nuget.config Directory.Build.props Directory.Build.targets Directory.Packages.props .editorconfig ./
+COPY src/tools/Bitenovac.CloudBuild.Core/ src/tools/Bitenovac.CloudBuild.Core/
+COPY src/tools/Bitenovac.CloudBuild/ src/tools/Bitenovac.CloudBuild/
+RUN dotnet publish src/tools/Bitenovac.CloudBuild -c Release -o /opt/cloudbuild --nologo
+
+FROM sdk
+
+COPY --from=tool /opt/cloudbuild /opt/cloudbuild
+
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-RUN mkdir -p /mnt/pr /tool && chmod 1777 /mnt/pr /tool
+RUN mkdir -p /mnt/pr && chmod 1777 /mnt/pr
 
 WORKDIR /repo
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
