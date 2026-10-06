@@ -42,5 +42,7 @@ ENV DOTNET_ROOT=/usr/share/dotnet \
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+RUN mkdir -p /mnt/pr /tool && chmod 1777 /mnt/pr /tool
+
 WORKDIR /repo
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
