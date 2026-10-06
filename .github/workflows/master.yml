@@ -1,0 +1,85 @@
+name: Master
+
+# Builds and tests every push to master, then promotes what it built into main, so the next pull
+# request hits the cache for everything that landed. Only what the push changed is a miss.
+#
+#   plan ──┬──► debug   build ──► debug   test + coverage gate ──┐
+#          │                                                     ├──► promote ──► cleanup (always)
+#          └──► release build ──► release test ───────────────────┘
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+
+# Promotions land in the order the pushes did.
+concurrency:
+  group: master
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+  CLOUDBUILD_PR_VOLUME: bitenovac-pr-master-${{ github.run_id }}
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: [self-hosted, linux, x64, bitenovac]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - run: bash runner/in-container.sh plan
+
+  debug:
+    name: Debug
+    needs: plan
+    runs-on: [self-hosted, linux, x64, bitenovac]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build
+        run: bash runner/in-container.sh build Debug
+
+      - name: Test + coverage gate
+        run: bash runner/in-container.sh test Debug
+
+  release:
+    name: Release
+    needs: plan
+    runs-on: [self-hosted, linux, x64, bitenovac]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build
+        run: bash runner/in-container.sh build Release
+
+      - name: Test
+        run: bash runner/in-container.sh test Release
+
+  # A red build's artifacts never reach main.
+  promote:
+    name: Promote
+    needs: [debug, release]
+    runs-on: [self-hosted, linux, x64, bitenovac]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - run: bash runner/in-container.sh promote
+
+  cleanup:
+    name: Cleanup
+    needs: [promote]
+    if: always()
+    runs-on: [self-hosted, linux, x64, bitenovac]
+    timeout-minutes: 2
+    steps:
+      - name: Drop this run's volume
+        run: docker volume rm -f "${CLOUDBUILD_PR_VOLUME}"

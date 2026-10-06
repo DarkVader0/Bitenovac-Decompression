@@ -19,7 +19,6 @@ name: PR
 on:
   pull_request:
     branches: [master]
-  merge_group:
 
 concurrency:
   group: pr-${{ github.event.pull_request.number || github.ref }}
@@ -31,10 +30,6 @@ permissions:
 env:
   DOTNET_NOLOGO: "true"
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
-  # A merge_group run promotes its own qualifying entries into main afterwards — see the
-  # 'promote' job below — never a pull_request run. Both go through this same workflow so the
-  # merge queue tests exactly what it is about to land, but only the queue's run is asked to
-  # promote.
   CLOUDBUILD_PR_VOLUME: bitenovac-pr-${{ github.run_id }}
 
 jobs:
@@ -86,29 +81,11 @@ jobs:
       - name: Test
         run: bash runner/in-container.sh test Release
 
-  # Only a merge_group run reaches here, and only when every stage above it passed: a red build's
-  # artifacts must never be promoted. This is what makes "a PR cannot write to main unless
-  # merged" true — nothing in a pull_request run's job graph ever calls 'promote'.
-  #
-  # Runs before cleanup, not after: promotion reads this run's own artifact store, which cleanup
-  # deletes. See docker/entrypoint.sh's local equivalent for the same ordering.
-  promote:
-    name: Promote
-    needs: [plan, debug, release]
-    if: github.event_name == 'merge_group' && needs.plan.result == 'success' && needs.debug.result == 'success' && needs.release.result == 'success'
-    runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 1
-    steps:
-      - uses: actions/checkout@v7
-
-      - run: bash runner/in-container.sh promote
-
   # Runs whatever the jobs above did, so this run's volumes never outlive it even when a job
-  # upstream failed or the run was cancelled. A janitor (see janitor.yml) is the backstop for the
-  # cases even this cannot reach — cancellation abrupt enough to skip 'if: always()' jobs too.
+  # upstream failed or the run was cancelled.
   cleanup:
     name: Cleanup
-    needs: [debug, release, promote]
+    needs: [debug, release]
     if: always()
     runs-on: [self-hosted, linux, x64, bitenovac]
     timeout-minutes: 1
