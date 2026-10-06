@@ -28,19 +28,62 @@ public sealed class FailurePathIntegrationTests
     }
 
     [Fact]
-    public void Build_ShouldSucceed_WhenTheRestoreOutputWasDeletedAfterPlan()
+    public void Build_ShouldReusePlansRestoreRatherThanRestoreAgain_WhenTheCheckoutWasCleanedAfterPlan()
     {
         // Arrange
         using var fixture = FixtureRepository.Create();
         Assert.Equal(0, PlanCommand.Run(fixture.Options, _output.Pipeline));
         Directory.Delete(fixture.Combine("src/Lib/obj"), recursive: true);
         Directory.Delete(fixture.Combine("tests/Lib.Tests/obj"), recursive: true);
+        var buildOutput = new CapturedOutput();
 
         // Act
-        var exitCode = BuildCommand.Run(fixture.Options, "Debug", _output.Pipeline);
+        var exitCode = BuildCommand.Run(fixture.Options, "Debug", buildOutput.Pipeline);
 
         // Assert
         Assert.Equal(0, exitCode);
+        Assert.DoesNotContain("==> Restoring", buildOutput.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Build_ShouldRestoreWhatPlanDidNotKeep_WhenTheRestoreOutputsAreGone()
+    {
+        // Arrange
+        using var fixture = FixtureRepository.Create();
+        Assert.Equal(0, PlanCommand.Run(fixture.Options, _output.Pipeline));
+        Directory.Delete(fixture.Combine("src/Lib/obj"), recursive: true);
+        Directory.Delete(fixture.Combine("tests/Lib.Tests/obj"), recursive: true);
+        Directory.Delete(fixture.Options.RestoreOutputsRoot, recursive: true);
+        var buildOutput = new CapturedOutput();
+
+        // Act
+        var exitCode = BuildCommand.Run(fixture.Options, "Debug", buildOutput.Pipeline);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.Contains("==> Restoring 2 project(s)", buildOutput.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Build_ShouldCompileNothing_WhenEveryProjectIsACacheHit()
+    {
+        // Arrange
+        using var fixture = FixtureRepository.Create();
+        Assert.Equal(0, PlanCommand.Run(fixture.Options, _output.Pipeline));
+        Assert.Equal(0, BuildCommand.Run(fixture.Options, "Debug", _output.Pipeline));
+        Assert.Equal(0, PromoteCommand.Run(fixture.Options, _output.Pipeline));
+        fixture.ResetWorkspace();
+        fixture.With(prStoreRoot: fixture.Combine("artifacts/ci-pr-2"));
+        Assert.Equal(0, PlanCommand.Run(fixture.Options, _output.Pipeline));
+        var buildOutput = new CapturedOutput();
+
+        // Act
+        var exitCode = BuildCommand.Run(fixture.Options, "Debug", buildOutput.Pipeline);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+        Assert.DoesNotContain("==> Building", buildOutput.ToString(), StringComparison.Ordinal);
+        Assert.True(File.Exists(fixture.Combine("src/Lib/bin/Debug/net10.0/Lib.dll")));
     }
 
     [Fact]
