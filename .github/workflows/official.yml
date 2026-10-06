@@ -1,7 +1,7 @@
-name: Master
+name: Official
 
-# Builds and tests every push to master, then promotes what it built into main, so the next pull
-# request hits the cache for everything that landed. Only what the push changed is a miss.
+# Builds and tests master on every push and every hour, then promotes what it built into main, so
+# the next pull request hits the cache for everything that landed. Only what changed is a miss.
 #
 #   plan ──┬──► debug   build ──► debug   test + coverage gate ──┐
 #          │                                                     ├──► promote ──► cleanup (always)
@@ -10,6 +10,8 @@ name: Master
 on:
   push:
     branches: [master]
+  schedule:
+    - cron: '0 * * * *'
   workflow_dispatch: {}
 
 # Promotions land in the order the pushes did.
