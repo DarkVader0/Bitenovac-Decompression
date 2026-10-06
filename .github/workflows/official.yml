@@ -1,18 +1,10 @@
 name: Official
 
-# Builds and tests master every hour, then promotes what it built into main, so the next pull
-# request hits the cache for everything that landed. Only what changed is a miss.
-#
-#   plan ──┬──► debug   build ──► debug   test + coverage gate ──┐
-#          │                                                     ├──► promote ──► cleanup (always)
-#          └──► release build ──► release test ───────────────────┘
-
 on:
   schedule:
     - cron: '0 * * * *'
   workflow_dispatch: {}
 
-# One run at a time, so promotions never overlap.
 concurrency:
   group: master
   cancel-in-progress: false
@@ -63,7 +55,6 @@ jobs:
       - name: Test
         run: bash runner/in-container.sh test Release
 
-  # A red build's artifacts never reach main.
   promote:
     name: Promote
     needs: [debug, release]

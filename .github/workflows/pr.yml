@@ -1,21 +1,5 @@
 name: PR
 
-# Hashes every project against the shared cache and builds, tests, and coverage-gates only what
-# a hash miss selects.
-#
-#   plan ──┬──► debug   build ──► debug   test + coverage gate ──┐
-#          │                                                     ├──► cleanup (always) ──► pr
-#          └──► release build ──► release test ───────────────────┘
-#
-# Every job in this workflow lands on the same self-hosted machine — there is one, see
-# runner/setup-runner.sh — so 'plan', 'debug' and 'release' share this run's own artifact store
-# through a Docker volume keyed by the run id, with no actions/upload-artifact round trip. That
-# volume is dropped by 'cleanup' whatever the other jobs did.
-#
-# There is no "any affected" gate any more: 'plan' hashes every project regardless, and a hash
-# hit costs 'build' and 'test' a file copy, not a skip. What used to be conditional is now just
-# fast.
-
 on:
   pull_request:
     branches: [master]
@@ -33,7 +17,6 @@ env:
   CLOUDBUILD_PR_VOLUME: bitenovac-pr-${{ github.run_id }}
 
 jobs:
-  # Every timeout below is sized to catch a hang, not to bound how long the work takes.
   plan:
     name: Plan
     runs-on: [self-hosted, linux, x64, bitenovac]
@@ -81,8 +64,6 @@ jobs:
       - name: Test
         run: bash runner/in-container.sh test Release
 
-  # Runs whatever the jobs above did, so this run's volumes never outlive it even when a job
-  # upstream failed or the run was cancelled.
   cleanup:
     name: Cleanup
     needs: [debug, release]
@@ -93,9 +74,6 @@ jobs:
       - name: Drop this run's volumes
         run: docker volume rm -f "${CLOUDBUILD_PR_VOLUME}"
 
-  # Mark this as the required check: 'debug' and 'release' are stable names now that sharding is
-  # gone, but this still exists so a future change to the job graph does not also require editing
-  # the master ruleset.
   pr:
     name: PR
     needs: [plan, debug, release]
