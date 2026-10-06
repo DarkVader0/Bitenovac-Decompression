@@ -2,18 +2,18 @@
 #
 # Container entry point, reached only from docker/ci-local.sh. On the build server
 # runner/in-container.sh bypasses it: the workspace is already mounted read-write there, so there
-# is nothing to copy and each step invokes the published tool directly.
+# is nothing to copy and each step invokes the published RemoteBuildTool directly.
 #
 # Usage (as arguments to docker/ci-local.sh, or to 'docker run <image>'):
 #   <none>            Run the whole pull request pipeline: plan, then Debug and Release build+test
-#   ci <args...>      Run one Bitenovac.CloudBuild command with these arguments and nothing else
+#   ci <args...>      Run one Bitenovac.RemoteBuildTool command with these arguments and nothing else
 #   shell             Open an interactive bash in the prepared working copy
 #   exec <args...>    Run an arbitrary command in the prepared working copy
 #
 # The working copy
 # ----------------
 # The repository is bind-mounted read-only at /host and copied to /repo before anything runs.
-# The tool writes bin/, obj/ and artifacts/, and a Linux container writing those into a Windows
+# RemoteBuildTool writes bin/, obj/ and artifacts/, and a Linux container writing those into a Windows
 # working tree leaves output the next local build cannot use.
 #
 # The copy carries the uncommitted working tree rather than HEAD, and .git with it, because
@@ -55,7 +55,7 @@ prepare_working_copy() {
     printf '  %s\n' "$(git rev-parse --short HEAD 2>/dev/null || echo 'no HEAD') $(git status --porcelain 2>/dev/null | wc -l) uncommitted path(s)"
 }
 
-readonly TOOL="/opt/cloudbuild/Bitenovac.CloudBuild"
+readonly REMOTEBUILDTOOL="/opt/remotebuildtool/Bitenovac.RemoteBuildTool"
 
 restore_local_tools() {
     dotnet tool restore > /dev/null
@@ -74,16 +74,16 @@ run_pipeline() {
     mkdir -p "${REPO_DIR}/artifacts"
     trap export_artifacts EXIT
 
-    export CLOUDBUILD_REPO_ROOT="${REPO_DIR}"
-    export CLOUDBUILD_MAIN_STORE="${MAIN_DIR}"
-    export CLOUDBUILD_PR_STORE="${PR_DIR}"
+    export REMOTEBUILDTOOL_REPO_ROOT="${REPO_DIR}"
+    export REMOTEBUILDTOOL_MAIN_STORE="${MAIN_DIR}"
+    export REMOTEBUILDTOOL_PR_STORE="${PR_DIR}"
 
     restore_local_tools
 
     log "Plan"
     # Guarded rather than checked after the fact: 'set -e' would abort the script at a failing
     # plan before any status check below could report why.
-    if ! "${TOOL}" plan; then
+    if ! "${REMOTEBUILDTOOL}" plan; then
         printf '\nPR: \033[31mred\033[0m -- plan failed.\n'
         return 1
     fi
@@ -92,10 +92,10 @@ run_pipeline() {
     local configuration
     for configuration in Debug Release; do
         log "${configuration} build"
-        "${TOOL}" build "${configuration}" || failed=1
+        "${REMOTEBUILDTOOL}" build "${configuration}" || failed=1
 
         log "${configuration} test"
-        "${TOOL}" test "${configuration}" || failed=1
+        "${REMOTEBUILDTOOL}" test "${configuration}" || failed=1
     done
 
     if [[ "${failed}" -ne 0 ]]; then
@@ -117,9 +117,9 @@ case "${1:-pipeline}" in
     ci)
         shift
         trap export_artifacts EXIT
-        export CLOUDBUILD_REPO_ROOT="${REPO_DIR}" CLOUDBUILD_MAIN_STORE="${MAIN_DIR}" CLOUDBUILD_PR_STORE="${PR_DIR}"
+        export REMOTEBUILDTOOL_REPO_ROOT="${REPO_DIR}" REMOTEBUILDTOOL_MAIN_STORE="${MAIN_DIR}" REMOTEBUILDTOOL_PR_STORE="${PR_DIR}"
         restore_local_tools
-        "${TOOL}" "$@"
+        "${REMOTEBUILDTOOL}" "$@"
         ;;
     shell) shift; exec bash "$@" ;;
     exec)  shift; trap export_artifacts EXIT; "$@" ;;

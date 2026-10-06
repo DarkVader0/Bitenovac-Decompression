@@ -13,7 +13,7 @@
 #   --user NAME   Account the jobs run as; it must own main's volume. Defaults to ci-runner.
 #
 # Seed from the revision the runner image was built from: every hash includes the installed
-# tool, and a revision whose runner/in-container.sh predates it cannot drive it.
+# RemoteBuildTool, and a revision whose runner/in-container.sh predates it cannot drive it.
 
 set -euo pipefail
 
@@ -57,10 +57,10 @@ cd "${workspace}"
 run() {
     sudo -u "${run_as}" env \
         GITHUB_ACTIONS=true \
-        CLOUDBUILD_PR_VOLUME="${PR_VOLUME}" \
-        CLOUDBUILD_MAX_CPU="${CLOUDBUILD_MAX_CPU:-}" \
-        CLOUDBUILD_CPUS="${CLOUDBUILD_CPUS:-}" \
-        CLOUDBUILD_MEMORY="${CLOUDBUILD_MEMORY:-}" \
+        REMOTEBUILDTOOL_PR_VOLUME="${PR_VOLUME}" \
+        REMOTEBUILDTOOL_MAX_CPU="${REMOTEBUILDTOOL_MAX_CPU:-}" \
+        REMOTEBUILDTOOL_CPUS="${REMOTEBUILDTOOL_CPUS:-}" \
+        REMOTEBUILDTOOL_MEMORY="${REMOTEBUILDTOOL_MEMORY:-}" \
         bash "${workspace}/runner/in-container.sh" "$@"
 }
 

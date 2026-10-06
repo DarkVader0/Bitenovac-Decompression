@@ -1,0 +1,147 @@
+using Bitenovac.RemoteBuildTool.Core.Graph;
+using Bitenovac.RemoteBuildTool.Core.Planning;
+using Bitenovac.RemoteBuildTool.Hashing;
+using Bitenovac.RemoteBuildTool.MsBuild;
+using Bitenovac.RemoteBuildTool.Planning;
+using Bitenovac.RemoteBuildTool.Storage;
+
+namespace Bitenovac.RemoteBuildTool.Commands;
+
+/// <summary>
+/// Discovers every project, verifies the one build-order invariant CI still enforces, restores,
+/// hashes, and decides hit or miss against <c>main</c> for both configurations. Everything later
+/// stages need is written to <see cref="PipelineOptions.PlanFile"/>.
+/// </summary>
+internal static class PlanCommand
+{
+    public static int Run(PipelineOptions options, PipelineOutput output)
+    {
+        output.WriteLine("==> Discovering projects");
+        var relativePaths = ProjectDiscovery.FindRelativePaths(options.RepositoryRoot);
+        if (relativePaths.Count == 0)
+        {
+            output.WriteError("error: no projects found in the repository.");
+            return 1;
+        }
+
+        output.WriteLine($"Found {relativePaths.Count} project(s).");
+
+        using var evaluator = new MsBuildProjectEvaluator(options.RepositoryRoot);
+        var evaluated = EvaluateAll(evaluator, relativePaths);
+
+        var verifyExitCode = Verify(evaluated["Debug"].Values, output);
+        if (verifyExitCode != 0)
+            return verifyExitCode;
+
+        output.WriteLine("==> Restoring");
+        var restoreExitCode = Restore(options, evaluated["Debug"].Values);
+        if (restoreExitCode != 0)
+        {
+            output.WriteError($"error: restore failed (exit {restoreExitCode}).");
+            return restoreExitCode;
+        }
+
+        evaluated = evaluated.ToDictionary(
+            byConfiguration => byConfiguration.Key,
+            byConfiguration => (IReadOnlyDictionary<ProjectId, EvaluatedProject>)byConfiguration.Value.ToDictionary(
+                entry => entry.Key,
+                entry => MsBuildProjectEvaluator.RefreshPackageClosure(entry.Value)));
+
+        RestoreOutputs.Save(options.RepositoryRoot, evaluated["Debug"].Values.Select(project => project.FullPath), options.RestoreOutputsRoot);
+
+        var remoteBuildToolHash = RemoteBuildToolVersion.Compute(AppContext.BaseDirectory);
+        var mainStore = new LocalVolumeArtifactStore(options.MainStoreRoot);
+        var planState = new PlanState([]);
+
+        foreach (var configuration in PipelineOptions.Configurations)
+        {
+            var entries = PlanConfiguration(configuration, evaluated[configuration], mainStore, remoteBuildToolHash, options.Cacheless);
+            planState.ByConfiguration[configuration] = entries;
+
+            var hits = entries.Count(entry => entry.Hit);
+            output.WriteLine($"{configuration}: {entries.Count} project(s), {hits} cache hit(s), {entries.Count - hits} to build.");
+        }
+
+        planState.Save(options.PlanFile);
+        output.WriteLine($"Plan written to {options.PlanFile}");
+        return 0;
+    }
+
+    private static Dictionary<string, IReadOnlyDictionary<ProjectId, EvaluatedProject>> EvaluateAll(
+        MsBuildProjectEvaluator evaluator, IReadOnlyList<string> relativePaths)
+    {
+        var result = new Dictionary<string, IReadOnlyDictionary<ProjectId, EvaluatedProject>>();
+        foreach (var configuration in PipelineOptions.Configurations)
+            result[configuration] = evaluator.EvaluateAll(relativePaths, configuration);
+
+        return result;
+    }
+
+    private static int Verify(IEnumerable<EvaluatedProject> projects, PipelineOutput output)
+    {
+        output.WriteLine("==> Verifying build assumptions");
+
+        var offenders = projects.Where(project => project.HasTargetFrameworks).ToList();
+        if (offenders.Count > 0)
+        {
+            output.WriteError("error: these projects declare <TargetFrameworks>. Set a single <TargetFramework>, or change RepositoryTargetFramework in Directory.Build.props.");
+            foreach (var project in offenders)
+                output.WriteError($"  {project.Id}");
+            return 1;
+        }
+
+        output.WriteLine("OK: every project targets a single framework.");
+        return 0;
+    }
+
+    private static int Restore(PipelineOptions options, IEnumerable<EvaluatedProject> projects) =>
+        MsBuildRunner.Restore(
+            options.RepositoryRoot,
+            projects.Select(project => project.FullPath),
+            configuration: "Debug",
+            options.SyntheticSolutionPath("restore"));
+
+    private static List<PlanEntry> PlanConfiguration(
+        string configuration,
+        IReadOnlyDictionary<ProjectId, EvaluatedProject> evaluated,
+        LocalVolumeArtifactStore mainStore,
+        string remoteBuildToolHash,
+        bool cacheless)
+    {
+        var ids = evaluated.Keys.ToList();
+        var edges = evaluated.Values.SelectMany(project => project.ProjectReferences.Select(reference => new ProjectEdge(project.Id, reference)));
+        var graph = new ProjectGraph(ids, edges);
+
+        var ownHashInputs = evaluated.ToDictionary(entry => entry.Key, entry => (IReadOnlyList<string>)entry.Value.OwnHashInputs);
+
+        var stored = new Dictionary<ProjectId, StoredTargetHash>();
+        foreach (var id in ids)
+        {
+            if (mainStore.TryGetHash(id, configuration, out var hash))
+                stored[id] = hash;
+        }
+
+        var forced = cacheless ? ids.ToHashSet() : null;
+        var decisions = CachePlanBuilder.Build(graph, ownHashInputs, stored, forced, [$"remotebuildtool:{remoteBuildToolHash}"]);
+
+        return ids.Select(id =>
+        {
+            var project = evaluated[id];
+            var decision = decisions[id];
+            return new PlanEntry(
+                ProjectPath: id.Value,
+                FullPath: project.FullPath,
+                AssemblyName: project.AssemblyName,
+                IsTestProject: project.IsTestProject,
+                ExcludeFromCoverage: project.ExcludeFromCoverage,
+                MinimumLineCoverage: project.MinimumLineCoverage,
+                MinimumBranchCoverage: project.MinimumBranchCoverage,
+                CacheTestResults: project.CacheTestResults,
+                OwnHash: decision.Computed.OwnHash,
+                FullHash: decision.Computed.FullHash,
+                Forced: decision.Forced,
+                Hit: decision.BuildOutcome == CacheOutcome.Hit,
+                ShouldGateCoverage: decision.ShouldGateCoverage);
+        }).ToList();
+    }
+}
