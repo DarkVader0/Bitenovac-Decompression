@@ -28,6 +28,22 @@ public sealed class FailurePathIntegrationTests
     }
 
     [Fact]
+    public void Build_ShouldSucceed_WhenTheRestoreOutputWasDeletedAfterPlan()
+    {
+        // Arrange
+        using var fixture = FixtureRepository.Create();
+        Assert.Equal(0, PlanCommand.Run(fixture.Options, _output.Pipeline));
+        Directory.Delete(fixture.Combine("src/Lib/obj"), recursive: true);
+        Directory.Delete(fixture.Combine("tests/Lib.Tests/obj"), recursive: true);
+
+        // Act
+        var exitCode = BuildCommand.Run(fixture.Options, "Debug", _output.Pipeline);
+
+        // Assert
+        Assert.Equal(0, exitCode);
+    }
+
+    [Fact]
     public void Build_ShouldSkipWhatIsAlreadyThere_WhenTheWorkspaceStillHoldsTheHash()
     {
         // Arrange

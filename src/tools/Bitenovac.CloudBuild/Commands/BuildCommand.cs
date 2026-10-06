@@ -7,7 +7,7 @@ using Bitenovac.CloudBuild.Storage;
 namespace Bitenovac.CloudBuild.Commands;
 
 /// <summary>
-/// Materialises every cache hit from <c>main</c> into the checkout, then compiles the whole
+/// Materialises every cache hit from <c>main</c> into the checkout, then restores and compiles the whole
 /// selected set in one MSBuild session — the hits included, relying on MSBuild's own up-to-date
 /// check (made trustworthy by <see cref="Touch"/>) to skip real work on them and genuinely
 /// compile only the misses.
@@ -33,6 +33,18 @@ internal static class BuildCommand
         var (materialised, skipped) = MaterialiseHits(options, entries, configuration, mainStore);
         output.WriteLine($"{configuration}: materialised {materialised} cache hit(s) from main"
             + (skipped > 0 ? $", {skipped} already present" : "") + ".");
+
+        var restoreExitCode = MsBuildRunner.Restore(
+            options.RepositoryRoot,
+            entries.Select(entry => entry.FullPath),
+            configuration,
+            options.SyntheticProjectPath($"restore-{configuration}"));
+
+        if (restoreExitCode != 0)
+        {
+            output.WriteError($"error: restore failed (exit {restoreExitCode}).");
+            return restoreExitCode;
+        }
 
         output.WriteLine($"==> Building {entries.Count} project(s) ({configuration})");
         var exitCode = MsBuildRunner.Build(
