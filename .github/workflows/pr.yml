@@ -44,7 +44,7 @@ jobs:
     runs-on: [self-hosted, linux, x64, bitenovac]
     timeout-minutes: 1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - run: bash runner/in-container.sh plan
 
@@ -54,7 +54,7 @@ jobs:
     runs-on: [self-hosted, linux, x64, bitenovac]
     timeout-minutes: 1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - id: build
         name: Build
@@ -66,7 +66,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-Debug
           path: artifacts/coverage-report/Debug
@@ -78,7 +78,7 @@ jobs:
     runs-on: [self-hosted, linux, x64, bitenovac]
     timeout-minutes: 1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build
         run: bash runner/in-container.sh build Release
@@ -99,7 +99,7 @@ jobs:
     runs-on: [self-hosted, linux, x64, bitenovac]
     timeout-minutes: 1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - run: bash runner/in-container.sh promote
 
