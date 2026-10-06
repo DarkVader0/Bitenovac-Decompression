@@ -30,7 +30,7 @@ internal static class BuildCommand
         var mainStore = new LocalVolumeArtifactStore(options.MainStoreRoot);
         var prStore = new LocalVolumeArtifactStore(options.PrStoreRoot);
 
-        var (materialised, skipped) = MaterialiseHits(options, entries, configuration, mainStore);
+        var (materialised, skipped, unavailable) = MaterialiseHits(options, entries, configuration, mainStore);
         output.WriteLine($"{configuration}: materialised {materialised} cache hit(s) from main"
             + (skipped > 0 ? $", {skipped} already present" : "") + ".");
 
@@ -55,8 +55,9 @@ internal static class BuildCommand
 
         if (exitCode != 0)
         {
-            output.WriteError($"error: build failed (exit {exitCode}).");
-            return exitCode;
+            var exitCode = Compile(options, configuration, toBuild, output);
+            if (exitCode != 0)
+                return exitCode;
         }
 
         var staged = StageMisses(entries, configuration, prStore);
@@ -68,11 +69,47 @@ internal static class BuildCommand
         return 0;
     }
 
-    private static (int Materialised, int Skipped) MaterialiseHits(
+    private static int Compile(PipelineOptions options, string configuration, IReadOnlyList<PlanEntry> toBuild, PipelineOutput output)
+    {
+        var unrestored = toBuild
+            .Where(entry => !RestoreOutputs.Materialise(options.RepositoryRoot, entry.FullPath, options.RestoreOutputsRoot))
+            .ToList();
+
+        if (unrestored.Count > 0)
+        {
+            output.WriteLine($"==> Restoring {unrestored.Count} project(s) plan did not restore");
+            var restoreExitCode = MsBuildRunner.Restore(
+                options.RepositoryRoot,
+                unrestored.Select(entry => entry.FullPath),
+                configuration,
+                options.SyntheticSolutionPath($"restore-{configuration}"));
+
+            if (restoreExitCode != 0)
+            {
+                output.WriteError($"error: restore failed (exit {restoreExitCode}).");
+                return restoreExitCode;
+            }
+        }
+
+        output.WriteLine($"==> Building {toBuild.Count} project(s) ({configuration})");
+        var exitCode = MsBuildRunner.Build(
+            options.RepositoryRoot,
+            toBuild.Select(entry => entry.FullPath),
+            configuration,
+            options.SyntheticSolutionPath($"build-{configuration}"));
+
+        if (exitCode != 0)
+            output.WriteError($"error: build failed (exit {exitCode}).");
+
+        return exitCode;
+    }
+
+    private static (int Materialised, int Skipped, HashSet<PlanEntry> Unavailable) MaterialiseHits(
         PipelineOptions options, IReadOnlyList<PlanEntry> entries, string configuration, LocalVolumeArtifactStore mainStore)
     {
         var materialised = 0;
         var skipped = 0;
+        var unavailable = new HashSet<PlanEntry>();
 
         foreach (var entry in entries.Where(entry => entry.Hit))
         {
@@ -86,14 +123,17 @@ internal static class BuildCommand
             }
 
             if (!mainStore.TryGet(project, configuration, projectDirectory, out _, MaterialisedPrefixes))
+            {
+                unavailable.Add(entry);
                 continue;
+            }
 
             Touch(Path.Combine(projectDirectory, "bin"));
             Touch(Path.Combine(projectDirectory, "obj"));
             materialised++;
         }
 
-        return (materialised, skipped);
+        return (materialised, skipped, unavailable);
     }
 
     /// <summary>

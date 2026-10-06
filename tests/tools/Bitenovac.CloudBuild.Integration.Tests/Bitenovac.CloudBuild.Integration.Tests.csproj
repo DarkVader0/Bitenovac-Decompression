@@ -2,7 +2,6 @@
 
     <PropertyGroup>
         <RootNamespace>Bitenovac.CloudBuild.Integration.Tests</RootNamespace>
-        <CacheTestResults>false</CacheTestResults>
     </PropertyGroup>
 
     <ItemGroup>

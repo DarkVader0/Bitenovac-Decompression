@@ -31,6 +31,6 @@ public sealed class BuildCommandTests
 
         // Assert
         Assert.Equal(0, exitCode);
-        Assert.False(File.Exists(options.SyntheticProjectPath("build-Release")));
+        Assert.False(File.Exists(options.SyntheticSolutionPath("build-Release")));
     }
 }

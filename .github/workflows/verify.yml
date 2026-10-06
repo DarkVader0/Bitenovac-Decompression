@@ -25,7 +25,6 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
   CLOUDBUILD_CACHELESS: "true"
   CLOUDBUILD_PR_VOLUME: bitenovac-verify-${{ github.run_id }}
-  CLOUDBUILD_TOOL_VOLUME: bitenovac-verify-tool-${{ github.run_id }}
 
 jobs:
   verify:
@@ -64,4 +63,4 @@ jobs:
       # so this is only ever cleaning up this run's own volumes, never touching main.
       - name: Drop this run's volumes
         if: always()
-        run: docker volume rm -f "${CLOUDBUILD_PR_VOLUME}" "${CLOUDBUILD_TOOL_VOLUME}"
+        run: docker volume rm -f "${CLOUDBUILD_PR_VOLUME}"

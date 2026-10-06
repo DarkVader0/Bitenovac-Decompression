@@ -55,10 +55,10 @@ prepare_working_copy() {
     printf '  %s\n' "$(git rev-parse --short HEAD 2>/dev/null || echo 'no HEAD') $(git status --porcelain 2>/dev/null | wc -l) uncommitted path(s)"
 }
 
-publish_tool() {
-    log "Publishing the CloudBuild tool"
+readonly TOOL="/opt/cloudbuild/Bitenovac.CloudBuild"
+
+restore_local_tools() {
     dotnet tool restore > /dev/null
-    dotnet publish src/tools/Bitenovac.CloudBuild -c Release -o /tool --nologo > /dev/null
 }
 
 export_artifacts() {
@@ -78,12 +78,12 @@ run_pipeline() {
     export CLOUDBUILD_MAIN_STORE="${MAIN_DIR}"
     export CLOUDBUILD_PR_STORE="${PR_DIR}"
 
-    publish_tool
+    restore_local_tools
 
     log "Plan"
     # Guarded rather than checked after the fact: 'set -e' would abort the script at a failing
     # plan before any status check below could report why.
-    if ! /tool/Bitenovac.CloudBuild plan; then
+    if ! "${TOOL}" plan; then
         printf '\nPR: \033[31mred\033[0m -- plan failed.\n'
         return 1
     fi
@@ -92,10 +92,10 @@ run_pipeline() {
     local configuration
     for configuration in Debug Release; do
         log "${configuration} build"
-        /tool/Bitenovac.CloudBuild build "${configuration}" || failed=1
+        "${TOOL}" build "${configuration}" || failed=1
 
         log "${configuration} test"
-        /tool/Bitenovac.CloudBuild test "${configuration}" || failed=1
+        "${TOOL}" test "${configuration}" || failed=1
     done
 
     if [[ "${failed}" -ne 0 ]]; then
@@ -118,8 +118,8 @@ case "${1:-pipeline}" in
         shift
         trap export_artifacts EXIT
         export CLOUDBUILD_REPO_ROOT="${REPO_DIR}" CLOUDBUILD_MAIN_STORE="${MAIN_DIR}" CLOUDBUILD_PR_STORE="${PR_DIR}"
-        publish_tool
-        /tool/Bitenovac.CloudBuild "$@"
+        restore_local_tools
+        "${TOOL}" "$@"
         ;;
     shell) shift; exec bash "$@" ;;
     exec)  shift; trap export_artifacts EXIT; "$@" ;;

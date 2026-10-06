@@ -147,7 +147,7 @@ public sealed class FailurePathIntegrationTests
                 fixture.Root,
                 [fixture.Combine(FixtureRepository.LibraryProject)],
                 "Debug",
-                fixture.Options.SyntheticProjectPath("restore"));
+                fixture.Options.SyntheticSolutionPath("restore"));
         }
         finally
         {

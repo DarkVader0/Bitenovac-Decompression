@@ -47,7 +47,9 @@ internal static class PlanCommand
                 entry => entry.Key,
                 entry => MsBuildProjectEvaluator.RefreshPackageClosure(entry.Value)));
 
-        var toolHash = ToolVersion.Compute(options.RepositoryRoot);
+        RestoreOutputs.Save(options.RepositoryRoot, evaluated["Debug"].Values.Select(project => project.FullPath), options.RestoreOutputsRoot);
+
+        var toolHash = ToolVersion.Compute(AppContext.BaseDirectory);
         var mainStore = new LocalVolumeArtifactStore(options.MainStoreRoot);
         var planState = new PlanState([]);
 
@@ -97,7 +99,7 @@ internal static class PlanCommand
             options.RepositoryRoot,
             projects.Select(project => project.FullPath),
             configuration: "Debug",
-            options.SyntheticProjectPath("restore"));
+            options.SyntheticSolutionPath("restore"));
 
     private static List<PlanEntry> PlanConfiguration(
         string configuration,

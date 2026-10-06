@@ -55,27 +55,46 @@ internal static class TestCommand
 
         var failed = new List<string>();
         var noTestsRan = new List<string>();
+        var toRun = new List<(PlanEntry Entry, string Name, string AssemblyPath)>();
 
         foreach (var entry in testEntries)
         {
             var name = Path.GetFileNameWithoutExtension(entry.ProjectPath);
-            var projectId = new ProjectId(entry.ProjectPath);
 
-            if (entry.Hit && entry.CacheTestResults && ReuseCachedResult(projectId, configuration, name, mainStore, coverageDirectory))
+            if (entry.Hit && entry.CacheTestResults && ReuseCachedResult(new ProjectId(entry.ProjectPath), configuration, name, mainStore, coverageDirectory))
             {
                 output.WriteLine($"--- {name} (reused)");
                 continue;
             }
 
-            output.WriteLine($"--- {name}");
-            var assemblyPath = ResolveAssemblyPath(entry, configuration);
-            var result = TestRunner.Run(assemblyPath, name, coverageDirectory);
+            toRun.Add((entry, name, ResolveAssemblyPath(entry, configuration)));
+        }
+
+        var results = new TestRunResult[toRun.Count];
+        var outputGate = new Lock();
+
+        Parallel.For(0, toRun.Count, new ParallelOptions { MaxDegreeOfParallelism = PipelineOptions.MaxParallelism() }, index =>
+        {
+            var (_, name, assemblyPath) = toRun[index];
+            results[index] = TestRunner.Run(assemblyPath, name, coverageDirectory);
+
+            lock (outputGate)
+            {
+                output.WriteLine($"--- {name}");
+                output.Out.Write(results[index].Output);
+            }
+        });
+
+        for (var index = 0; index < toRun.Count; index++)
+        {
+            var (entry, name, _) = toRun[index];
+            var result = results[index];
 
             switch (result.Outcome)
             {
                 case TestRunOutcome.Passed:
                     if (entry.CacheTestResults)
-                        StageTestResult(projectId, configuration, name, coverageDirectory, entry, prStore);
+                        StageTestResult(new ProjectId(entry.ProjectPath), configuration, name, coverageDirectory, entry, prStore);
                     break;
                 case TestRunOutcome.NoTestsRan:
                     noTestsRan.Add(name);

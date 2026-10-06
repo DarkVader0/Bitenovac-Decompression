@@ -82,6 +82,7 @@ internal sealed class EnvironmentVariables : IDisposable
         "CLOUDBUILD_PR_STORE",
         "CLOUDBUILD_CACHELESS",
         "CLOUDBUILD_COVERAGE_HTML",
+        "CLOUDBUILD_MAX_CPU",
     ];
 
     private readonly Dictionary<string, string?> _original =

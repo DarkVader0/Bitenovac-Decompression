@@ -36,8 +36,16 @@ internal sealed record PipelineOptions(
 
     public string PlanFile => Path.Combine(PrStoreRoot, "plan.json");
 
-    public string SyntheticProjectPath(string configuration) =>
-        Path.Combine(PrStoreRoot, $"build-{configuration}.proj");
+    public string SyntheticSolutionPath(string stage) =>
+        Path.Combine(PrStoreRoot, $"{stage}.slnx");
+
+    public string RestoreOutputsRoot => Path.Combine(PrStoreRoot, "restore");
+
+    /// <summary>Processes and MSBuild nodes one job may run at once: <c>CLOUDBUILD_MAX_CPU</c>, else every core.</summary>
+    public static int MaxParallelism() =>
+        int.TryParse(Environment.GetEnvironmentVariable("CLOUDBUILD_MAX_CPU"), out var maxCpu) && maxCpu > 0
+            ? maxCpu
+            : Environment.ProcessorCount;
 
     public string CoverageDirectory(string configuration) =>
         Path.Combine(RepositoryRoot, "artifacts", "coverage", configuration);

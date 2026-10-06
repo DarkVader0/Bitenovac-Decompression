@@ -1,0 +1,40 @@
+name: Runner image
+
+# Pull requests run the CloudBuild tool baked into the runner image, never the one in their own
+# checkout. This rebuilds that image once a change to the tool or to what it is built with has
+# landed on master.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/tools/Bitenovac.CloudBuild/**'
+      - 'src/tools/Bitenovac.CloudBuild.Core/**'
+      - 'docker/ci-runner.Dockerfile'
+      - 'docker/ci-runner.Dockerfile.dockerignore'
+      - 'docker/entrypoint.sh'
+      - 'runner/build-image.sh'
+      - 'global.json'
+      - 'nuget.config'
+      - 'Directory.Build.props'
+      - 'Directory.Build.targets'
+      - 'Directory.Packages.props'
+      - '.editorconfig'
+  workflow_dispatch: {}
+
+concurrency:
+  group: runner-image
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    name: Rebuild the runner image
+    runs-on: [self-hosted, linux, x64, bitenovac]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: bash runner/build-image.sh
