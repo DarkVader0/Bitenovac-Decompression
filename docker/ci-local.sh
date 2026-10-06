@@ -6,13 +6,13 @@
 # Usage:
 #   docker/ci-local.sh                          Plan, then build and test both configurations
 #   docker/ci-local.sh --cacheless              Ignore the local main cache; rebuild everything
-#   docker/ci-local.sh ci plan                  One Bitenovac.CloudBuild command and nothing else
+#   docker/ci-local.sh ci plan                  One Bitenovac.RemoteBuildTool command and nothing else
 #   docker/ci-local.sh ci graph
 #   docker/ci-local.sh shell                    A prompt inside the runner, on a copy of the tree
 #
 # There is no --base or --changed here any more: the old affected-set model answered "what would
 # CI do if X changed?" by diffing against a commit. The cache answers the same question directly
-# — change the file on disk and run this; the tool hashes what it finds. What each project's
+# — change the file on disk and run this; RemoteBuildTool hashes what it finds. What each project's
 # fullHash is doing is visible with 'docker/ci-local.sh ci graph'.
 #
 # Options:
@@ -23,7 +23,7 @@
 #       --no-cache         Do not reuse the NuGet package cache between runs.
 #
 # The image is built from docker/ci-runner.Dockerfile with the SDK version read from global.json,
-# and is rebuilt when that version, a docker/ file or the CloudBuild tool changes.
+# and is rebuilt when that version, a docker/ file or RemoteBuildTool changes.
 #
 # main here is a Docker volume local to this machine, not the shared one CI promotes into. It
 # persists between local runs so repeated local iteration stays warm, and 'docker volume rm
@@ -34,7 +34,7 @@ set -euo pipefail
 
 readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly OUT_DIR="${REPO_ROOT}/artifacts/local-ci"
-readonly NUGET_VOLUME="bitenovac-cloudbuild-nuget"
+readonly NUGET_VOLUME="bitenovac-remotebuildtool-nuget"
 readonly MAIN_VOLUME="bitenovac-local-main"
 readonly PR_VOLUME="bitenovac-local-pr-$$"
 
@@ -75,13 +75,13 @@ docker info > /dev/null 2>&1 || fail "The Docker daemon is not reachable. Start 
 sdk_version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' global.json | head -n 1)"
 [[ -n "${sdk_version}" ]] || fail "Could not read the SDK version from global.json."
 
-readonly IMAGE="bitenovac-cloudbuild-runner:${sdk_version}"
+readonly IMAGE="bitenovac-remotebuildtool-runner:${sdk_version}"
 
 if [[ "${rebuild}" == true ]] || ! docker image inspect "${IMAGE}" > /dev/null 2>&1; then
     log "Building ${IMAGE} (.NET SDK ${sdk_version})"
     bash "${REPO_ROOT}/runner/build-image.sh"
 else
-    # Mostly a cache hit. Re-running after editing the entrypoint or the tool must not run the old one.
+    # Mostly a cache hit. Re-running after editing the entrypoint or RemoteBuildTool must not run the old one.
     log "Refreshing ${IMAGE}"
     bash "${REPO_ROOT}/runner/build-image.sh" --quiet > /dev/null
 fi
@@ -116,7 +116,7 @@ if [[ "${use_cache}" == true ]]; then
     run_args+=(--volume "${NUGET_VOLUME}:/root/.nuget/packages")
 fi
 
-[[ "${cacheless}" == true ]] && run_args+=(--env "CLOUDBUILD_CACHELESS=true")
+[[ "${cacheless}" == true ]] && run_args+=(--env "REMOTEBUILDTOOL_CACHELESS=true")
 
 # Interactive only when attached to a terminal, so this stays usable from a script or a hook.
 if [[ -t 0 && -t 1 ]]; then

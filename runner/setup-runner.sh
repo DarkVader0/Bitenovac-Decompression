@@ -33,7 +33,7 @@
 #   --purge            With --uninstall, also delete the cached packages.
 #
 # Installs three things: the agents as systemd services, the image jobs build in — with the
-# CloudBuild tool already published into it — and the volume their packages are cached in.
+# RemoteBuildTool already published into it — and the volume their packages are cached in.
 #
 # Sizing --instances
 # ------------------
@@ -43,10 +43,10 @@
 # requests at that concurrency, the rest queued.
 #
 # Every agent shares this machine's cores, so past that point they only contend. MSBuild claims
-# the whole box by default: set CLOUDBUILD_MAX_CPU to roughly cores / instances in the agent environment
-# and the CloudBuild tool bounds each job to that instead (see MsBuildRunner in src/tools/Bitenovac.CloudBuild).
+# the whole box by default: set REMOTEBUILDTOOL_MAX_CPU to roughly cores / instances in the agent environment
+# and RemoteBuildTool bounds each job to that instead (see MsBuildRunner in src/tools/Bitenovac.RemoteBuildTool).
 #
-# This is also the only machine in the pool: main and the tool's own build cache both live on
+# This is also the only machine in the pool: main and RemoteBuildTool's own build cache both live on
 # volumes local to this host (see runner/in-container.sh), so there is currently no sound way to
 # add a second one without first giving those a shared backing store.
 
@@ -237,7 +237,7 @@ fi
 sdk_version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${REPO_ROOT}/global.json" | head -n 1)"
 [[ -n "${sdk_version}" ]] || fail "Could not read the SDK version from ${REPO_ROOT}/global.json."
 
-log "Building bitenovac-cloudbuild-runner:${sdk_version} (.NET SDK ${sdk_version}, CloudBuild tool)"
+log "Building bitenovac-remotebuildtool-runner:${sdk_version} (.NET SDK ${sdk_version}, RemoteBuildTool)"
 bash "${REPO_ROOT}/runner/build-image.sh"
 
 docker volume create "${NUGET_VOLUME}" > /dev/null
@@ -250,7 +250,7 @@ docker run --rm --user 0 --entrypoint chown \
     --volume "${NUGET_VOLUME}:/cache" \
     --volume "${MAIN_VOLUME}:/mnt/main" \
     --volume "${LOGS_VOLUME}:/mnt/logs" \
-    "bitenovac-cloudbuild-runner:${sdk_version}" -R "${RUN_UID}:${RUN_GID}" /cache /mnt/main /mnt/logs
+    "bitenovac-remotebuildtool-runner:${sdk_version}" -R "${RUN_UID}:${RUN_GID}" /cache /mnt/main /mnt/logs
 ok "volumes ready: ${NUGET_VOLUME}, ${MAIN_VOLUME}, ${LOGS_VOLUME} — owned by ${run_as}"
 
 # ------------------------------------------------------------------------------------- agent ----
@@ -294,9 +294,9 @@ for (( instance = 1; instance <= instances; instance++ )); do
     # it into the container. Deriving the share here rather than naming it in the workflow keeps a
     # core count that is only true of this machine out of the repository.
     {
-        printf 'CLOUDBUILD_MAX_CPU=%s\n' "${cpu_share}"
-        printf 'CLOUDBUILD_CPUS=%s\n' "${cpu_share}"
-        [[ -n "${memory}" ]] && printf 'CLOUDBUILD_MEMORY=%s\n' "${memory}"
+        printf 'REMOTEBUILDTOOL_MAX_CPU=%s\n' "${cpu_share}"
+        printf 'REMOTEBUILDTOOL_CPUS=%s\n' "${cpu_share}"
+        [[ -n "${memory}" ]] && printf 'REMOTEBUILDTOOL_MEMORY=%s\n' "${memory}"
     } > "${agent_dir}/.env"
 
     chown -R "${run_as}:${run_as}" "${agent_dir}"
@@ -331,7 +331,7 @@ rm -f /tmp/actions-runner.tar.gz
 
 if [[ "${seed}" == true ]]; then
     log "Seeding main's artifact store from this checkout"
-    if CLOUDBUILD_MAX_CPU="${cpu_share}" CLOUDBUILD_CPUS="${cpu_share}" CLOUDBUILD_MEMORY="${memory}" \
+    if REMOTEBUILDTOOL_MAX_CPU="${cpu_share}" REMOTEBUILDTOOL_CPUS="${cpu_share}" REMOTEBUILDTOOL_MEMORY="${memory}" \
         bash "${REPO_ROOT}/runner/seed-cache.sh" --user "${run_as}"; then
         ok "main is warm"
     else
@@ -358,8 +358,8 @@ cat <<EOF
 
   Jobs build in throwaway containers; ${NUGET_VOLUME}, ${MAIN_VOLUME} and ${LOGS_VOLUME} persist.
   A per-run store (bitenovac-pr-<run id>) is created and dropped by the workflow itself — see
-  .github/workflows/pr.yml and janitor.yml, which sweeps anything a cancelled run left behind.
+  .github/workflows/pr.yml and official.yml.
 
-  Pull requests run the CloudBuild tool baked into the image. To update it without
+  Pull requests run RemoteBuildTool baked into the image. To update it without
   re-registering the agents:  bash runner/build-image.sh
 EOF

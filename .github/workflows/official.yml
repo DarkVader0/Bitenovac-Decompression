@@ -15,7 +15,7 @@ permissions:
 env:
   DOTNET_NOLOGO: "true"
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
-  CLOUDBUILD_PR_VOLUME: bitenovac-pr-master-${{ github.run_id }}
+  REMOTEBUILDTOOL_PR_VOLUME: bitenovac-pr-master-${{ github.run_id }}
 
 jobs:
   plan:
@@ -73,4 +73,4 @@ jobs:
     timeout-minutes: 2
     steps:
       - name: Drop this run's volume
-        run: docker volume rm -f "${CLOUDBUILD_PR_VOLUME}"
+        run: docker volume rm -f "${REMOTEBUILDTOOL_PR_VOLUME}"

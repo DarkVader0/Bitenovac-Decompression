@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Builds the runner image from this checkout, with the CloudBuild tool published into it. Pull
-# requests run the tool this image holds, so re-run this after changing the tool, global.json or
+# Builds the runner image from this checkout, with RemoteBuildTool published into it. Pull
+# requests run the RemoteBuildTool this image holds, so re-run this after changing it, global.json or
 # docker/ci-runner.Dockerfile.
 #
 # Usage:
@@ -17,6 +17,6 @@ sdk_version="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
 exec docker build \
     --file "${REPO_ROOT}/docker/ci-runner.Dockerfile" \
     --build-arg "DOTNET_SDK_VERSION=${sdk_version}" \
-    --tag "bitenovac-cloudbuild-runner:${sdk_version}" \
+    --tag "bitenovac-remotebuildtool-runner:${sdk_version}" \
     "$@" \
     "${REPO_ROOT}"

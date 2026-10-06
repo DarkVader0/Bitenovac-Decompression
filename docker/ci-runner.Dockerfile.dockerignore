@@ -5,8 +5,8 @@
 !Directory.Build.targets
 !Directory.Packages.props
 !.editorconfig
-!src/tools/Bitenovac.CloudBuild/
-!src/tools/Bitenovac.CloudBuild.Core/
+!src/tools/Bitenovac.RemoteBuildTool/
+!src/tools/Bitenovac.RemoteBuildTool.Core/
 !docker/entrypoint.sh
 **/bin/
 **/obj/
