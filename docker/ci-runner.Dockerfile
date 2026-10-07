@@ -46,7 +46,7 @@ ENV DOTNET_ROOT=/usr/share/dotnet \
 FROM sdk
 
 # The RemoteBuildTool release pull requests are judged by. Bump it after publishing a new one.
-ARG REMOTEBUILDTOOL_VERSION=1.0.0
+ARG REMOTEBUILDTOOL_VERSION=0.0.1
 ARG REMOTEBUILDTOOL_SOURCE=https://api.nuget.org/v3/index.json
 
 RUN dotnet tool install Bitenovac.RemoteBuildTool \
