@@ -2,7 +2,9 @@ using Bitenovac.RemoteBuildTool.Commands;
 
 namespace Bitenovac.RemoteBuildTool;
 
-/// <summary>Dispatches to one pipeline command. Kept separate from <c>Program.cs</c> so nothing here runs before <c>MSBuildLocator.RegisterDefaults()</c> does.</summary>
+/// <summary>
+/// Provides methods for dispatching command-line arguments to a pipeline command.
+/// </summary>
 internal static class CommandLine
 {
     public static int Run(string[] args, PipelineOutput output)

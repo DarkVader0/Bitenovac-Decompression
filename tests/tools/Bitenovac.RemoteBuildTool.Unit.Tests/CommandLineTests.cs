@@ -129,7 +129,9 @@ public sealed class CommandLineTests : IDisposable
         Assert.DoesNotContain("InvalidOperationException", output.Error, StringComparison.Ordinal);
     }
 
-    /// <summary>Steers the environment this run reads at every store away from the real repository.</summary>
+    /// <summary>
+    /// Points the environment variables this run reads at a temporary repository and stores.
+    /// </summary>
     private void PointAt(TemporaryDirectory repository, string prStore)
     {
         _environment.Clear();

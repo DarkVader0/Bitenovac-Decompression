@@ -6,16 +6,24 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 
 /// <summary>
-/// Provides the model-agnostic calculation of the reserve gas requirement for each
-/// cylinder. Two rules apply according to the cylinder's role. A bottom-gas cylinder must
-/// retain enough gas to bring the whole team, under stress, from the deepest point at
-/// which its gas is breathed up to the next breathable gas (the next gas switch or the
-/// surface); gas below the regulator's intermediate pressure is treated as unusable and is
-/// excluded from what remains. A decompression-gas cylinder must retain a fixed fraction of its
-/// capacity. A bailout cylinder is assessed like a bottom gas, over the band of the ascent it
-/// covers. The diluent and oxygen supplies of a rebreather are reported with a zero requirement.
-/// An unmet reserve is reported through flags rather than by throwing.
+/// Provides methods for computing the reserve gas requirement for each cylinder.
 /// </summary>
+/// <remarks>
+/// <para>
+/// The rule that applies depends on the cylinder's role. A bottom-gas cylinder must retain enough
+/// gas to bring the whole team, under stress, from the deepest point at which its gas is breathed
+/// up to the next breathable gas, which is the next gas switch or the surface. Gas below the
+/// regulator's intermediate pressure is treated as unusable and is excluded from what remains.
+/// </para>
+/// <para>
+/// A decompression-gas cylinder must retain a fixed fraction of its capacity. A bailout cylinder is
+/// assessed like a bottom gas, over the band of the ascent it covers. The diluent and oxygen
+/// supplies of a rebreather are reported with a zero requirement.
+/// </para>
+/// <para>
+/// An unmet reserve is reported through flags rather than by throwing.
+/// </para>
+/// </remarks>
 public static class ReserveGas
 {
     /// <summary>
@@ -23,33 +31,42 @@ public static class ReserveGas
     /// </summary>
     private const double MaxDecoGasUsageFraction = 0.40;
 
-    /// <summary>The depth, in meters, of the final ascent band to which the last-six-meters rate applies.</summary>
+    /// <summary>
+    /// The depth, in meters, of the final ascent band to which the last-six-meters rate applies.
+    /// </summary>
     private const double LastBandCeilingMeter = 6.0;
 
     /// <summary>
-    /// The residual cylinder pressure below which a first stage can no longer deliver gas,
-    /// being approximately the intermediate pressure of the regulator. Gas below this
-    /// pressure is physically unusable and is excluded from the breathable reserve.
+    /// The residual cylinder pressure below which a first stage can no longer deliver gas, being
+    /// approximately the intermediate pressure of the regulator.
     /// </summary>
+    /// <remarks>
+    /// Gas below this pressure is physically unusable and is excluded from the breathable reserve.
+    /// </remarks>
     private static readonly Pressure UnusableFirstStagePressure = Pressure.FromBar(10.0);
 
     /// <summary>
-    /// Computes the reserve gas assessment for each supplied cylinder over the given
-    /// expanded dive profile. Bottom-gas cylinders are assessed against a worst-case
-    /// emergency ascent from the deepest point at which their gas is breathed to the next
-    /// breathable gas; decompression-gas cylinders are assessed against a fixed maximum
-    /// usage fraction; bailout cylinders are assessed over the band of the ascent they cover;
-    /// the diluent and oxygen supplies of a rebreather are reported with a zero requirement.
+    /// Computes the reserve gas assessment for each supplied cylinder over the specified expanded
+    /// dive profile.
     /// </summary>
     /// <param name="segments">The fully expanded, ordered dive segments.</param>
     /// <param name="cylinders">The cylinders available to the diver.</param>
-    /// <param name="settings">The settings that supply the ascent rates, consumption rates, and reserve factors.</param>
-    /// <returns>The reserve assessment for every cylinder, in the same order as <paramref name="cylinders" />.</returns>
+    /// <param name="settings">
+    /// The settings that supply the ascent rates, consumption rates, and reserve factors.
+    /// </param>
+    /// <returns>The reserve assessment for every cylinder, in the same order as <paramref name="cylinders"/>.</returns>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="segments" />, <paramref name="cylinders" />, or <paramref name="settings" /> is
-    /// <see langword="null" />.
+    /// <paramref name="segments"/>, <paramref name="cylinders"/>, or <paramref name="settings"/> is
+    /// <see langword="null"/>.
     /// </exception>
-    /// <exception cref="ArgumentException"><paramref name="cylinders" /> is empty.</exception>
+    /// <exception cref="ArgumentException"><paramref name="cylinders"/> is empty.</exception>
+    /// <remarks>
+    /// Bottom-gas cylinders are assessed against a worst-case emergency ascent from the deepest point
+    /// at which their gas is breathed to the next breathable gas. Decompression-gas cylinders are
+    /// assessed against a fixed maximum usage fraction. Bailout cylinders are assessed over the band
+    /// of the ascent they cover. The diluent and oxygen supplies of a rebreather are reported with a
+    /// zero requirement.
+    /// </remarks>
     public static ReserveGasResult Calculate(
         IReadOnlyList<DiveSegment> segments,
         IReadOnlyList<Cylinder> cylinders,
@@ -106,20 +123,26 @@ public static class ReserveGas
     }
 
     /// <summary>
-    /// Assesses a bailout cylinder against the band of the ascent it is responsible for. A
-    /// bailout gas is carried against an emergency that has not been planned, so it is never
-    /// breathed in the plan and its band cannot be read from the profile. It instead runs
-    /// from the deeper of the dive's deepest point and the gas's own maximum operating depth,
-    /// up to the depth at which the next richer bailout or decompression gas becomes
-    /// breathable, or to the surface when the gas is the richest carried.
+    /// Assesses a bailout cylinder against the band of the ascent it is responsible for.
     /// </summary>
     /// <param name="cylinder">The bailout cylinder being assessed.</param>
-    /// <param name="startMilliliters">The free-gas volume the cylinder holds at its start pressure, in milliliters.</param>
-    /// <param name="consumedMilliliters">The free-gas volume consumed from the cylinder over the dive, in milliliters.</param>
+    /// <param name="startMilliliters">
+    /// The free-gas volume the cylinder holds at its start pressure, in milliliters.
+    /// </param>
+    /// <param name="consumedMilliliters">
+    /// The free-gas volume consumed from the cylinder over the dive, in milliliters.
+    /// </param>
     /// <param name="segments">The fully expanded, ordered dive segments.</param>
     /// <param name="cylinders">The cylinders available to the diver.</param>
     /// <param name="settings">The settings that supply the ascent and reserve parameters.</param>
     /// <returns>The reserve assessment for the bailout cylinder.</returns>
+    /// <remarks>
+    /// A bailout gas is carried against an emergency that has not been planned, so it is never
+    /// breathed in the plan and its band cannot be read from the profile. The band instead runs from
+    /// the deeper of the dive's deepest point and the gas's own maximum operating depth, up to the
+    /// depth at which the next richer bailout or decompression gas becomes breathable, or to the
+    /// surface when the gas is the richest carried.
+    /// </remarks>
     private static CylinderReserveStatus AssessBailout(Cylinder cylinder,
         double startMilliliters,
         double consumedMilliliters,
@@ -141,7 +164,9 @@ public static class ReserveGas
             Volume.FromMilliliter(remainingMilliliters));
     }
 
-    /// <summary>Returns the deepest depth, in meters, reached anywhere in the profile.</summary>
+    /// <summary>
+    /// Returns the deepest depth, in meters, reached anywhere in the profile.
+    /// </summary>
     /// <param name="segments">The fully expanded, ordered dive segments.</param>
     /// <returns>The deepest depth in meters, or zero when the profile is empty.</returns>
     private static double DeepestDepthMeter(IReadOnlyList<DiveSegment> segments)
@@ -156,16 +181,20 @@ public static class ReserveGas
     }
 
     /// <summary>
-    /// Returns the depth, in meters, at which the richest gas carried for decompression or
-    /// bailout that is richer than the given gas becomes breathable within the decompression
-    /// oxygen limit. The emergency ascent on the given gas ends there, because the diver
-    /// switches onto that gas as soon as it is reached. When no richer gas is carried the
-    /// ascent runs to the surface.
+    /// Returns the depth, in meters, at which the richest gas carried for decompression or bailout
+    /// that is richer than the specified gas becomes breathable within the decompression oxygen limit.
     /// </summary>
     /// <param name="gas">The gas whose ascent band is being bounded.</param>
     /// <param name="cylinders">The cylinders available to the diver.</param>
-    /// <param name="settings">The settings that supply the environment and the decompression oxygen limit.</param>
+    /// <param name="settings">
+    /// The settings that supply the environment and the decompression oxygen limit.
+    /// </param>
     /// <returns>The depth in meters at which the ascent on the given gas ends.</returns>
+    /// <remarks>
+    /// The emergency ascent on the given gas ends at this depth, because the diver switches onto the
+    /// richer gas as soon as it is reached. When no richer gas is carried, the ascent runs to the
+    /// surface.
+    /// </remarks>
     private static double NextRicherOperatingDepthMeter(GasMixture gas,
         IReadOnlyList<Cylinder> cylinders,
         DivePlanSettings settings)
@@ -188,8 +217,8 @@ public static class ReserveGas
     }
 
     /// <summary>
-    /// Returns the maximum operating depth of a gas, in meters, being the depth at which its
-    /// partial pressure of oxygen reaches the given limit.
+    /// Returns the maximum operating depth of a gas, in meters, being the depth at which its partial
+    /// pressure of oxygen reaches the specified limit.
     /// </summary>
     /// <param name="gas">The gas whose maximum operating depth is required.</param>
     /// <param name="maxPo2">The maximum permitted partial pressure of oxygen.</param>
@@ -201,17 +230,23 @@ public static class ReserveGas
         GasSelector.MaxOperatingDepthMeter(gas, maxPo2, settings);
 
     /// <summary>
-    /// Assesses a bottom-gas cylinder against a worst-case emergency ascent. The required
-    /// reserve is the gas the whole team consumes, under stress, ascending from the deepest
-    /// point at which this gas is breathed to the next breathable gas. The gas that remains
-    /// excludes the unusable first-stage pressure.
+    /// Assesses a bottom-gas cylinder against a worst-case emergency ascent.
     /// </summary>
     /// <param name="cylinder">The bottom-gas cylinder being assessed.</param>
-    /// <param name="startMilliliters">The free-gas volume the cylinder holds at its start pressure, in milliliters.</param>
-    /// <param name="consumedMilliliters">The free-gas volume consumed from the cylinder over the dive, in milliliters.</param>
+    /// <param name="startMilliliters">
+    /// The free-gas volume the cylinder holds at its start pressure, in milliliters.
+    /// </param>
+    /// <param name="consumedMilliliters">
+    /// The free-gas volume consumed from the cylinder over the dive, in milliliters.
+    /// </param>
     /// <param name="segments">The fully expanded, ordered dive segments.</param>
     /// <param name="settings">The settings that supply the ascent and reserve parameters.</param>
     /// <returns>The reserve assessment for the bottom-gas cylinder.</returns>
+    /// <remarks>
+    /// The required reserve is the gas the whole team consumes, under stress, ascending from the
+    /// deepest point at which this gas is breathed to the next breathable gas. The gas that remains
+    /// excludes the unusable first-stage pressure.
+    /// </remarks>
     private static CylinderReserveStatus AssessBottomGas(Cylinder cylinder,
         double startMilliliters,
         double consumedMilliliters,
@@ -231,14 +266,20 @@ public static class ReserveGas
     }
 
     /// <summary>
-    /// Assesses a decompression-gas cylinder against the fixed maximum usage fraction. The
-    /// required reserve is the retained fraction of the cylinder's capacity, and the
-    /// projected remaining gas is the capacity less what was consumed.
+    /// Assesses a decompression-gas cylinder against the fixed maximum usage fraction.
     /// </summary>
     /// <param name="cylinder">The decompression-gas cylinder being assessed.</param>
-    /// <param name="startMilliliters">The free-gas volume the cylinder holds at its start pressure, in milliliters.</param>
-    /// <param name="consumedMilliliters">The free-gas volume consumed from the cylinder over the dive, in milliliters.</param>
+    /// <param name="startMilliliters">
+    /// The free-gas volume the cylinder holds at its start pressure, in milliliters.
+    /// </param>
+    /// <param name="consumedMilliliters">
+    /// The free-gas volume consumed from the cylinder over the dive, in milliliters.
+    /// </param>
     /// <returns>The reserve assessment for the decompression-gas cylinder.</returns>
+    /// <remarks>
+    /// The required reserve is the retained fraction of the cylinder's capacity, and the projected
+    /// remaining gas is the capacity less what was consumed.
+    /// </remarks>
     private static CylinderReserveStatus AssessDecoGas(Cylinder cylinder,
         double startMilliliters,
         double consumedMilliliters)
@@ -252,13 +293,16 @@ public static class ReserveGas
     }
 
     /// <summary>
-    /// Returns the deepest and shallowest depths, in meters, at which the given gas is
-    /// breathed across the profile. When the gas is not breathed in any segment the span is
-    /// empty and both depths are zero, giving a zero emergency ascent.
+    /// Returns the deepest and shallowest depths, in meters, at which the specified gas is breathed
+    /// across the profile.
     /// </summary>
     /// <param name="segments">The fully expanded, ordered dive segments.</param>
     /// <param name="gas">The breathing gas whose depth span is required.</param>
-    /// <returns>The deepest and shallowest depths, in meters, at which the gas is breathed.</returns>
+    /// <returns>
+    /// The deepest and shallowest depths, in meters, at which the gas is breathed. When the gas is not
+    /// breathed in any segment, the span is empty and both depths are zero, giving a zero emergency
+    /// ascent.
+    /// </returns>
     private static (double DeepestMeter, double ShallowestMeter) DepthSpanForGas(
         IReadOnlyList<DiveSegment> segments,
         GasMixture gas)
@@ -292,17 +336,25 @@ public static class ReserveGas
     }
 
     /// <summary>
-    /// Returns the free-gas volume the whole team consumes, under stress, ascending from
-    /// the deepest to the shallowest depth. The ascent is divided at the boundary of the
-    /// final ascent band so that each portion uses its appropriate ascent rate: the slower
-    /// last-six-meters rate near the surface and the faster to-stops rate below it. The
-    /// volume is the stress-multiplied bottom consumption rate, scaled by the mean ambient
-    /// pressure of each portion and the number of team members, over the portion's time.
+    /// Returns the free-gas volume the whole team consumes, under stress, ascending from the deepest
+    /// to the shallowest depth.
     /// </summary>
     /// <param name="deepestMeter">The depth, in meters, at which the emergency ascent begins.</param>
-    /// <param name="shallowestMeter">The depth, in meters, at which the emergency ascent ends (the next breathable gas).</param>
-    /// <param name="settings">The settings that supply the ascent rates, consumption rate, and reserve factors.</param>
+    /// <param name="shallowestMeter">
+    /// The depth, in meters, at which the emergency ascent ends, which is the depth of the next
+    /// breathable gas.
+    /// </param>
+    /// <param name="settings">
+    /// The settings that supply the ascent rates, consumption rate, and reserve factors.
+    /// </param>
     /// <returns>The free-gas volume required, in milliliters at surface conditions.</returns>
+    /// <remarks>
+    /// The ascent is divided at the boundary of the final ascent band so that each portion uses its
+    /// appropriate ascent rate. The slower last-six-meters rate applies near the surface and the
+    /// faster to-stops rate below it. The volume is the stress-multiplied bottom consumption rate,
+    /// scaled by the mean ambient pressure of each portion and the number of team members, over the
+    /// portion's time.
+    /// </remarks>
     private static double EmergencyAscentMilliliters(double deepestMeter,
         double shallowestMeter,
         DivePlanSettings settings)
@@ -325,18 +377,20 @@ public static class ReserveGas
     }
 
     /// <summary>
-    /// Returns the free-gas volume, in liters at surface conditions, that a single diver
-    /// consumes ascending a portion of the water column from a deeper to a shallower depth
-    /// at a given ascent rate, under the stress-multiplied bottom consumption rate.
+    /// Returns the free-gas volume that a single diver consumes ascending a portion of the water
+    /// column from a deeper to a shallower depth at the specified ascent rate, under the
+    /// stress-multiplied bottom consumption rate.
     /// </summary>
     /// <param name="fromMeter">The depth, in meters, at which the portion begins.</param>
     /// <param name="toMeter">The depth, in meters, at which the portion ends.</param>
     /// <param name="ascentRateMetersPerMinute">The ascent rate applied over the portion, in meters per minute.</param>
-    /// <param name="settings">The settings that supply the consumption rate, stress factor, and environment.</param>
+    /// <param name="settings">
+    /// The settings that supply the consumption rate, stress factor, and environment.
+    /// </param>
     /// <returns>
-    /// The free-gas volume for one diver over the portion, in liters at surface conditions.
-    /// A portion that is empty, because the ascent does not reach into the band to which it
-    /// applies, consumes nothing and returns zero.
+    /// The free-gas volume for one diver over the portion, in liters at surface conditions. A portion
+    /// that is empty, because the ascent does not reach into the band to which it applies, consumes
+    /// nothing and returns zero.
     /// </returns>
     private static double PortionLitersPerDiver(double fromMeter,
         double toMeter,
@@ -362,20 +416,22 @@ public static class ReserveGas
     }
 
     /// <summary>
-    /// Returns the free-gas volume a cylinder holds at a given pressure, referenced to the
-    /// surface pressure, in milliliters.
+    /// Returns the free-gas volume, in milliliters, that a cylinder holds at the specified pressure,
+    /// referenced to the surface pressure.
     /// </summary>
     /// <param name="cylinder">The cylinder whose free-gas volume is required.</param>
     /// <param name="pressure">The cylinder pressure at which the free-gas volume is measured.</param>
-    /// <param name="surfacePressure">The surface pressure against which the free-gas volume is referenced.</param>
+    /// <param name="surfacePressure">
+    /// The surface pressure against which the free-gas volume is referenced.
+    /// </param>
     /// <returns>The free-gas volume, in milliliters at surface conditions.</returns>
     private static double FreeGasMilliliters(Cylinder cylinder,
         Pressure pressure,
         Pressure surfacePressure) => cylinder.Size.InMilliliter * (pressure.InMillibar / surfacePressure.InMillibar);
 
     /// <summary>
-    /// Returns the absolute ambient pressure at a given depth, being the surface pressure
-    /// plus the hydrostatic pressure of the water column for the configured salinity.
+    /// Returns the absolute ambient pressure at the specified depth, being the surface pressure plus
+    /// the hydrostatic pressure of the water column for the configured salinity.
     /// </summary>
     /// <param name="depthMeter">The depth, in meters, at which the ambient pressure is required.</param>
     /// <param name="settings">The settings that supply the surface pressure and salinity.</param>

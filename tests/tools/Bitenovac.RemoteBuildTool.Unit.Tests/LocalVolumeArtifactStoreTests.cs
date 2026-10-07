@@ -572,7 +572,9 @@ public sealed class LocalVolumeArtifactStoreTests
         Assert.Single(Directory.EnumerateFiles(Path.Combine(root, "blobs"), "*", SearchOption.AllDirectories));
     }
 
-    /// <summary>A fresh directory holding one file, ready to be <c>Put</c>.</summary>
+    /// <summary>
+    /// Creates a new directory holding one file, ready to be stored with <c>Put</c>.
+    /// </summary>
     private static string Source(TemporaryDirectory directory, string relativePath, string content)
     {
         var source = Path.Combine(directory.Path, $"source-{Guid.NewGuid():N}");

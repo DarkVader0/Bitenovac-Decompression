@@ -3,9 +3,12 @@ using System.Xml.Linq;
 namespace Bitenovac.RemoteBuildTool.MsBuild;
 
 /// <summary>
-/// Writes a <c>.slnx</c> listing a set of projects, so one MSBuild invocation restores them in a
-/// single NuGet pass and builds them in one dependency-ordered graph.
+/// Provides methods for writing a <c>.slnx</c> solution that lists a set of projects.
 /// </summary>
+/// <remarks>
+/// One MSBuild invocation on the solution restores the projects in a single NuGet pass and builds
+/// them in one dependency-ordered graph.
+/// </remarks>
 internal static class SyntheticSolution
 {
     public static string Write(string outputPath, IEnumerable<string> projectFullPaths)

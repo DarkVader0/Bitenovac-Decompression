@@ -4,17 +4,23 @@ using Bitenovac.RemoteBuildTool.Toolchains.DotNet;
 
 namespace Bitenovac.RemoteBuildTool.Unit.Tests;
 
-/// <summary>Builds the throwaway directories, plan entries and options the RemoteBuildTool tests share.</summary>
+/// <summary>
+/// Provides the temporary directories, plan entries and options shared by the RemoteBuildTool tests.
+/// </summary>
 internal static class TestFactory
 {
     public static ProjectId Id(string relativePath) => new(relativePath);
 
-    /// <summary>An output nothing reads, for the tests that only assert on an exit code or the filesystem.</summary>
+    /// <summary>
+    /// Creates an output that discards everything written to it.
+    /// </summary>
     public static PipelineOutput Silence() => new(TextWriter.Null, TextWriter.Null);
 
     public static TemporaryDirectory Directory() => new();
 
-    /// <summary>Writes <paramref name="content"/> to <paramref name="path"/>, creating its directory.</summary>
+    /// <summary>
+    /// Writes <paramref name="content"/> to <paramref name="path"/>, creating its directory.
+    /// </summary>
     public static string WriteFile(string path, string content)
     {
         System.IO.Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -22,7 +28,9 @@ internal static class TestFactory
         return path;
     }
 
-    /// <summary>Writes <paramref name="content"/> to <paramref name="root"/> plus the given path segments.</summary>
+    /// <summary>
+    /// Writes <paramref name="content"/> to <paramref name="relativePath"/> under <paramref name="root"/>.
+    /// </summary>
     public static string WriteFile(string root, string relativePath, string content) =>
         WriteFile(Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar)), content);
 
@@ -74,12 +82,14 @@ internal static class TestFactory
 }
 
 /// <summary>
-/// Overwrites the <c>REMOTEBUILDTOOL_*</c> variables for one test and puts back whatever the process
-/// had before.
+/// Represents the <c>REMOTEBUILDTOOL_*</c> environment variables of one test, restored to their
+/// previous values on disposal.
 /// </summary>
 internal sealed class EnvironmentVariables : IDisposable
 {
-    /// <summary>Names the xUnit collection every class that writes these variables belongs to.</summary>
+    /// <summary>
+    /// The name of the xUnit collection that every class writing these variables belongs to.
+    /// </summary>
     public const string Collection = "Environment variables";
 
     private static readonly string[] Names =
@@ -110,7 +120,9 @@ internal sealed class EnvironmentVariables : IDisposable
     }
 }
 
-/// <summary>A directory under the system temporary folder, removed when the test finishes with it.</summary>
+/// <summary>
+/// Represents a directory under the system temporary folder that is deleted on disposal.
+/// </summary>
 internal sealed class TemporaryDirectory : IDisposable
 {
     public TemporaryDirectory() =>
@@ -118,7 +130,9 @@ internal sealed class TemporaryDirectory : IDisposable
 
     public string Path { get; }
 
-    /// <summary>This directory's path plus <paramref name="relativePath"/>, with forward slashes accepted.</summary>
+    /// <summary>
+    /// Returns the path of <paramref name="relativePath"/> under this directory, accepting forward slashes.
+    /// </summary>
     public string Combine(string relativePath) =>
         System.IO.Path.Combine(Path, relativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
 
@@ -129,7 +143,9 @@ internal sealed class TemporaryDirectory : IDisposable
     }
 }
 
-/// <summary>Collects what a command reported, so a test can read it without touching the console.</summary>
+/// <summary>
+/// Represents the output a command reported, captured without touching the console.
+/// </summary>
 internal sealed class CapturedOutput
 {
     private readonly StringWriter _out = new();

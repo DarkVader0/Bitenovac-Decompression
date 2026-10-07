@@ -5,14 +5,20 @@ using Bitenovac.RemoteBuildTool.Testing;
 namespace Bitenovac.RemoteBuildTool.Toolchains.DotNet;
 
 /// <summary>
-/// MSBuild projects: evaluated in-process, restored and built through one synthetic solution, and
-/// tested by running each Microsoft.Testing.Platform test project's own executable.
+/// Represents the toolchain for MSBuild projects.
 /// </summary>
+/// <remarks>
+/// Projects are evaluated in-process, restored and built through one synthetic solution, and
+/// tested by running the executable of each Microsoft.Testing.Platform test project.
+/// </remarks>
 internal sealed class DotNetToolchain(string repositoryRoot) : IToolchain
 {
     public const string ToolchainName = "dotnet";
 
-    /// <summary>The test executable MSBuild reports; the apphost for an MTP test project.</summary>
+    /// <summary>
+    /// The name of the property that holds the test executable reported by MSBuild, which is the
+    /// apphost of a Microsoft.Testing.Platform test project.
+    /// </summary>
     public const string RunCommandProperty = "RunCommand";
 
     public const string TargetFrameworksProperty = "TargetFrameworks";

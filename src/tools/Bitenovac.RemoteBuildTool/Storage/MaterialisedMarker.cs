@@ -3,38 +3,29 @@ using Bitenovac.RemoteBuildTool.Core.Graph;
 namespace Bitenovac.RemoteBuildTool.Storage;
 
 /// <summary>
-/// Records which fullHash a workspace's copy of a project currently holds, so a second
-/// materialisation of content already sitting there can be skipped.
+/// Provides methods for recording which full hash the workspace's copy of a project holds, so that
+/// materializing content already in place can be skipped.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Markers live under <c>artifacts/materialised/</c> in the workspace, deliberately:
-/// </para>
-/// <list type="bullet">
-/// <item>
-/// In the <em>workspace</em>, not the store, because the claim they make is about this checkout.
-/// In CI, <c>build</c> and <c>test</c> run in separate containers with separate checkouts — a
-/// marker recorded in the shared run volume would tell <c>test</c> that files are present when
-/// its own checkout is empty. A workspace marker is simply absent there, so it materialises.
-/// </item>
-/// <item>
-/// Outside every toolchain's output directories, so it is never swept into a store entry and
-/// cannot come back as a stale claim attached to some other hash.
-/// </item>
-/// <item>
-/// Under <c>artifacts/</c>, which is already in <c>.gitignore</c>, so it never shows up as an
-/// untracked file in someone's working tree.
-/// </item>
-/// </list>
+/// Markers are stored in the workspace under <c>artifacts/materialised/</c>, not in a store, so
+/// they describe only the current checkout. They are outside every toolchain's output directories,
+/// so they are never stored in an artifact entry.
 /// </remarks>
 internal static class MaterialisedMarker
 {
-    /// <summary>True when the workspace already holds this project's output for this hash.</summary>
+    /// <summary>
+    /// Determines whether the workspace already holds the output of the specified project for the
+    /// specified hash.
+    /// </summary>
     /// <param name="repositoryRoot">The repository root.</param>
     /// <param name="project">The project to check.</param>
     /// <param name="configuration">The build configuration.</param>
-    /// <param name="fullHash">The hash the workspace would need to hold.</param>
-    /// <param name="outputDirectory">The project's primary output directory, checked for actual output.</param>
+    /// <param name="fullHash">The full hash the workspace must hold.</param>
+    /// <param name="outputDirectory">The project's primary output directory, which must exist.</param>
+    /// <returns>
+    /// <see langword="true"/> if the marker names <paramref name="fullHash"/> and
+    /// <paramref name="outputDirectory"/> exists; otherwise, <see langword="false"/>.
+    /// </returns>
     public static bool Matches(string repositoryRoot, ProjectId project, string configuration, string fullHash, string outputDirectory)
     {
         var marker = MarkerPath(repositoryRoot, project, configuration);
@@ -47,11 +38,13 @@ internal static class MaterialisedMarker
         return File.ReadAllText(marker).Trim() == fullHash;
     }
 
-    /// <summary>Records that the workspace now holds this project's output for this hash.</summary>
+    /// <summary>
+    /// Records that the workspace now holds the output of the specified project for the specified hash.
+    /// </summary>
     /// <param name="repositoryRoot">The repository root.</param>
-    /// <param name="project">The project just materialised or built.</param>
+    /// <param name="project">The project that was just materialized or built.</param>
     /// <param name="configuration">The build configuration.</param>
-    /// <param name="fullHash">The hash the workspace now holds.</param>
+    /// <param name="fullHash">The full hash the workspace now holds.</param>
     public static void Write(string repositoryRoot, ProjectId project, string configuration, string fullHash)
     {
         var marker = MarkerPath(repositoryRoot, project, configuration);

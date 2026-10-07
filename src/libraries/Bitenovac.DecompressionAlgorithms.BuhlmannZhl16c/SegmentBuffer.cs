@@ -4,22 +4,30 @@ using Bitenovac.DecompressionAlgorithms.Core.Planning;
 namespace Bitenovac.DecompressionAlgorithms.BuhlmannZhl16c;
 
 /// <summary>
-/// A reusable, growable list of <see cref="DiveSegment" /> values backed by a pooled
-/// array, used to return the final ascent without allocating per call. The buffer also
-/// implements <see cref="ICollection{T}" /> so that consumers copying it, such as
-/// <c>List&lt;T&gt;.AddRange</c>, take the allocation-free <see cref="CopyTo" /> path
-/// instead of boxing an enumerator. The backing array only grows, so a warmed instance
-/// allocates nothing in steady state.
+/// Represents a reusable, growable list of <see cref="DiveSegment"/> values that is used to return
+/// the final ascent without allocating per call.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Because the buffer implements <see cref="ICollection{T}"/>, consumers that copy it, such as
+/// <c>List&lt;T&gt;.AddRange</c>, take the allocation-free <see cref="CopyTo"/> path instead of
+/// boxing an enumerator.
+/// </para>
+/// <para>
+/// The backing array only grows, so a warmed instance allocates nothing in steady state.
+/// </para>
+/// </remarks>
 internal sealed class SegmentBuffer : IReadOnlyList<DiveSegment>, ICollection<DiveSegment>
 {
     private DiveSegment[] _items = new DiveSegment[64];
 
-    /// <summary>Copies the buffered segments into the given array.</summary>
+    /// <summary>
+    /// Copies the buffered segments into the specified array.
+    /// </summary>
     /// <param name="array">The destination array.</param>
-    /// <param name="arrayIndex">The index in <paramref name="array" /> at which copying begins.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="array" /> is <see langword="null" />.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="arrayIndex" /> is negative.</exception>
+    /// <param name="arrayIndex">The index in <paramref name="array"/> at which copying begins.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="array"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="arrayIndex"/> is negative.</exception>
     /// <exception cref="ArgumentException">The destination is too small to hold the segments.</exception>
     public void CopyTo(DiveSegment[] array, int arrayIndex)
     {
@@ -48,12 +56,16 @@ internal sealed class SegmentBuffer : IReadOnlyList<DiveSegment>, ICollection<Di
         return false;
     }
 
-    /// <summary>Gets the number of segments currently in the buffer.</summary>
+    /// <summary>
+    /// Gets the number of segments currently in the buffer.
+    /// </summary>
     public int Count { get; private set; }
 
-    /// <summary>Gets the segment at the given index.</summary>
+    /// <summary>
+    /// Gets the segment at the specified index.
+    /// </summary>
     /// <param name="index">The zero-based index of the segment.</param>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index" /> is outside the buffer.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="index"/> is outside the buffer.</exception>
     public DiveSegment this[int index]
     {
         get
@@ -64,9 +76,13 @@ internal sealed class SegmentBuffer : IReadOnlyList<DiveSegment>, ICollection<Di
         }
     }
 
-    /// <summary>Returns an enumerator over the buffered segments.</summary>
+    /// <summary>
+    /// Returns an enumerator that iterates through the buffered segments.
+    /// </summary>
     /// <returns>An enumerator over the buffered segments.</returns>
-    /// <remarks>Enumerating allocates; copying consumers use <see cref="CopyTo" /> instead.</remarks>
+    /// <remarks>
+    /// Enumerating allocates. Consumers that copy the buffer use <see cref="CopyTo"/> instead.
+    /// </remarks>
     public IEnumerator<DiveSegment> GetEnumerator()
     {
         for (var i = 0; i < Count; i++)
@@ -77,8 +93,13 @@ internal sealed class SegmentBuffer : IReadOnlyList<DiveSegment>, ICollection<Di
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    /// <summary>Appends a segment, growing the backing array geometrically when full.</summary>
+    /// <summary>
+    /// Appends a segment to the buffer.
+    /// </summary>
     /// <param name="segment">The segment to append.</param>
+    /// <remarks>
+    /// The backing array grows geometrically when it is full.
+    /// </remarks>
     public void Add(in DiveSegment segment)
     {
         if (Count == _items.Length)
@@ -90,6 +111,8 @@ internal sealed class SegmentBuffer : IReadOnlyList<DiveSegment>, ICollection<Di
         Count++;
     }
 
-    /// <summary>Empties the buffer without releasing the backing array.</summary>
+    /// <summary>
+    /// Empties the buffer without releasing the backing array.
+    /// </summary>
     public void Clear() => Count = 0;
 }

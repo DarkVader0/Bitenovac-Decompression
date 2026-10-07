@@ -5,11 +5,13 @@ using Bitenovac.RemoteBuildTool.Storage;
 namespace Bitenovac.RemoteBuildTool.Commands;
 
 /// <summary>
-/// Copies every entry this run produced into <c>main</c>, skipping anything main already has at
-/// the same fullHash. Only reachable from a <c>merge_group</c> run in CI — see
-/// <c>.github/workflows/promote.yml</c> — which is what makes it safe for a PR to never write to
-/// <c>main</c>: a PR run can call this locally, but nothing routes it there in the real pipeline.
+/// Provides the <c>promote</c> pipeline command, which copies every entry this run produced into
+/// <c>main</c>.
 /// </summary>
+/// <remarks>
+/// An entry that <c>main</c> already holds under the same full hash is skipped. When anything was
+/// promoted, unreferenced blobs are pruned from <c>main</c> afterwards.
+/// </remarks>
 internal static class PromoteCommand
 {
     public static int Run(PipelineOptions options, PipelineOutput output)

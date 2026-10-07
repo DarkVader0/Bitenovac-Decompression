@@ -6,11 +6,12 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.Core.Unit.Tests;
 
 /// <summary>
-/// Builds the valid, fully specified inputs shared by the calculation tests. Fresh water
-/// and a surface pressure of exactly one bar are used by default so that the ambient
-/// pressure at a given depth, and therefore every expected value derived from it, is
-/// exactly reproducible.
+/// Provides the valid, fully specified inputs shared by the calculation tests.
 /// </summary>
+/// <remarks>
+/// Settings default to fresh water and a surface pressure of exactly one bar, so the ambient
+/// pressure at a depth is exactly reproducible.
+/// </remarks>
 internal static class TestFactory
 {
     public static DivePlanSettings CreateSettings(

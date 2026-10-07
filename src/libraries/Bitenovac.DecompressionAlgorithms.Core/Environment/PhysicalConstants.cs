@@ -1,58 +1,81 @@
 ﻿namespace Bitenovac.DecompressionAlgorithms.Core.Environment;
 
 /// <summary>
-/// Provides the physical constants used to model the diving environment: water
-/// densities per <see cref="Salinity" />, standard gravity, and the barometric
-/// relationship between altitude and atmospheric pressure.
+/// Provides the physical constants used to model the diving environment: water densities per
+/// <see cref="Salinity"/>, standard gravity, and the barometric relationship between altitude and
+/// atmospheric pressure.
 /// </summary>
 /// <remarks>
 /// Pressures are expressed in millibars, matching the canonical internal unit of
-/// <see cref="Units.Pressure" />. Water densities are in kilograms per cubic meter and
-/// gravity in meters per second squared; the hydrostatic pressure of a water column is
-/// obtained from density × gravity × depth-in-meters and then scaled from pascals to
-/// millibars (1 millibar = 100 pascals).
+/// <see cref="Units.Pressure"/>. Water densities are in kilograms per cubic meter and gravity in
+/// meters per second squared. The hydrostatic pressure of a water column is obtained from
+/// density × gravity × depth-in-meters and then scaled from pascals to millibars
+/// (1 millibar = 100 pascals).
 /// </remarks>
 public static class PhysicalConstants
 {
-    /// <summary>Standard gravitational acceleration (m/s²).</summary>
+    /// <summary>
+    /// Represents the standard gravitational acceleration (m/s²).
+    /// </summary>
     public const double GravityMetersPerSecondSquared = 9.80665;
 
-    /// <summary>Number of pascals in one millibar.</summary>
+    /// <summary>
+    /// Represents the number of pascals in one millibar.
+    /// </summary>
     public const double PascalsPerMillibar = 100.0;
 
-    /// <summary>Density of fresh water (kg/m³).</summary>
+    /// <summary>
+    /// Represents the density of fresh water (kg/m³).
+    /// </summary>
     public const double FreshWaterDensity = 1000.0;
 
-    /// <summary>Density of seawater (kg/m³).</summary>
+    /// <summary>
+    /// Represents the density of seawater (kg/m³).
+    /// </summary>
     public const double SaltWaterDensity = 1030.0;
 
-    /// <summary>Density of brackish water (kg/m³), taken as the mean of fresh and salt.</summary>
+    /// <summary>
+    /// Represents the density of brackish water (kg/m³), taken as the mean of fresh and salt.
+    /// </summary>
     public const double BrackishWaterDensity = 1015.0;
 
-    /// <summary>Fixed water density defined by the EN 13319 standard (kg/m³).</summary>
+    /// <summary>
+    /// Represents the fixed water density defined by the EN 13319 standard (kg/m³).
+    /// </summary>
     public const double En13319WaterDensity = 1020.0;
 
-    /// <summary>Standard atmospheric pressure at sea level (mbar).</summary>
+    /// <summary>
+    /// Represents the standard atmospheric pressure at sea level (mbar).
+    /// </summary>
     public const double SeaLevelPressureMillibar = 1013.25;
 
-    /// <summary>Standard temperature lapse rate (K/m).</summary>
+    /// <summary>
+    /// Represents the standard temperature lapse rate (K/m).
+    /// </summary>
     public const double TemperatureLapseRate = 0.0065;
 
-    /// <summary>Standard sea-level temperature (K).</summary>
+    /// <summary>
+    /// Represents the standard sea-level temperature (K).
+    /// </summary>
     public const double SeaLevelTemperatureKelvin = 288.15;
 
-    /// <summary>Molar mass of dry air (kg/mol).</summary>
+    /// <summary>
+    /// Represents the molar mass of dry air (kg/mol).
+    /// </summary>
     public const double MolarMassOfAir = 0.0289644;
 
-    /// <summary>Universal gas constant (J/(mol·K)).</summary>
+    /// <summary>
+    /// Represents the universal gas constant (J/(mol·K)).
+    /// </summary>
     public const double UniversalGasConstant = 8.31447;
 
-    /// <summary>Gets the water density, in kilograms per cubic meter, for a given salinity.</summary>
+    /// <summary>
+    /// Returns the water density, in kilograms per cubic meter, for a given salinity.
+    /// </summary>
     /// <param name="salinity">The salinity model of the water.</param>
     /// <returns>The corresponding water density in kilograms per cubic meter.</returns>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="salinity" /> is not a defined <see cref="Salinity" />
-    /// value.
+    /// <paramref name="salinity"/> is not a defined <see cref="Salinity"/> value.
     /// </exception>
     public static double WaterDensity(Salinity salinity) => salinity switch
     {
@@ -64,8 +87,8 @@ public static class PhysicalConstants
     };
 
     /// <summary>
-    /// Returns the hydrostatic pressure, in millibars, of a water column of the given
-    /// depth and salinity.
+    /// Returns the hydrostatic pressure, in millibars, of a water column of the given depth and
+    /// salinity.
     /// </summary>
     /// <param name="salinity">The salinity model of the water.</param>
     /// <param name="depthMeters">The depth of the water column, in meters.</param>
@@ -74,11 +97,13 @@ public static class PhysicalConstants
         WaterDensity(salinity) * GravityMetersPerSecondSquared * depthMeters / PascalsPerMillibar;
 
     /// <summary>
-    /// Returns the atmospheric pressure, in millibars, at a given altitude above sea
-    /// level using the barometric formula for the troposphere.
+    /// Returns the atmospheric pressure, in millibars, at a given altitude above sea level.
     /// </summary>
     /// <param name="altitudeMeters">The altitude above sea level, in meters.</param>
     /// <returns>The atmospheric pressure at that altitude, in millibars.</returns>
+    /// <remarks>
+    /// The pressure is computed with the barometric formula for the troposphere.
+    /// </remarks>
     public static double AtmosphericPressureAtAltitudeMillibar(double altitudeMeters)
     {
         var baseTerm = 1.0 - TemperatureLapseRate * altitudeMeters / SeaLevelTemperatureKelvin;

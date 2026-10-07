@@ -3,7 +3,12 @@ using Bitenovac.RemoteBuildTool.Core.Coverage;
 
 namespace Bitenovac.RemoteBuildTool.Testing;
 
-/// <summary>Reads a merged cobertura report into a measurement per package — the name a toolchain reports a project's code under.</summary>
+/// <summary>
+/// Provides methods for reading a merged Cobertura report into one measurement per package.
+/// </summary>
+/// <remarks>
+/// A package name is the name under which a toolchain reports a project's code.
+/// </remarks>
 internal static class CoverageReportReader
 {
     public static IReadOnlyDictionary<string, CoverageMeasurement> Read(string mergedReportPath)

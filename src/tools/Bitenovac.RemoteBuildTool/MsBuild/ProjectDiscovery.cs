@@ -1,12 +1,21 @@
 namespace Bitenovac.RemoteBuildTool.MsBuild;
 
-/// <summary>Finds every MSBuild project file in the repository, mirroring the old <c>discover_projects</c> shell function.</summary>
+/// <summary>
+/// Provides methods for finding every MSBuild project file in a repository.
+/// </summary>
 internal static class ProjectDiscovery
 {
     private static readonly string[] Extensions = [".csproj", ".fsproj", ".vbproj"];
     private static readonly string[] ExcludedSegments = ["bin", "obj", "artifacts"];
 
-    /// <summary>Every project file under <paramref name="repositoryRoot"/>, repository-relative and sorted.</summary>
+    /// <summary>
+    /// Returns every project file under <paramref name="repositoryRoot"/>.
+    /// </summary>
+    /// <param name="repositoryRoot">The repository root to search.</param>
+    /// <returns>
+    /// The repository-relative paths of the project files, ordered ordinally. Files under a
+    /// <c>bin</c>, <c>obj</c> or <c>artifacts</c> directory are excluded.
+    /// </returns>
     public static IReadOnlyList<string> FindRelativePaths(string repositoryRoot)
     {
         var root = Path.GetFullPath(repositoryRoot);

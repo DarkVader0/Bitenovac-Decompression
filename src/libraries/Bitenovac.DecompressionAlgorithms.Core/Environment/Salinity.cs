@@ -1,8 +1,8 @@
 ﻿namespace Bitenovac.DecompressionAlgorithms.Core.Environment;
 
 /// <summary>
-/// Specifies the density model of the water, used to convert a depth into the
-/// corresponding hydrostatic pressure.
+/// Specifies the density model of the water, used to convert a depth into the corresponding
+/// hydrostatic pressure.
 /// </summary>
 public enum Salinity
 {
@@ -22,8 +22,8 @@ public enum Salinity
     Brackish,
 
     /// <summary>
-    /// The fixed water density defined by the EN 13319 standard, used by many
-    /// dive computers so that displayed depths are comparable across devices.
+    /// The fixed water density defined by the EN 13319 standard, which many dive computers use so
+    /// that displayed depths are comparable across devices.
     /// </summary>
     EN13319
 }

@@ -4,25 +4,34 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 
 /// <summary>
-/// Represents the reserve gas assessment for a single cylinder: how much gas must remain
-/// as a reserve, how much is projected to remain at the end of the dive, and whether that
-/// projected remainder satisfies the reserve requirement. The requirement differs by the
-/// cylinder's role: a bottom-gas cylinder must retain enough gas to bring the team from
-/// the deepest point of the dive to the next breathable gas, whereas a decompression-gas
-/// cylinder must simply retain a fixed fraction of its capacity.
+/// Represents the reserve gas assessment for a single cylinder.
 /// </summary>
-/// <remarks>Instances are immutable and are produced by the reserve gas calculation.</remarks>
+/// <remarks>
+/// <para>
+/// The assessment records how much gas must remain as a reserve, how much is projected to remain
+/// at the end of the dive, and whether that projected remainder satisfies the reserve requirement.
+/// Instances are produced by the reserve gas calculation.
+/// </para>
+/// <para>
+/// The requirement differs by the cylinder's role. A bottom-gas cylinder must retain enough gas to
+/// bring the team from the deepest point of the dive to the next breathable gas, whereas a
+/// decompression-gas cylinder must simply retain a fixed fraction of its capacity.
+/// </para>
+/// </remarks>
 public sealed class CylinderReserveStatus
 {
-    /// <summary>Initializes a new instance of the <see cref="CylinderReserveStatus" /> class.</summary>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="CylinderReserveStatus"/> class.
+    /// </summary>
     /// <param name="cylinder">The cylinder to which this assessment relates.</param>
-    /// <param name="requiredReserve">The volume of gas, measured at surface conditions, that must remain as a reserve.</param>
+    /// <param name="requiredReserve">
+    /// The volume of gas, measured at surface conditions, that must remain as a reserve.
+    /// </param>
     /// <param name="projectedRemaining">
-    /// The volume of gas, measured at surface conditions, projected to remain at the end of
-    /// the dive.
+    /// The volume of gas, measured at surface conditions, projected to remain at the end of the dive.
     /// </param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="requiredReserve" /> or <paramref name="projectedRemaining" /> is negative.
+    /// <paramref name="requiredReserve"/> or <paramref name="projectedRemaining"/> is negative.
     /// </exception>
     public CylinderReserveStatus(Cylinder cylinder,
         Volume requiredReserve,
@@ -45,19 +54,33 @@ public sealed class CylinderReserveStatus
         ProjectedRemaining = projectedRemaining;
     }
 
-    /// <summary>Gets the cylinder to which this assessment relates.</summary>
+    /// <summary>
+    /// Gets the cylinder to which this assessment relates.
+    /// </summary>
     public Cylinder Cylinder { get; }
 
-    /// <summary>Gets the volume of gas, measured at surface conditions, that must remain as a reserve.</summary>
+    /// <summary>
+    /// Gets the volume of gas that must remain as a reserve.
+    /// </summary>
+    /// <value>
+    /// The required reserve, measured at surface conditions.
+    /// </value>
     public Volume RequiredReserve { get; }
 
-    /// <summary>Gets the volume of gas, measured at surface conditions, projected to remain at the end of the dive.</summary>
+    /// <summary>
+    /// Gets the volume of gas projected to remain at the end of the dive.
+    /// </summary>
+    /// <value>
+    /// The projected remainder, measured at surface conditions.
+    /// </value>
     public Volume ProjectedRemaining { get; }
 
     /// <summary>
-    /// Gets a value indicating whether the projected remaining gas satisfies the reserve
-    /// requirement, being <see langword="true" /> when the projected remainder is at least
-    /// the required reserve.
+    /// Gets a value that indicates whether the projected remaining gas satisfies the reserve requirement.
     /// </summary>
+    /// <value>
+    /// <see langword="true"/> if the projected remainder is at least the required reserve; otherwise,
+    /// <see langword="false"/>.
+    /// </value>
     public bool IsSatisfied => ProjectedRemaining.InLiter >= RequiredReserve.InLiter;
 }

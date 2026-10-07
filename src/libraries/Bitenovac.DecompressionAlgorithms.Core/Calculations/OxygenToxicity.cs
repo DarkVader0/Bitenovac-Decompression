@@ -3,29 +3,37 @@
 namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 
 /// <summary>
-/// Provides calculations of oxygen toxicity exposure: central nervous system (CNS) toxicity as a
-/// percentage of the recommended single-exposure limit, and pulmonary oxygen toxicity in oxygen
-/// tolerance units (OTU). Both depend only on the partial pressure of oxygen and the time, and
-/// are shared by every decompression model.
+/// Provides methods for computing central nervous system (CNS) and pulmonary oxygen toxicity exposure.
 /// </summary>
 /// <remarks>
-/// The core calculations take partial pressures in millibars and durations in seconds, matching
-/// the integer units used on the planning hot path; overloads taking a <see cref="Pressure" />
-/// and a <see cref="TimeSpan" /> are provided for other callers. The CNS rate is the two-line
-/// exponential fit to the logarithm of the NOAA single-exposure table used by common
-/// dive-planning software. Both calculations evaluate the exact time-integral of their relation
-/// over a segment whose partial pressure of oxygen changes linearly. Both relations are convex
-/// in the partial pressure, so evaluating either at a segment's mean understates the exposure.
+/// <para>
+/// CNS toxicity is expressed as a percentage of the recommended single-exposure limit, and
+/// pulmonary oxygen toxicity in oxygen tolerance units (OTU). Both depend only on the partial
+/// pressure of oxygen and the time, and are shared by every decompression model.
+/// </para>
+/// <para>
+/// The core calculations take partial pressures in millibars and durations in seconds, matching the
+/// integer units used on the planning hot path. Overloads taking a <see cref="Pressure"/> and a
+/// <see cref="TimeSpan"/> are provided for other callers.
+/// </para>
+/// <para>
+/// The CNS rate is the two-line exponential fit to the logarithm of the NOAA single-exposure table
+/// used by common dive-planning software. Both calculations evaluate the exact time-integral of
+/// their relation over a segment whose partial pressure of oxygen changes linearly. Both relations
+/// are convex in the partial pressure, so evaluating either at a segment's mean understates the
+/// exposure.
+/// </para>
 /// </remarks>
 public static class OxygenToxicity
 {
     /// <summary>
-    /// The partial pressure of oxygen, in millibars, at or below which no oxygen toxicity
-    /// is accrued.
+    /// The partial pressure of oxygen, in millibars, at or below which no oxygen toxicity is accrued.
     /// </summary>
     private const int ThresholdMbar = 500;
 
-    /// <summary>The exponent applied in Baker's pulmonary oxygen tolerance relation.</summary>
+    /// <summary>
+    /// The exponent applied in Baker's pulmonary oxygen tolerance relation.
+    /// </summary>
     private const double OtuExponent = 0.83;
 
     /// <summary>
@@ -34,27 +42,34 @@ public static class OxygenToxicity
     /// </summary>
     private const int BranchMbar = 1500;
 
-    /// <summary>The intercept of the lower branch of the central nervous system fit.</summary>
+    /// <summary>
+    /// The intercept of the lower branch of the central nervous system fit.
+    /// </summary>
     private const double LowerBranchIntercept = -11.7853;
 
-    /// <summary>The slope of the lower branch of the central nervous system fit, per millibar.</summary>
+    /// <summary>
+    /// The slope of the lower branch of the central nervous system fit, per millibar.
+    /// </summary>
     private const double LowerBranchSlope = 0.00193873;
 
-    /// <summary>The intercept of the upper branch of the central nervous system fit.</summary>
+    /// <summary>
+    /// The intercept of the upper branch of the central nervous system fit.
+    /// </summary>
     private const double UpperBranchIntercept = -23.6349;
 
-    /// <summary>The slope of the upper branch of the central nervous system fit, per millibar.</summary>
+    /// <summary>
+    /// The slope of the upper branch of the central nervous system fit, per millibar.
+    /// </summary>
     private const double UpperBranchSlope = 0.00980829;
 
     /// <summary>
-    /// Returns the instantaneous central nervous system oxygen toxicity rate, as a
-    /// fraction of the single-exposure limit accrued per second, for a given partial
+    /// Returns the instantaneous central nervous system oxygen toxicity rate for the specified partial
     /// pressure of oxygen.
     /// </summary>
     /// <param name="po2Mbar">The partial pressure of oxygen, in millibars.</param>
     /// <returns>
-    /// The fraction of the single-exposure limit accrued per second. A partial pressure at
-    /// or below the toxicity threshold accrues nothing and returns zero.
+    /// The fraction of the single-exposure limit accrued per second, or zero if the partial pressure
+    /// is at or below the toxicity threshold.
     /// </returns>
     public static double CnsRatePerSecond(int po2Mbar)
     {
@@ -69,34 +84,36 @@ public static class OxygenToxicity
     }
 
     /// <summary>
-    /// Returns the central nervous system oxygen toxicity accrued by breathing a gas at a
-    /// fixed partial pressure of oxygen for a given time, expressed as a percentage of the
-    /// recommended single-exposure limit.
+    /// Returns the central nervous system oxygen toxicity accrued by breathing a gas at a fixed
+    /// partial pressure of oxygen for the specified time.
     /// </summary>
     /// <param name="po2Mbar">The partial pressure of oxygen, in millibars.</param>
     /// <param name="durationSec">The duration of the exposure, in seconds.</param>
     /// <returns>
-    /// The percentage of the single-exposure central nervous system limit accrued, where a
+    /// The percentage of the recommended single-exposure central nervous system limit accrued, where a
     /// value of one hundred represents the whole limit.
     /// </returns>
     public static double CalculateCns(int po2Mbar, int durationSec) =>
         CnsRatePerSecond(po2Mbar) * durationSec * 100.0;
 
     /// <summary>
-    /// Returns the central nervous system oxygen toxicity accrued over a segment during
-    /// which the partial pressure of oxygen changes linearly from the start to the end
-    /// value, expressed as a percentage of the recommended single-exposure limit. This
-    /// evaluates the exact time-integral of the rate over the linear ramp, and is therefore
-    /// more precise than evaluating the rate at the mean partial pressure of the segment:
-    /// the rate is exponential in the partial pressure, so a mean evaluation always
-    /// understates the exposure. The portion of the ramp at or below the toxicity threshold
-    /// contributes nothing, and the change of branch in the underlying fit is integrated
-    /// across exactly.
+    /// Returns the central nervous system oxygen toxicity accrued over a segment during which the
+    /// partial pressure of oxygen changes linearly from the start to the end value.
     /// </summary>
     /// <param name="startPo2Mbar">The partial pressure of oxygen at the start of the segment, in millibars.</param>
     /// <param name="endPo2Mbar">The partial pressure of oxygen at the end of the segment, in millibars.</param>
     /// <param name="durationSec">The duration of the segment, in seconds.</param>
-    /// <returns>The percentage of the single-exposure central nervous system limit accrued over the segment.</returns>
+    /// <returns>
+    /// The percentage of the recommended single-exposure central nervous system limit accrued over the
+    /// segment.
+    /// </returns>
+    /// <remarks>
+    /// This method evaluates the exact time-integral of the rate over the linear ramp, and is therefore
+    /// more precise than evaluating the rate at the mean partial pressure of the segment. The rate is
+    /// exponential in the partial pressure, so a mean evaluation always understates the exposure. The
+    /// portion of the ramp at or below the toxicity threshold contributes nothing, and the change of
+    /// branch in the underlying fit is integrated across exactly.
+    /// </remarks>
     public static double CalculateCnsTransition(int startPo2Mbar,
         int endPo2Mbar,
         int durationSec)
@@ -121,14 +138,18 @@ public static class OxygenToxicity
     }
 
     /// <summary>
-    /// Returns the integral of the central nervous system rate with respect to the partial
-    /// pressure of oxygen, over a range that lies entirely above the toxicity threshold.
-    /// The range is split at the branch point of the underlying fit so that each branch is
-    /// integrated over the part of the range to which it applies.
+    /// Returns the integral of the central nervous system rate with respect to the partial pressure of
+    /// oxygen, over a range that lies entirely above the toxicity threshold.
     /// </summary>
     /// <param name="fromMbar">The lower bound of the range, in millibars, at or above the toxicity threshold.</param>
     /// <param name="toMbar">The upper bound of the range, in millibars.</param>
-    /// <returns>The integral of the rate over the range, in fraction of the limit per second times millibars.</returns>
+    /// <returns>
+    /// The integral of the rate over the range, in fraction of the limit per second times millibars.
+    /// </returns>
+    /// <remarks>
+    /// The range is split at the branch point of the underlying fit so that each branch is integrated
+    /// over the part of the range to which it applies.
+    /// </remarks>
     private static double RateIntegral(double fromMbar, double toMbar)
     {
         var integral = 0.0;
@@ -149,15 +170,17 @@ public static class OxygenToxicity
     }
 
     /// <summary>
-    /// Returns the integral of a single exponential branch of the fit with respect to the
-    /// partial pressure of oxygen, being the antiderivative of exp(intercept + slope × p)
-    /// evaluated between the bounds.
+    /// Returns the integral of a single exponential branch of the fit with respect to the partial
+    /// pressure of oxygen.
     /// </summary>
     /// <param name="intercept">The intercept of the branch.</param>
     /// <param name="slope">The slope of the branch, per millibar.</param>
     /// <param name="fromMbar">The lower bound of the range, in millibars.</param>
     /// <param name="toMbar">The upper bound of the range, in millibars.</param>
-    /// <returns>The integral of the branch over the range.</returns>
+    /// <returns>
+    /// The integral of the branch over the range, being the antiderivative of
+    /// exp(intercept + slope × p) evaluated between the bounds.
+    /// </returns>
     private static double BranchIntegral(double intercept,
         double slope,
         double fromMbar,
@@ -165,29 +188,31 @@ public static class OxygenToxicity
         (Math.Exp(intercept + slope * toMbar) - Math.Exp(intercept + slope * fromMbar)) / slope;
 
     /// <summary>
-    /// Returns the pulmonary oxygen toxicity, in oxygen tolerance units (OTU), accrued by
-    /// breathing a gas at a fixed partial pressure of oxygen for a given time.
+    /// Returns the pulmonary oxygen toxicity accrued by breathing a gas at a fixed partial pressure of
+    /// oxygen for the specified time.
     /// </summary>
     /// <param name="po2Mbar">The partial pressure of oxygen, in millibars.</param>
     /// <param name="durationSec">The duration of the exposure, in seconds.</param>
     /// <returns>
-    /// The oxygen tolerance units accrued. A partial pressure at or below the threshold
-    /// accrues nothing and returns zero.
+    /// The oxygen tolerance units (OTU) accrued, or zero if the partial pressure is at or below the
+    /// threshold.
     /// </returns>
     public static double CalculateOtu(int po2Mbar, int durationSec) =>
         CalculateOtuTransition(po2Mbar, po2Mbar, durationSec);
 
     /// <summary>
-    /// Returns the pulmonary oxygen toxicity, in oxygen tolerance units (OTU), accrued over
-    /// a segment during which the partial pressure of oxygen changes linearly from the
-    /// start to the end value. This evaluates the exact time-integral of Baker's oxygen
-    /// tolerance relation over the linear ramp, and is therefore more precise than either a
-    /// fixed-mean evaluation or a truncated polynomial approximation.
+    /// Returns the pulmonary oxygen toxicity accrued over a segment during which the partial pressure
+    /// of oxygen changes linearly from the start to the end value.
     /// </summary>
     /// <param name="startPo2Mbar">The partial pressure of oxygen at the start of the segment, in millibars.</param>
     /// <param name="endPo2Mbar">The partial pressure of oxygen at the end of the segment, in millibars.</param>
     /// <param name="durationSec">The duration of the segment, in seconds.</param>
-    /// <returns>The oxygen tolerance units accrued over the segment.</returns>
+    /// <returns>The oxygen tolerance units (OTU) accrued over the segment.</returns>
+    /// <remarks>
+    /// This method evaluates the exact time-integral of Baker's oxygen tolerance relation over the
+    /// linear ramp, and is therefore more precise than either a fixed-mean evaluation or a truncated
+    /// polynomial approximation.
+    /// </remarks>
     public static double CalculateOtuTransition(int startPo2Mbar,
         int endPo2Mbar,
         int durationSec)
@@ -228,29 +253,31 @@ public static class OxygenToxicity
     }
 
     /// <summary>
-    /// Returns the central nervous system oxygen toxicity accrued over a segment during
-    /// which the partial pressure of oxygen changes linearly, expressed as a percentage of
-    /// the recommended single-exposure limit.
+    /// Returns the central nervous system oxygen toxicity accrued over a segment during which the
+    /// partial pressure of oxygen changes linearly.
     /// </summary>
     /// <param name="startPo2">The partial pressure of oxygen at the start of the segment.</param>
     /// <param name="endPo2">The partial pressure of oxygen at the end of the segment.</param>
     /// <param name="duration">The duration of the segment.</param>
-    /// <returns>The percentage of the single-exposure central nervous system limit accrued over the segment.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="duration" /> is negative.</exception>
+    /// <returns>
+    /// The percentage of the recommended single-exposure central nervous system limit accrued over the
+    /// segment.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="duration"/> is negative.</exception>
     public static double CalculateCnsTransition(Pressure startPo2,
         Pressure endPo2,
         TimeSpan duration) =>
         CalculateCnsTransition(ToMbar(startPo2), ToMbar(endPo2), ToSeconds(duration));
 
     /// <summary>
-    /// Returns the pulmonary oxygen toxicity, in oxygen tolerance units (OTU), accrued over
-    /// a segment during which the partial pressure of oxygen changes linearly.
+    /// Returns the pulmonary oxygen toxicity accrued over a segment during which the partial pressure
+    /// of oxygen changes linearly.
     /// </summary>
     /// <param name="startPo2">The partial pressure of oxygen at the start of the segment.</param>
     /// <param name="endPo2">The partial pressure of oxygen at the end of the segment.</param>
     /// <param name="duration">The duration of the segment.</param>
-    /// <returns>The oxygen tolerance units accrued over the segment.</returns>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="duration" /> is negative.</exception>
+    /// <returns>The oxygen tolerance units (OTU) accrued over the segment.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="duration"/> is negative.</exception>
     public static double CalculateOtuTransition(Pressure startPo2,
         Pressure endPo2,
         TimeSpan duration) =>

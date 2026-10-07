@@ -3,9 +3,12 @@ using System.Security.Cryptography;
 namespace Bitenovac.RemoteBuildTool.Hashing;
 
 /// <summary>
-/// Hashes the assemblies of the RemoteBuildTool that is running, so every target's <c>fullHash</c> changes
-/// when the installed RemoteBuildTool does — not when a pull request edits its source.
+/// Provides methods for hashing the assemblies of the running RemoteBuildTool.
 /// </summary>
+/// <remarks>
+/// The hash is an input to every target's full hash, so every target changes when the installed
+/// tool changes, not when a pull request edits the tool's source.
+/// </remarks>
 internal static class RemoteBuildToolVersion
 {
     public static string Compute(string toolDirectory)

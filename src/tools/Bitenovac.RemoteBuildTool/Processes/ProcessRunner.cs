@@ -3,7 +3,10 @@ using System.Text;
 
 namespace Bitenovac.RemoteBuildTool.Processes;
 
-/// <summary>Runs an external process and reports its exit code, streaming or capturing its output.</summary>
+/// <summary>
+/// Provides methods for running an external process and reporting its exit code, with its output
+/// either streamed or captured.
+/// </summary>
 internal static class ProcessRunner
 {
     public static int Run(string fileName, IReadOnlyList<string> arguments, string workingDirectory, IReadOnlyDictionary<string, string>? environment = null)
@@ -14,7 +17,10 @@ internal static class ProcessRunner
         return process.ExitCode;
     }
 
-    /// <summary>Runs the process with standard output and error collected into one string, in arrival order.</summary>
+    /// <summary>
+    /// Runs a process and collects its standard output and standard error into one string, in
+    /// arrival order.
+    /// </summary>
     public static (int ExitCode, string Output) RunCaptured(string fileName, IReadOnlyList<string> arguments, string workingDirectory)
     {
         var output = new StringBuilder();

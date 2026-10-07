@@ -1,8 +1,8 @@
 ﻿namespace Bitenovac.DecompressionAlgorithms.Core.Equipment;
 
 /// <summary>
-/// Identifies the intended role of a cylinder within a dive plan, which governs
-/// when its gas is breathed and how it is considered during gas planning.
+/// Specifies the intended role of a cylinder within a dive plan, which governs when its gas is
+/// breathed and how it is considered during gas planning.
 /// </summary>
 public enum CylinderPurpose
 {
@@ -27,8 +27,8 @@ public enum CylinderPurpose
     Bailout,
 
     /// <summary>
-    /// Pure oxygen carried to replenish what the diver metabolises from the breathing
-    /// loop of a rebreather.
+    /// Pure oxygen carried to replenish what the diver metabolises from the breathing loop of a
+    /// rebreather.
     /// </summary>
     Oxygen
 }

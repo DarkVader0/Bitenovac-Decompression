@@ -3,11 +3,13 @@ using Bitenovac.RemoteBuildTool.Processes;
 namespace Bitenovac.RemoteBuildTool.Testing;
 
 /// <summary>
-/// Runs one test project by starting its own executable, collecting coverage. A
-/// Microsoft.Testing.Platform test project is compiled as an executable that hosts the test
-/// platform itself, so the apphost MSBuild reports as <c>RunCommand</c> is the runner — there is
-/// nothing to go through <c>dotnet test</c> or <c>dotnet exec</c> for.
+/// Provides methods for running one test project by starting its own executable and collecting
+/// coverage.
 /// </summary>
+/// <remarks>
+/// A Microsoft.Testing.Platform test project is compiled as an executable that hosts the test
+/// platform, so the apphost that MSBuild reports as <c>RunCommand</c> is started directly.
+/// </remarks>
 internal static class TestRunner
 {
     private const UnixFileMode ExecuteBits = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;

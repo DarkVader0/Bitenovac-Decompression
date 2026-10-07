@@ -4,7 +4,9 @@ using Bitenovac.RemoteBuildTool.Core.Planning;
 
 namespace Bitenovac.RemoteBuildTool.Core.Unit.Tests;
 
-/// <summary>Builds the graphs, hashes and coverage inputs shared by the Core tests.</summary>
+/// <summary>
+/// Provides the graphs, hashes and coverage inputs shared by the Core tests.
+/// </summary>
 internal static class TestFactory
 {
     public static ProjectId Id(string relativePath) => new(relativePath);
@@ -12,9 +14,11 @@ internal static class TestFactory
     public static ProjectEdge Edge(string from, string to) => new(Id(from), Id(to));
 
     /// <summary>
-    /// Builds a graph from "from -&gt; to, to, ..." lines. A project with no arrow has no
-    /// dependencies. Every project named on either side is included.
+    /// Creates a graph from <c>"from -&gt; to, to, ..."</c> lines.
     /// </summary>
+    /// <remarks>
+    /// A project with no arrow has no dependencies. Every project named on either side is included.
+    /// </remarks>
     public static ProjectGraph Graph(params string[] edges)
     {
         var projects = new HashSet<ProjectId>();
@@ -45,9 +49,8 @@ internal static class TestFactory
         entries.ToDictionary(e => Id(e.Project), e => (IReadOnlyList<string>)e.Inputs);
 
     /// <summary>
-    /// One own-hash input per project the graph knows about, distinct per project so two
-    /// projects never accidentally share an own hash, but stable across calls with the same
-    /// <paramref name="input"/> so the same graph rehashes identically.
+    /// Creates one own-hash input per project in the graph, distinct per project and stable across
+    /// calls with the same <paramref name="input"/>.
     /// </summary>
     public static IReadOnlyDictionary<ProjectId, IReadOnlyList<string>> UniformOwnInputs(
         ProjectGraph graph, string input = "unchanged") =>

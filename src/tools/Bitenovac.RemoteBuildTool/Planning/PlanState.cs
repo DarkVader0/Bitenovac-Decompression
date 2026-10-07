@@ -2,7 +2,10 @@ using System.Text.Json;
 
 namespace Bitenovac.RemoteBuildTool.Planning;
 
-/// <summary>The whole run's plan: one entry list per configuration, read and written as JSON.</summary>
+/// <summary>
+/// Represents the plan for a whole run: one list of entries per configuration, read and written
+/// as JSON.
+/// </summary>
 internal sealed record PlanState(Dictionary<string, List<PlanEntry>> ByConfiguration)
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };

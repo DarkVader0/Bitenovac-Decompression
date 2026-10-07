@@ -3,9 +3,8 @@ using System.Security.Cryptography;
 namespace Bitenovac.RemoteBuildTool.Hashing;
 
 /// <summary>
-/// The own-hash inputs every project shares: <c>global.json</c> and <c>nuget.config</c> govern
-/// SDK resolution and restore for the whole repository, so their content is read once and
-/// reused rather than re-read per project.
+/// Represents the own-hash inputs that every project shares: the content hashes of
+/// <c>global.json</c> and <c>nuget.config</c> at the repository root.
 /// </summary>
 internal sealed class SharedHashInputs
 {

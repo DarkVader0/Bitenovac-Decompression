@@ -3,22 +3,25 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
 /// <summary>
-/// Represents a single phase of a dive held for a fixed duration: a descent, bottom
-/// interval, ascent, decompression stop, or gas switch. Segments are the building
-/// block shared by the planned <see cref="DiveProfile" /> supplied as input and the
-/// fully expanded profile returned as a result.
+/// Represents a single phase of a dive held for a fixed duration: a descent, bottom interval,
+/// ascent, decompression stop, or gas switch.
 /// </summary>
-/// <remarks>Instances are immutable.</remarks>
+/// <remarks>
+/// Segments are the building block shared by the planned <see cref="DiveProfile"/> supplied as
+/// input and the fully expanded profile returned as a result.
+/// </remarks>
 public readonly record struct DiveSegment
 {
-    /// <summary>Initializes a new instance of the <see cref="DiveSegment" /> class.</summary>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DiveSegment"/> structure.
+    /// </summary>
     /// <param name="depth">The depth at which the segment is held, or the depth reached at its end.</param>
     /// <param name="duration">The length of time the segment lasts.</param>
     /// <param name="gas">The gas supplied from the cylinder during the segment.</param>
     /// <param name="kind">The role of the segment within the dive.</param>
     /// <param name="loop">
-    /// The breathing apparatus through which the gas is supplied. Defaults to open circuit,
-    /// in which the diver inspires the supply gas unaltered.
+    /// The breathing apparatus through which the gas is supplied. Defaults to open circuit, in
+    /// which the diver inspires the supply gas unaltered.
     /// </param>
     public DiveSegment(Depth depth,
         TimeSpan duration,
@@ -33,22 +36,32 @@ public readonly record struct DiveSegment
         Loop = loop;
     }
 
-    /// <summary>Gets the depth at which the segment is held, or the depth reached at its end.</summary>
+    /// <summary>
+    /// Gets the depth at which the segment is held, or the depth reached at its end.
+    /// </summary>
     public Depth Depth { get; }
 
-    /// <summary>Gets the length of time the segment lasts.</summary>
+    /// <summary>
+    /// Gets the length of time the segment lasts.
+    /// </summary>
     public TimeSpan Duration { get; }
 
     /// <summary>
-    /// Gets the gas supplied from the cylinder during the segment. On open circuit this is
-    /// also the gas the diver inspires; on a rebreather the loop alters it, and the inspired
-    /// mixture is obtained from <see cref="Loop" />.
+    /// Gets the gas supplied from the cylinder during the segment.
     /// </summary>
+    /// <remarks>
+    /// On open circuit this is also the gas the diver inspires. On a rebreather the loop alters it,
+    /// and the inspired mixture is obtained from <see cref="Loop"/>.
+    /// </remarks>
     public GasMixture Gas { get; }
 
-    /// <summary>Gets the role of the segment within the dive.</summary>
+    /// <summary>
+    /// Gets the role of the segment within the dive.
+    /// </summary>
     public SegmentKind Kind { get; }
 
-    /// <summary>Gets the breathing apparatus through which the gas is supplied.</summary>
+    /// <summary>
+    /// Gets the breathing apparatus through which the gas is supplied.
+    /// </summary>
     public BreathingLoop Loop { get; }
 }

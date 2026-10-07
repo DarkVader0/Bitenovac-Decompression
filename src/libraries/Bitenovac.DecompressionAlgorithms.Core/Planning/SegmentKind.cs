@@ -1,8 +1,8 @@
 ﻿namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
 /// <summary>
-/// Classifies the role of a <see cref="DiveSegment" /> within a dive profile,
-/// distinguishing planned movement, bottom time, and generated ascent phases.
+/// Specifies the role of a <see cref="DiveSegment"/> within a dive profile, distinguishing planned
+/// movement, bottom time, and generated ascent phases.
 /// </summary>
 public enum SegmentKind
 {

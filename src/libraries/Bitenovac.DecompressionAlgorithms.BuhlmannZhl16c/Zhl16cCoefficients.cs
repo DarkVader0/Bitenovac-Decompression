@@ -1,18 +1,30 @@
 namespace Bitenovac.DecompressionAlgorithms.BuhlmannZhl16c;
 
 /// <summary>
-/// Holds the published Bühlmann ZH-L16C compartment coefficients: the perfusion
-/// half-times and the linear M-value coefficients <c>a</c> and <c>b</c> for nitrogen and
-/// helium in each of the sixteen tissue compartments. Compartment 1 uses the 1b variant
-/// (5.0-minute nitrogen half-time), the variant recommended for repetitive dive planning.
-/// The <c>a</c> coefficients are stored in millibars (the published bar values multiplied
-/// by 1000) so that all model arithmetic stays in the canonical millibar unit; the
-/// <c>b</c> coefficients are dimensionless. The tables are backed by static arrays so
-/// that reading a span never allocates, in every build configuration.
+/// Provides the published Bühlmann ZH-L16C compartment coefficients.
 /// </summary>
+/// <remarks>
+/// <para>
+/// The coefficients are the perfusion half-times and the linear M-value coefficients <c>a</c> and
+/// <c>b</c> for nitrogen and helium in each of the sixteen tissue compartments. Compartment 1 uses
+/// the 1b variant (5.0-minute nitrogen half-time), the variant recommended for repetitive dive
+/// planning.
+/// </para>
+/// <para>
+/// The <c>a</c> coefficients are stored in millibars (the published bar values multiplied by 1000),
+/// so all model arithmetic stays in the canonical millibar unit. The <c>b</c> coefficients are
+/// dimensionless.
+/// </para>
+/// <para>
+/// The tables are backed by static arrays, so reading a span never allocates, in every build
+/// configuration.
+/// </para>
+/// </remarks>
 internal static class Zhl16cCoefficients
 {
-    /// <summary>The number of tissue compartments in the ZH-L16 model.</summary>
+    /// <summary>
+    /// The number of tissue compartments in the ZH-L16 model.
+    /// </summary>
     public const int CompartmentCount = 16;
 
     private static readonly double[] NitrogenHalfTimeTable =
@@ -51,21 +63,33 @@ internal static class Zhl16cCoefficients
         0.8757, 0.8903, 0.8997, 0.9073, 0.9122, 0.9171, 0.9217, 0.9267
     ];
 
-    /// <summary>Gets the nitrogen half-times, in minutes.</summary>
+    /// <summary>
+    /// Gets the nitrogen half-times, in minutes.
+    /// </summary>
     public static ReadOnlySpan<double> NitrogenHalfTimeMinutes => NitrogenHalfTimeTable;
 
-    /// <summary>Gets the nitrogen M-value coefficient <c>a</c>, in millibars.</summary>
+    /// <summary>
+    /// Gets the nitrogen M-value coefficient <c>a</c>, in millibars.
+    /// </summary>
     public static ReadOnlySpan<double> NitrogenAMillibar => NitrogenATable;
 
-    /// <summary>Gets the dimensionless nitrogen M-value coefficient <c>b</c>.</summary>
+    /// <summary>
+    /// Gets the dimensionless nitrogen M-value coefficient <c>b</c>.
+    /// </summary>
     public static ReadOnlySpan<double> NitrogenB => NitrogenBTable;
 
-    /// <summary>Gets the helium half-times, in minutes.</summary>
+    /// <summary>
+    /// Gets the helium half-times, in minutes.
+    /// </summary>
     public static ReadOnlySpan<double> HeliumHalfTimeMinutes => HeliumHalfTimeTable;
 
-    /// <summary>Gets the helium M-value coefficient <c>a</c>, in millibars.</summary>
+    /// <summary>
+    /// Gets the helium M-value coefficient <c>a</c>, in millibars.
+    /// </summary>
     public static ReadOnlySpan<double> HeliumAMillibar => HeliumATable;
 
-    /// <summary>Gets the dimensionless helium M-value coefficient <c>b</c>.</summary>
+    /// <summary>
+    /// Gets the dimensionless helium M-value coefficient <c>b</c>.
+    /// </summary>
     public static ReadOnlySpan<double> HeliumB => HeliumBTable;
 }

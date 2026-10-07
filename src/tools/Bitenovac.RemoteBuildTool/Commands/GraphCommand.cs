@@ -3,7 +3,10 @@ using Bitenovac.RemoteBuildTool.Toolchains;
 
 namespace Bitenovac.RemoteBuildTool.Commands;
 
-/// <summary>Diagnostic: prints the project reference graph across every toolchain, for both configurations.</summary>
+/// <summary>
+/// Provides the <c>graph</c> diagnostic command, which prints the project reference graph of every
+/// toolchain for both configurations.
+/// </summary>
 internal static class GraphCommand
 {
     public static int Run(PipelineOptions options, PipelineOutput output)

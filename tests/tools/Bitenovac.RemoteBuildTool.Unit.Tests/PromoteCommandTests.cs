@@ -136,7 +136,9 @@ public sealed class PromoteCommandTests
         Assert.True(mainStore.Contains(project, "Release"));
     }
 
-    /// <summary>A fresh directory laid out the way a staged entry is, holding one distinguishing byte string.</summary>
+    /// <summary>
+    /// Creates a new directory laid out as a staged entry, holding the specified content.
+    /// </summary>
     private static string StagedFiles(TemporaryDirectory directory, string content, bool includeTestResult = false)
     {
         var source = Path.Combine(directory.Path, $"staged-{Guid.NewGuid():N}");

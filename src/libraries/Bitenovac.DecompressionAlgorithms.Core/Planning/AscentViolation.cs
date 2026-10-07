@@ -3,21 +3,24 @@
 namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
 /// <summary>
-/// Records a single inter-level ascent within a multi-level dive that would incur a
-/// decompression obligation and is not permitted. The decompression model's ceiling at that
-/// point was deeper than the intended depth, so a decompression stop would be required
-/// before the shallower depth could be reached. The planner marks the plan invalid rather
-/// than omitting the required stop.
+/// Represents a single inter-level ascent within a multi-level dive that would incur a
+/// decompression obligation and is not permitted.
 /// </summary>
-/// <remarks>Instances are immutable.</remarks>
+/// <remarks>
+/// The decompression model's ceiling at that point was deeper than the intended depth, so a
+/// decompression stop would be required before the shallower depth could be reached. The planner
+/// marks the plan invalid rather than omitting the required stop.
+/// </remarks>
 public sealed class AscentViolation
 {
-    /// <summary>Initializes a new instance of the <see cref="AscentViolation" /> class.</summary>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AscentViolation"/> class.
+    /// </summary>
     /// <param name="fromDepth">The depth from which the inter-level ascent begins.</param>
     /// <param name="toDepth">The intended shallower depth of the inter-level ascent.</param>
     /// <param name="ceiling">
     /// The decompression ceiling at the point of the ascent, which is deeper than
-    /// <paramref name="toDepth" />.
+    /// <paramref name="toDepth"/>.
     /// </param>
     public AscentViolation(Depth fromDepth,
         Depth toDepth,
@@ -28,12 +31,21 @@ public sealed class AscentViolation
         Ceiling = ceiling;
     }
 
-    /// <summary>Gets the depth from which the inter-level ascent begins.</summary>
+    /// <summary>
+    /// Gets the depth from which the inter-level ascent begins.
+    /// </summary>
     public Depth FromDepth { get; }
 
-    /// <summary>Gets the intended shallower depth of the inter-level ascent.</summary>
+    /// <summary>
+    /// Gets the intended shallower depth of the inter-level ascent.
+    /// </summary>
     public Depth ToDepth { get; }
 
-    /// <summary>Gets the decompression ceiling at the point of the ascent, which is deeper than the intended depth.</summary>
+    /// <summary>
+    /// Gets the decompression ceiling at the point of the ascent.
+    /// </summary>
+    /// <value>
+    /// The ceiling, which is deeper than <see cref="ToDepth"/>.
+    /// </value>
     public Depth Ceiling { get; }
 }

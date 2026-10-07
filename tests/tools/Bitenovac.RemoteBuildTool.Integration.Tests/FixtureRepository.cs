@@ -4,9 +4,7 @@ using Bitenovac.RemoteBuildTool.Processes;
 namespace Bitenovac.RemoteBuildTool.Integration.Tests;
 
 /// <summary>
-/// A throwaway repository on disk — one library, one test project covering it — laid out closely
-/// enough to this one that RemoteBuildTool treats it the same way, and small enough that restoring and
-/// compiling it for real is affordable in a test.
+/// Represents a temporary repository on disk with one library and one test project that covers it.
 /// </summary>
 internal sealed class FixtureRepository : IDisposable
 {
@@ -26,10 +24,14 @@ internal sealed class FixtureRepository : IDisposable
 
     public string Root { get; }
 
-    /// <summary>Options pointing at this fixture, with both stores inside it.</summary>
+    /// <summary>
+    /// Gets the options that point at this fixture.
+    /// </summary>
     public PipelineOptions Options { get; private set; }
 
-    /// <summary>Writes a fixture whose test project puts it in one of the states the pipeline has to handle.</summary>
+    /// <summary>
+    /// Creates a fixture whose test project behaves as the specified suite.
+    /// </summary>
     /// <param name="suite">What the fixture's test project does when it runs.</param>
     public static FixtureRepository Create(TestSuite suite = TestSuite.FullyCovering)
     {
@@ -44,7 +46,9 @@ internal sealed class FixtureRepository : IDisposable
         return repository;
     }
 
-    /// <summary>Writes the repository-level files but no projects at all.</summary>
+    /// <summary>
+    /// Creates a fixture with the repository-level files and no projects.
+    /// </summary>
     public static FixtureRepository CreateEmpty()
     {
         var repository = new FixtureRepository(
@@ -55,8 +59,7 @@ internal sealed class FixtureRepository : IDisposable
     }
 
     /// <summary>
-    /// Removes every build output and materialisation marker, leaving the sources — what a second
-    /// CI job's checkout of the same commit looks like.
+    /// Removes every build output and materialization marker, as in a fresh checkout of the same commit.
     /// </summary>
     public void ResetWorkspace()
     {
@@ -77,7 +80,9 @@ internal sealed class FixtureRepository : IDisposable
         }
     }
 
-    /// <summary>Points this fixture at a store root outside it, as a second CI job's checkout would be.</summary>
+    /// <summary>
+    /// Replaces the specified options of this fixture and returns it.
+    /// </summary>
     public FixtureRepository With(bool? cacheless = null, string? prStoreRoot = null, bool? coverageHtml = null)
     {
         Options = Options with
@@ -90,7 +95,9 @@ internal sealed class FixtureRepository : IDisposable
         return this;
     }
 
-    /// <summary>Replaces a file under the repository, as an edit between two runs would.</summary>
+    /// <summary>
+    /// Writes a file under the repository, replacing any existing file.
+    /// </summary>
     public void Write(string relativePath, string content)
     {
         var path = Path.Combine(Root, relativePath.Replace('/', Path.DirectorySeparatorChar));
@@ -98,7 +105,9 @@ internal sealed class FixtureRepository : IDisposable
         File.WriteAllText(path, content);
     }
 
-    /// <summary>The absolute path of one of the fixture's files or directories.</summary>
+    /// <summary>
+    /// Returns the absolute path of one of the fixture's files or directories.
+    /// </summary>
     public string Combine(string relativePath) =>
         Path.Combine(Root, relativePath.Replace('/', Path.DirectorySeparatorChar));
 
@@ -256,10 +265,7 @@ internal sealed class FixtureRepository : IDisposable
     }
 
     /// <summary>
-    /// Installs the fixture's own copy of reportgenerator. The coverage gate shells out to
-    /// <c>dotnet reportgenerator</c> from the repository root, and a tool manifest is found by
-    /// walking up from there — which, for a directory under the system temporary folder, finds
-    /// nothing this repository has installed.
+    /// Installs the fixture's own copy of the local tools, including <c>reportgenerator</c>.
     /// </summary>
     private void RestoreLocalTools()
     {
@@ -281,18 +287,28 @@ internal sealed class FixtureRepository : IDisposable
     }
 }
 
-/// <summary>What a fixture's test project does when the pipeline runs it.</summary>
+/// <summary>
+/// Specifies what a fixture's test project does when the pipeline runs it.
+/// </summary>
 internal enum TestSuite
 {
-    /// <summary>Exercises every line and branch of the library, so the coverage gate passes.</summary>
+    /// <summary>
+    /// Exercises every line and branch of the library, so the coverage gate passes.
+    /// </summary>
     FullyCovering,
 
-    /// <summary>Leaves one branch of the library alone, which puts it below a policy of 100.</summary>
+    /// <summary>
+    /// Leaves one branch of the library uncovered, which puts it below a policy of 100.
+    /// </summary>
     PartiallyCovering,
 
-    /// <summary>Asserts something untrue, so the run reports a failing test.</summary>
+    /// <summary>
+    /// Asserts something untrue, so the run reports a failing test.
+    /// </summary>
     Failing,
 
-    /// <summary>Declares no tests at all — exit code 8, a warning rather than a failure.</summary>
+    /// <summary>
+    /// Declares no tests, so the run exits with code 8, which is a warning rather than a failure.
+    /// </summary>
     NoTests,
 }

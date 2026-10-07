@@ -8,10 +8,13 @@ using Bitenovac.RemoteBuildTool.Toolchains;
 namespace Bitenovac.RemoteBuildTool.Commands;
 
 /// <summary>
-/// Discovers every project of every toolchain, lets each toolchain verify and restore its own,
-/// hashes, and decides hit or miss against <c>main</c> for both configurations. Everything later
-/// stages need is written to <see cref="PipelineOptions.PlanFile"/>.
+/// Provides the <c>plan</c> pipeline command.
 /// </summary>
+/// <remarks>
+/// The command discovers the projects of every toolchain, has each toolchain verify and restore
+/// its own projects, hashes them, and decides hit or miss against <c>main</c> for both
+/// configurations. Everything later stages need is written to <see cref="PipelineOptions.PlanFile"/>.
+/// </remarks>
 internal static class PlanCommand
 {
     public static int Run(PipelineOptions options, PipelineOutput output)

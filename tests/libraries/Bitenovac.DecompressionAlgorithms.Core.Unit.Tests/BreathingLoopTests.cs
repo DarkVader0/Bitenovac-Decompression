@@ -8,18 +8,26 @@ public sealed class BreathingLoopTests
 {
     private const int Precision = 6;
 
-    /// <summary>Trimix 18/45, so that the two inert gases are present in an uneven ratio.</summary>
+    /// <summary>
+    /// Trimix 18/45, whose two inert gases are present in an uneven ratio.
+    /// </summary>
     private static readonly GasMixture Trimix1845 = GasMixture.FromPercent(18, 45);
 
     private static readonly GasMixture Nitrox32 = GasMixture.FromPercent(32, 0);
 
-    /// <summary>The ambient pressure at 40 m in fresh water at a surface pressure of one bar.</summary>
+    /// <summary>
+    /// The ambient pressure at 40 m in fresh water at a surface pressure of one bar.
+    /// </summary>
     private static readonly Pressure At40Meters = Pressure.FromMillibar(4922.66);
 
-    /// <summary>The ambient pressure at 30 m in fresh water at a surface pressure of one bar.</summary>
+    /// <summary>
+    /// The ambient pressure at 30 m in fresh water at a surface pressure of one bar.
+    /// </summary>
     private static readonly Pressure At30Meters = Pressure.FromMillibar(3941.995);
 
-    /// <summary>The ambient pressure at 100 m in fresh water at a surface pressure of one bar.</summary>
+    /// <summary>
+    /// The ambient pressure at 100 m in fresh water at a surface pressure of one bar.
+    /// </summary>
     private static readonly Pressure At100Meters = Pressure.FromMillibar(10806.65);
 
     [Fact]

@@ -9,16 +9,18 @@ using Bitenovac.RemoteBuildTool.Toolchains;
 namespace Bitenovac.RemoteBuildTool.Commands;
 
 /// <summary>
-/// Runs — or reuses — every selected test project's result, then gates coverage on Debug.
-/// A test project whose plan decision is a hit and whose own
-/// <c>&lt;CacheTestResults&gt;</c> policy allows it reuses its cached cobertura report straight
-/// from <c>main</c> rather than re-running: the hit means its fullHash, and by construction its
-/// own hash too, are unchanged from the stored entry, so the result <c>main</c> holds is exactly
-/// what re-running would produce.
+/// Provides the <c>test</c> pipeline command, which runs or reuses the result of every selected
+/// test project and then, for Debug, gates coverage.
 /// </summary>
+/// <remarks>
+/// A test project whose plan decision is a hit and whose <c>&lt;CacheTestResults&gt;</c> policy
+/// allows it reuses its cached Cobertura report from <c>main</c> instead of running again.
+/// </remarks>
 internal static class TestCommand
 {
-    /// <summary>The part of a stored entry holding a cached test result.</summary>
+    /// <summary>
+    /// The path prefixes, within a stored entry, of a cached test result.
+    /// </summary>
     private static readonly string[] TestResultPrefixes = ["tests/"];
 
     public static int Run(PipelineOptions options, string configuration, PipelineOutput output)

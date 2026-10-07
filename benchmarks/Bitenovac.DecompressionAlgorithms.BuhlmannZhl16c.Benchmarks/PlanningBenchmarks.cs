@@ -8,11 +8,18 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.Zhl16c.Benchmarks;
 
 /// <summary>
-/// Measures the steady-state cost of the ZH-L16C model on a warmed algorithm instance:
-/// beginning the dive, loading the working phase, querying the ceiling, and generating
-/// the final ascent. The <see cref="MemoryDiagnoserAttribute" /> column is the contract
-/// under test — a warmed instance must allocate zero bytes per planned dive.
+/// Measures the steady-state cost of the ZH-L16C model on a warmed algorithm instance.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Each run begins the dive, loads the working phase, queries the ceiling, and generates the final
+/// ascent.
+/// </para>
+/// <para>
+/// The <see cref="MemoryDiagnoserAttribute"/> column is the contract under test. A warmed instance
+/// must allocate zero bytes per planned dive.
+/// </para>
+/// </remarks>
 [MemoryDiagnoser]
 [ShortRunJob]
 public class PlanningBenchmarks

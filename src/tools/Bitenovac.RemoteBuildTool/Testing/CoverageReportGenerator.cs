@@ -3,10 +3,8 @@ using Bitenovac.RemoteBuildTool.Processes;
 namespace Bitenovac.RemoteBuildTool.Testing;
 
 /// <summary>
-/// Merges every cobertura report produced this run into one, via the <c>reportgenerator</c>
-/// local tool. Each test project exercises only part of a library, and coverlet writes the
-/// source path differently depending on which project produced the report, so a merge keyed on
-/// file path double-counts every line without this step.
+/// Provides methods for merging every Cobertura report produced in this run into one, using the
+/// <c>reportgenerator</c> local tool.
 /// </summary>
 internal static class CoverageReportGenerator
 {

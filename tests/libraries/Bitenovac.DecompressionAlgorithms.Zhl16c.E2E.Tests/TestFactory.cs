@@ -8,17 +8,12 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.Zhl16c.E2E.Tests;
 
 /// <summary>
-/// Builds the fully specified inputs shared by the real-world planner tests, so that every
-/// scenario states only its deviations from a common technical baseline.
+/// Provides the fully specified inputs shared by the real-world planner tests.
 /// </summary>
 internal static class TestFactory
 {
     /// <summary>
-    /// Creates the settings for one scenario. The defaults describe a common technical
-    /// baseline — sea level at 1 bar, salt water, 18 m/min descent, 9/9/6/3 m/min ascent
-    /// bands, SAC 18/14 L/min, pO2 limits 1.4/1.6 bar, 40 bar reserve at stress factor 2
-    /// for a two-diver team, one-minute stop rounding, two-minute gas switches, last stop
-    /// at six meters — and every test states only its deviations.
+    /// Creates the settings for one scenario, defaulting to a common technical baseline.
     /// </summary>
     public static DivePlanSettings CreateSettings(double surfacePressureMillibar = 1000,
         Salinity salinity = Salinity.Salt,
@@ -78,7 +73,9 @@ internal static class TestFactory
             oxygenBreaks,
             oxygenIsNarcotic);
 
-    /// <summary>Creates one cylinder from the mix in percent and the size and fill.</summary>
+    /// <summary>
+    /// Creates one cylinder from its mix in percent, its size and its fill pressure.
+    /// </summary>
     public static Cylinder CreateCylinder(double percentO2,
         double percentHe,
         double sizeLiter,
@@ -87,7 +84,9 @@ internal static class TestFactory
         new(GasMixture.FromPercent(percentO2, percentHe), Volume.FromLiter(sizeLiter),
             Pressure.FromBar(startPressureBar), purpose);
 
-    /// <summary>Plans the requested dive with a fresh algorithm instance.</summary>
+    /// <summary>
+    /// Plans the requested dive with a new algorithm instance.
+    /// </summary>
     public static DecoPlan CreatePlan(DivePlanRequest request,
         double gradientFactorLow,
         double gradientFactorHigh) =>
@@ -98,15 +97,17 @@ internal static class TestFactory
         new(levels.Select(static level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
             TimeSpan.FromMinutes(level.Minutes), GasMixture.Air, SegmentKind.Bottom)));
 
-    /// <summary>Builds a profile whose every level is breathed through the same apparatus.</summary>
+    /// <summary>
+    /// Creates a profile whose every level is breathed through the same apparatus.
+    /// </summary>
     public static DiveProfile CreateProfile(BreathingLoop loop,
         params (double DepthMeter, double Minutes)[] levels) =>
         new(levels.Select(level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
             TimeSpan.FromMinutes(level.Minutes), GasMixture.Air, SegmentKind.Bottom, loop)));
 
     /// <summary>
-    /// Builds a profile whose levels are breathed through different apparatus, so that a
-    /// bailout onto open circuit part way through a dive can be planned.
+    /// Creates a profile whose levels are breathed through different apparatus, such as a bailout
+    /// onto open circuit part way through a dive.
     /// </summary>
     public static DiveProfile CreateProfile(
         params (double DepthMeter, double Minutes, BreathingLoop Loop)[] levels) =>

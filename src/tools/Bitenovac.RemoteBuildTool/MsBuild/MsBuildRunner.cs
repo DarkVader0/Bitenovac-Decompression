@@ -2,7 +2,10 @@ using Bitenovac.RemoteBuildTool.Processes;
 
 namespace Bitenovac.RemoteBuildTool.MsBuild;
 
-/// <summary>Restores or builds a set of projects through a <see cref="SyntheticSolution"/>.</summary>
+/// <summary>
+/// Provides methods for restoring or building a set of projects through a
+/// <see cref="SyntheticSolution"/>.
+/// </summary>
 internal static class MsBuildRunner
 {
     public static int Restore(string repositoryRoot, IEnumerable<string> projectFullPaths, string configuration, string solutionPath)

@@ -5,8 +5,8 @@ using Bitenovac.RemoteBuildTool.Testing;
 namespace Bitenovac.RemoteBuildTool.Integration.Tests;
 
 /// <summary>
-/// The ways a real run goes wrong: code that does not compile, tests that fail, a suite with
-/// nothing in it, and a report that cannot be merged.
+/// Tests the ways a real run goes wrong: code that does not compile, tests that fail, a suite with
+/// no tests, and a report that cannot be merged.
 /// </summary>
 public sealed class FailurePathIntegrationTests
 {

@@ -3,18 +3,23 @@ using System.Text.Json;
 namespace Bitenovac.RemoteBuildTool.Hashing;
 
 /// <summary>
-/// Reads a project's fully resolved package closure from <c>obj/project.assets.json</c>,
-/// written by <c>dotnet restore</c>. This is why <c>plan</c> restores before it hashes: with
-/// <c>CentralPackageTransitivePinningEnabled</c>, a project can be affected by a package it
-/// never directly references — the resolved closure is the only place that shows the real,
-/// final set of package/version pairs a project compiles against.
+/// Provides methods for reading a project's resolved package closure from
+/// <c>obj/project.assets.json</c>.
 /// </summary>
+/// <remarks>
+/// The assets file is written by <c>dotnet restore</c>, so the project must be restored before it
+/// is read.
+/// </remarks>
 internal static class PackageClosureReader
 {
     /// <summary>
-    /// One <c>"package:Id/Version"</c> entry per library in the resolved closure, or empty when
-    /// the project has not been restored (declares no packages at all, or restore has not run).
+    /// Reads the resolved package closure of the specified project.
     /// </summary>
+    /// <param name="projectFullPath">The full path of the project file.</param>
+    /// <returns>
+    /// One <c>"package:Id/Version"</c> entry per library in the closure, ordered ordinally, or an
+    /// empty list if the project has no assets file.
+    /// </returns>
     public static IReadOnlyList<string> Read(string projectFullPath)
     {
         var assetsPath = Path.Combine(Path.GetDirectoryName(projectFullPath)!, "obj", "project.assets.json");

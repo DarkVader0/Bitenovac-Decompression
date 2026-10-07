@@ -3,12 +3,20 @@ using Bitenovac.RemoteBuildTool.Core.Graph;
 namespace Bitenovac.RemoteBuildTool.Toolchains;
 
 /// <summary>
-/// Orders toolchains so each builds after every toolchain its projects reference. Each toolchain
-/// builds all of its misses in one pass, so this order is the whole cross-language build order.
+/// Provides methods for ordering toolchains so that each builds after every toolchain its projects
+/// reference.
 /// </summary>
+/// <remarks>
+/// Each toolchain builds all of its misses in one pass, so this order is the whole cross-language
+/// build order.
+/// </remarks>
 internal static class ToolchainOrder
 {
+    /// <summary>
+    /// Returns the names of the toolchains of the specified projects in build order.
+    /// </summary>
     /// <param name="projects">Every project, with its toolchain and the projects it references.</param>
+    /// <returns>The toolchain names, each one after every toolchain its projects reference.</returns>
     /// <exception cref="InvalidOperationException">Two or more toolchains reference each other in a cycle.</exception>
     public static IReadOnlyList<string> Resolve(IReadOnlyCollection<(ProjectId Project, string Toolchain, IReadOnlyList<ProjectId> References)> projects)
     {

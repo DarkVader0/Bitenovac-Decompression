@@ -6,43 +6,54 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
 /// <summary>
-/// Represents the result of a decompression planning calculation: the fully expanded
-/// dive profile including descent, working ascent, bottom, and decompression stop
-/// segments, the gas consumed from each cylinder, the total runtime, the per-cylinder
-/// reserve gas assessment, the accrued oxygen toxicity exposure, and whether the plan is
-/// valid. A plan is invalid when one or more planned inter-level ascents would incur a
-/// decompression obligation; such ascents are recorded so that the diver can amend the
-/// profile.
+/// Represents the result of a decompression planning calculation.
 /// </summary>
-/// <remarks>Instances are immutable; the expanded segments, gas usage, and violations are copied on construction.</remarks>
+/// <remarks>
+/// <para>
+/// The plan holds the fully expanded dive profile including descent, working ascent, bottom, and
+/// decompression stop segments, the gas consumed from each cylinder, the total runtime, the
+/// per-cylinder reserve gas assessment, the accrued oxygen toxicity exposure, and whether the plan
+/// is valid.
+/// </para>
+/// <para>
+/// A plan is invalid when one or more planned inter-level ascents would incur a decompression
+/// obligation. Such ascents are recorded in <see cref="Violations"/> so that the diver can amend
+/// the profile.
+/// </para>
+/// <para>
+/// The expanded segments, gas usage, and violations are copied on construction.
+/// </para>
+/// </remarks>
 public sealed class DecoPlan
 {
     private readonly DiveSegment[] _expandedSegments;
     private readonly CylinderGasUsage[] _gasUsage;
     private readonly AscentViolation[] _violations;
 
-    /// <summary>Initializes a new instance of the <see cref="DecoPlan" /> class.</summary>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DecoPlan"/> class.
+    /// </summary>
     /// <param name="expandedSegments">The fully expanded sequence of dive segments.</param>
     /// <param name="gasUsage">The gas consumed from each cylinder over the dive.</param>
     /// <param name="totalRuntime">The total runtime of the dive, from leaving the surface to returning to it.</param>
     /// <param name="reserveGas">The per-cylinder reserve gas assessment for the dive.</param>
     /// <param name="centralNervousSystemFraction">
-    /// The accrued central nervous system oxygen toxicity, as a fraction of the
-    /// single-exposure limit.
+    /// The accrued central nervous system oxygen toxicity, as a fraction of the single-exposure
+    /// limit.
     /// </param>
     /// <param name="oxygenToleranceUnits">The accrued pulmonary oxygen toxicity, in oxygen tolerance units.</param>
     /// <param name="violations">The inter-level ascents, if any, that would incur a decompression obligation.</param>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="expandedSegments" />, <paramref name="gasUsage" />, <paramref name="reserveGas" />, or
-    /// <paramref name="violations" /> is <see langword="null" />.
+    /// <paramref name="expandedSegments"/>, <paramref name="gasUsage"/>, <paramref name="reserveGas"/>, or
+    /// <paramref name="violations"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="expandedSegments" /> is empty, or <paramref name="gasUsage" /> or
-    /// <paramref name="violations" /> contains a <see langword="null" /> entry.
+    /// <paramref name="expandedSegments"/> is empty, or <paramref name="gasUsage"/> or
+    /// <paramref name="violations"/> contains a <see langword="null"/> entry.
     /// </exception>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="totalRuntime" /> is negative, <paramref name="centralNervousSystemFraction" /> is negative, or
-    /// <paramref name="oxygenToleranceUnits" /> is negative.
+    /// <paramref name="totalRuntime"/> is negative, <paramref name="centralNervousSystemFraction"/> is negative, or
+    /// <paramref name="oxygenToleranceUnits"/> is negative.
     /// </exception>
     public DecoPlan(
         IEnumerable<DiveSegment> expandedSegments,
@@ -103,44 +114,73 @@ public sealed class DecoPlan
         OxygenToleranceUnits = oxygenToleranceUnits;
     }
 
-    /// <summary>Gets the fully expanded sequence of dive segments, in the order they occur.</summary>
+    /// <summary>
+    /// Gets the fully expanded sequence of dive segments, in the order they occur.
+    /// </summary>
     public IReadOnlyList<DiveSegment> ExpandedSegments => _expandedSegments;
 
-    /// <summary>Gets the gas consumed from each cylinder over the dive.</summary>
+    /// <summary>
+    /// Gets the gas consumed from each cylinder over the dive.
+    /// </summary>
     public IReadOnlyList<CylinderGasUsage> GasUsage => _gasUsage;
 
-    /// <summary>Gets the total runtime of the dive, from leaving the surface to returning to it.</summary>
+    /// <summary>
+    /// Gets the total runtime of the dive, from leaving the surface to returning to it.
+    /// </summary>
     public TimeSpan TotalRuntime { get; }
 
-    /// <summary>Gets the per-cylinder reserve gas assessment for the dive.</summary>
+    /// <summary>
+    /// Gets the per-cylinder reserve gas assessment for the dive.
+    /// </summary>
     public ReserveGasResult ReserveGas { get; }
 
-    /// <summary>Gets the accrued central nervous system oxygen toxicity, as a fraction of the single-exposure limit.</summary>
+    /// <summary>
+    /// Gets the accrued central nervous system oxygen toxicity.
+    /// </summary>
+    /// <value>
+    /// The accrued exposure, as a fraction of the single-exposure limit.
+    /// </value>
     public double CentralNervousSystemFraction { get; }
 
-    /// <summary>Gets the accrued pulmonary oxygen toxicity, in oxygen tolerance units.</summary>
+    /// <summary>
+    /// Gets the accrued pulmonary oxygen toxicity.
+    /// </summary>
+    /// <value>
+    /// The accrued exposure, in oxygen tolerance units.
+    /// </value>
     public double OxygenToleranceUnits { get; }
 
-    /// <summary>Gets the inter-level ascents that would incur a decompression obligation.</summary>
+    /// <summary>
+    /// Gets the inter-level ascents that would incur a decompression obligation.
+    /// </summary>
     public IReadOnlyList<AscentViolation> Violations => _violations;
 
     /// <summary>
-    /// Gets a value indicating whether the plan is valid, being <see langword="true" /> when
-    /// no planned inter-level ascent would incur a decompression obligation.
+    /// Gets a value that indicates whether the plan is valid.
     /// </summary>
+    /// <value>
+    /// <see langword="true"/> if no planned inter-level ascent would incur a decompression
+    /// obligation; otherwise, <see langword="false"/>.
+    /// </value>
     public bool IsValid => _violations.Length == 0;
 
     /// <summary>
-    /// Returns a human-readable summary of the plan: a header with the validity and total
-    /// runtime, a schedule table with one line per phase showing the kind, depth, duration,
-    /// runtime, and breathing gas, followed by the oxygen exposure, the per-cylinder gas
-    /// usage, and the reserve assessment. Durations and runtimes are rounded to whole
-    /// minutes for display. Consecutive ascent segments are merged into a single line
-    /// ending at the depth where the ascent pauses, so intermediate stop depths that are
-    /// passed without holding do not appear. The output is formatted with the invariant
-    /// culture.
+    /// Returns a human-readable summary of the plan.
     /// </summary>
     /// <returns>The multi-line summary of the plan.</returns>
+    /// <remarks>
+    /// <para>
+    /// The summary contains a header with the validity and total runtime, and a schedule table
+    /// with one line per phase showing the kind, depth, duration, runtime, and breathing gas. The
+    /// oxygen exposure, the per-cylinder gas usage, and the reserve assessment follow.
+    /// </para>
+    /// <para>
+    /// Durations and runtimes are rounded to whole minutes for display. Consecutive ascent segments
+    /// are merged into a single line ending at the depth where the ascent pauses, so intermediate
+    /// stop depths that are passed without holding do not appear. The output is formatted with the
+    /// invariant culture.
+    /// </para>
+    /// </remarks>
     public override string ToString()
     {
         var builder = new StringBuilder();

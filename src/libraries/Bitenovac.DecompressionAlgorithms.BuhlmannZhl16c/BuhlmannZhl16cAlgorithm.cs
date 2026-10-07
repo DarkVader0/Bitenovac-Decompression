@@ -8,34 +8,38 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.BuhlmannZhl16c;
 
 /// <summary>
-/// The Bühlmann ZH-L16C dissolved-gas decompression model with gradient factors.
+/// Represents the Bühlmann ZH-L16C dissolved-gas decompression model with gradient factors.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Sixteen tissue compartments track dissolved nitrogen and helium. Constant-depth segments load
-/// them with the instantaneous (Haldane) exponential and depth-changing segments with the
-/// Schreiner equation; the decompression ceiling is the deepest tolerated ambient pressure over
+/// them with the instantaneous (Haldane) exponential, and depth-changing segments with the
+/// Schreiner equation. The decompression ceiling is the deepest tolerated ambient pressure over
 /// all compartments under the gradient-factor-reduced M-values. All arithmetic is in millibars
 /// and meters.
+/// </para>
 /// <para>
-/// Repetitive dives need no stored state: <see cref="BeginDive" /> replays the request's prior
-/// dives — working phase, generated final ascent and surface interval, each under that dive's
-/// own settings — to reconstruct the residual tissue loading.
+/// Repetitive dives need no stored state. <see cref="BeginDive"/> replays the request's prior
+/// dives to reconstruct the residual tissue loading. Each prior dive's working phase, generated
+/// final ascent, and surface interval are replayed under that dive's own settings.
 /// </para>
 /// <para>
 /// An instance plans one dive at a time and is not thread-safe. The model state and the returned
-/// final-ascent list are pooled and reused, so <see cref="BeginDive" /> invalidates state
-/// previously returned by this instance and <see cref="CalculateFinalAscent" /> invalidates its
+/// final-ascent list are pooled and reused, so <see cref="BeginDive"/> invalidates state
+/// previously returned by this instance and <see cref="CalculateFinalAscent"/> invalidates its
 /// previously returned list. A warmed instance allocates nothing on the heap while planning.
 /// </para>
 /// <para>
 /// The gradient-factor slope is anchored at the first decompression stop: the low factor applies
 /// there and the high factor at the surface, interpolated linearly by depth.
-/// <see cref="CurrentCeiling" /> reports the ceiling at the low factor.
+/// <see cref="CurrentCeiling"/> reports the ceiling at the low factor.
 /// </para>
 /// </remarks>
 public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
 {
-    /// <summary>Bühlmann's alveolar water vapor pressure convention, in millibars.</summary>
+    /// <summary>
+    /// Bühlmann's alveolar water vapor pressure convention, in millibars.
+    /// </summary>
     private const double WaterVaporPressureMillibar = 62.7;
 
     private const double Ln2 = 0.6931471805599453;
@@ -55,12 +59,15 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     private readonly double _gradientFactorLow;
     private readonly BuhlmannState _state = new();
 
-    /// <summary>Initializes a new instance of the <see cref="BuhlmannZhl16cAlgorithm" /> class.</summary>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BuhlmannZhl16cAlgorithm"/> class with the
+    /// specified gradient factors.
+    /// </summary>
     /// <param name="gradientFactorLow">The gradient factor applied at the first decompression stop, in (0, 1].</param>
     /// <param name="gradientFactorHigh">The gradient factor applied at the surface, in (0, 1].</param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="gradientFactorLow" /> or <paramref name="gradientFactorHigh" /> is outside (0, 1], or
-    /// <paramref name="gradientFactorLow" /> exceeds <paramref name="gradientFactorHigh" />.
+    /// <paramref name="gradientFactorLow"/> or <paramref name="gradientFactorHigh"/> is outside (0, 1], or
+    /// <paramref name="gradientFactorLow"/> exceeds <paramref name="gradientFactorHigh"/>.
     /// </exception>
     public BuhlmannZhl16cAlgorithm(double gradientFactorLow, double gradientFactorHigh)
     {
@@ -87,20 +94,28 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Begins a dive: the tissues are equilibrated to breathing air at the surface
-    /// pressure of the first dive of the series, every prior dive in the request is
-    /// replayed — its working phase, its generated final ascent, and its surface interval,
-    /// each under that dive's own settings — and the state is switched to the environment
-    /// of the requested dive.
+    /// Begins a dive and returns the model state at the surface of the requested dive.
     /// </summary>
-    /// <param name="request">The planning request supplying the environment, the prior dives, and the model inputs.</param>
+    /// <param name="request">
+    /// The planning request supplying the environment, the prior dives, and the model inputs.
+    /// </param>
     /// <returns>The pooled model state, positioned at the surface of the requested dive.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="request" /> is <see langword="null" />.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="request"/> is <see langword="null"/>.</exception>
     /// <exception cref="InvalidOperationException">
-    /// A prior dive requires a breathing gas or a decompression schedule that its
-    /// cylinders cannot provide.
+    /// A prior dive requires a breathing gas or a decompression schedule that its cylinders cannot
+    /// provide.
     /// </exception>
-    /// <remarks>The returned state is pooled: it is invalidated by the next call to this method.</remarks>
+    /// <remarks>
+    /// <para>
+    /// The tissues are equilibrated to breathing air at the surface pressure of the first dive of
+    /// the series. Every prior dive in the request is then replayed: its working phase, its
+    /// generated final ascent, and its surface interval, each under that dive's own settings.
+    /// Finally, the state is switched to the environment of the requested dive.
+    /// </para>
+    /// <para>
+    /// The returned state is pooled and is invalidated by the next call to this method.
+    /// </para>
+    /// </remarks>
     public IDecompressionState BeginDive(DivePlanRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -122,15 +137,18 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Loads the tissues over a single segment. Descent and ascent segments apply the
-    /// Schreiner equation from the state's current depth to the segment's end depth; all
-    /// other segment kinds apply the instantaneous exponential at the segment's depth.
+    /// Loads the tissues over a single segment.
     /// </summary>
-    /// <param name="state">The state at the start of the segment; it is advanced in place.</param>
+    /// <param name="state">The state at the start of the segment. It is advanced in place.</param>
     /// <param name="segment">The segment over which to load the tissues.</param>
     /// <returns>The same state instance, advanced to the end of the segment.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="state" /> is <see langword="null" />.</exception>
-    /// <exception cref="ArgumentException"><paramref name="state" /> was not produced by this model.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="state"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="state"/> was not produced by this model.</exception>
+    /// <remarks>
+    /// Descent and ascent segments apply the Schreiner equation from the state's current depth to
+    /// the segment's end depth. All other segment kinds apply the instantaneous exponential at the
+    /// segment's depth.
+    /// </remarks>
     public IDecompressionState LoadSegment(IDecompressionState state, DiveSegment segment)
     {
         var buhlmannState = RequireOwnState(state);
@@ -139,13 +157,15 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Returns the current decompression ceiling at the low gradient factor, being the
-    /// shallowest depth whose ambient pressure every compartment tolerates.
+    /// Returns the current decompression ceiling at the low gradient factor.
     /// </summary>
     /// <param name="state">The state at which the ceiling is required.</param>
-    /// <returns>The shallowest permissible depth; the surface when no obligation exists.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="state" /> is <see langword="null" />.</exception>
-    /// <exception cref="ArgumentException"><paramref name="state" /> was not produced by this model.</exception>
+    /// <returns>
+    /// The shallowest depth whose ambient pressure every compartment tolerates, or the surface when
+    /// no obligation exists.
+    /// </returns>
+    /// <exception cref="ArgumentNullException"><paramref name="state"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="state"/> was not produced by this model.</exception>
     public Depth CurrentCeiling(IDecompressionState state)
     {
         var buhlmannState = RequireOwnState(state);
@@ -153,26 +173,32 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Computes the final ascent to the surface: the banded-rate ascent travel, the
-    /// decompression stops at three-meter intervals with stop times rounded up to the
-    /// settings' increment, the gas switches onto the richest permitted decompression gas,
-    /// oxygen breaks when the settings enable them, and the safety stop when one is
-    /// configured and no decompression stop is required. A closed-circuit loop is raised to
-    /// its decompression setpoint for the whole of the ascent. The state is advanced to the
-    /// surface as a side effect.
+    /// Computes the final ascent from the current depth to the surface.
     /// </summary>
-    /// <param name="state">The state from which the ascent begins; it is advanced to the surface.</param>
+    /// <param name="state">The state from which the ascent begins. It is advanced to the surface.</param>
     /// <param name="request">The planning request supplying the cylinders and settings that govern the ascent.</param>
     /// <returns>The ordered, contiguous ascent segments from the current depth to the surface.</returns>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="state" /> or <paramref name="request" /> is <see langword="null" />.
+    /// <paramref name="state"/> or <paramref name="request"/> is <see langword="null"/>.
     /// </exception>
-    /// <exception cref="ArgumentException"><paramref name="state" /> was not produced by this model.</exception>
+    /// <exception cref="ArgumentException"><paramref name="state"/> was not produced by this model.</exception>
     /// <exception cref="InvalidOperationException">
-    /// No available gas is breathable at a required depth, or a decompression stop fails
-    /// to clear within twenty-four hours.
+    /// No available gas is breathable at a required depth, or a decompression stop fails to clear
+    /// within twenty-four hours.
     /// </exception>
-    /// <remarks>The returned list is pooled: it is invalidated by the next call to this method.</remarks>
+    /// <remarks>
+    /// <para>
+    /// The ascent consists of the banded-rate ascent travel, the decompression stops at three-meter
+    /// intervals with stop times rounded up to the settings' increment, the gas switches onto the
+    /// richest permitted decompression gas, oxygen breaks when the settings enable them, and the
+    /// safety stop when one is configured and no decompression stop is required. A closed-circuit
+    /// loop is raised to its decompression setpoint for the whole of the ascent.
+    /// </para>
+    /// <para>
+    /// The state is advanced to the surface as a side effect. The returned list is pooled and is
+    /// invalidated by the next call to this method.
+    /// </para>
+    /// </remarks>
     public IReadOnlyList<DiveSegment> CalculateFinalAscent(IDecompressionState state, DivePlanRequest request)
     {
         var buhlmannState = RequireOwnState(state);
@@ -238,11 +264,13 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Replays the working phase of a prior dive's planned profile, mirroring the segment
-    /// construction of the shared planner: descents at the descent rate, inter-level
-    /// ascents at the deep ascent rate, and bottom time on the richest gas within the
-    /// bottom oxygen limit.
+    /// Replays the working phase of a prior dive's planned profile.
     /// </summary>
+    /// <remarks>
+    /// The segments mirror the construction of the shared planner: descents at the descent rate,
+    /// inter-level ascents at the deep ascent rate, and bottom time on the richest gas within the
+    /// bottom oxygen limit.
+    /// </remarks>
     private void ReplayWorkingPhase(DiveProfile profile,
         IReadOnlyList<Cylinder> cylinders,
         DivePlanSettings settings)
@@ -284,11 +312,14 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Selects the richest supply gas breathable at the given depth within the given oxygen
-    /// limit. A rebreather draws only on its diluent supply, and the limit is applied to the
-    /// diluent breathed open circuit, since that is the exposure a flush or a bailout at that
-    /// depth would produce.
+    /// Selects the richest supply gas breathable at the specified depth within the specified oxygen
+    /// limit.
     /// </summary>
+    /// <remarks>
+    /// A rebreather draws only on its diluent supply, and the limit is applied to the diluent
+    /// breathed open circuit, since that is the exposure a flush or a bailout at that depth would
+    /// produce.
+    /// </remarks>
     private static GasMixture SelectGasAt(IReadOnlyList<Cylinder> cylinders,
         DivePlanSettings settings,
         double depthMeter,
@@ -327,11 +358,17 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Loads the tissues at a constant depth with the instantaneous exponential:
-    /// <c>P(t) = Palv + (P0 − Palv)·e^(−k·t)</c> with <c>k = ln 2 / halfTime</c>. The
-    /// alveolar pressures are those of the gas the apparatus delivers, which on a rebreather
-    /// differs from the gas held in the cylinder.
+    /// Loads the tissues at a constant depth with the instantaneous exponential.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The loading follows <c>P(t) = Palv + (P0 − Palv)·e^(−k·t)</c> with <c>k = ln 2 / halfTime</c>.
+    /// </para>
+    /// <para>
+    /// The alveolar pressures are those of the gas the apparatus delivers, which on a rebreather
+    /// differs from the gas held in the cylinder.
+    /// </para>
+    /// </remarks>
     private static void LoadConstantDepth(BuhlmannState state,
         double depthMeter,
         GasMixture gas,
@@ -359,13 +396,20 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Loads the tissues over a constant-rate depth change with the Schreiner equation:
-    /// <c>P(t) = Palv0 + R·(t − 1/k) − (Palv0 − P0 − R/k)·e^(−k·t)</c>, where
-    /// <c>Palv0</c> is the alveolar inert pressure at the start depth and <c>R</c> the
-    /// rate of change of that pressure. The rate is taken from the alveolar pressures at the
-    /// two ends of the travel, so that it also covers a rebreather, on which the inspired
-    /// fractions change with depth while the alveolar pressures remain linear in time.
+    /// Loads the tissues over a constant-rate depth change with the Schreiner equation.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The loading follows <c>P(t) = Palv0 + R·(t − 1/k) − (Palv0 − P0 − R/k)·e^(−k·t)</c>, where
+    /// <c>Palv0</c> is the alveolar inert pressure at the start depth and <c>R</c> the rate of
+    /// change of that pressure.
+    /// </para>
+    /// <para>
+    /// The rate is taken from the alveolar pressures at the two ends of the travel, so it also
+    /// covers a rebreather, on which the inspired fractions change with depth while the alveolar
+    /// pressures remain linear in time.
+    /// </para>
+    /// </remarks>
     private static void LoadTravel(BuhlmannState state,
         double fromDepthMeter,
         double toDepthMeter,
@@ -408,12 +452,14 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Returns the ceiling in meters at the given gradient factor: the deepest tolerated
-    /// ambient pressure over all compartments, <c>Ptol = (P − a·gf) / (gf/b + 1 − gf)</c>
-    /// with <c>a</c> and <c>b</c> weighted by the compartment's nitrogen and helium
-    /// loadings, converted to a depth. Negative when every compartment tolerates the
-    /// surface.
+    /// Returns the ceiling, in meters, at the specified gradient factor.
     /// </summary>
+    /// <remarks>
+    /// The ceiling is the deepest tolerated ambient pressure over all compartments,
+    /// <c>Ptol = (P − a·gf) / (gf/b + 1 − gf)</c> with <c>a</c> and <c>b</c> weighted by the
+    /// compartment's nitrogen and helium loadings, converted to a depth. It is negative when every
+    /// compartment tolerates the surface.
+    /// </remarks>
     private static double CeilingMeter(BuhlmannState state, double gradientFactor)
     {
         var nitrogenA = Zhl16cCoefficients.NitrogenAMillibar;
@@ -443,10 +489,12 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Plans the final ascent from the state's current depth to the surface, loading the
-    /// tissues as it goes and, when <paramref name="output" /> is supplied, emitting the
-    /// resulting segments.
+    /// Plans the final ascent from the state's current depth to the surface.
     /// </summary>
+    /// <remarks>
+    /// The tissues are loaded along the way. When <paramref name="output"/> is supplied, the
+    /// resulting segments are emitted to it.
+    /// </remarks>
     private void PlanFinalAscent(BuhlmannState state,
         IReadOnlyList<Cylinder> cylinders,
         DivePlanSettings settings,
@@ -508,7 +556,9 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
         }
     }
 
-    /// <summary>Ascends directly to the surface, inserting the configured safety stop when one applies.</summary>
+    /// <summary>
+    /// Ascends directly to the surface, inserting the configured safety stop when one applies.
+    /// </summary>
     private static void AscendWithSafetyStop(BuhlmannState state,
         DivePlanSettings settings,
         double averageDepthMeter,
@@ -527,10 +577,12 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Ascends from the current depth to the given stop, pausing to switch onto a richer
-    /// decompression gas at its operating depth when the settings allow switching before
-    /// a required stop.
+    /// Ascends from the current depth to the specified stop.
     /// </summary>
+    /// <remarks>
+    /// When the settings allow switching before a required stop, the ascent pauses to switch onto
+    /// a richer decompression gas at its operating depth.
+    /// </remarks>
     private static void AscendThroughSwitches(BuhlmannState state,
         double stopMeter,
         double averageDepthMeter,
@@ -557,10 +609,14 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Returns the deepest grid depth strictly between the target stop and the current
-    /// depth at which a gas richer than the current one becomes breathable within the
-    /// decompression oxygen limit, or a negative value when there is none.
+    /// Returns the deepest grid depth at which a richer gas becomes breathable on the way to the
+    /// target stop.
     /// </summary>
+    /// <remarks>
+    /// The depth lies strictly between the target stop and the current depth, and is the depth at
+    /// which a gas richer than the current one becomes breathable within the decompression oxygen
+    /// limit. The result is negative when there is no such depth.
+    /// </remarks>
     private static double DeepestSwitchDepth(BuhlmannState state,
         IReadOnlyList<Cylinder> cylinders,
         DivePlanSettings settings,
@@ -598,10 +654,12 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Switches to the richest decompression gas breathable at the given depth when it is
-    /// richer than the current gas, emitting a gas switch segment of the configured
-    /// duration.
+    /// Switches to the richest decompression gas breathable at the specified depth when it is
+    /// richer than the current gas.
     /// </summary>
+    /// <remarks>
+    /// The switch is emitted as a gas switch segment of the configured duration.
+    /// </remarks>
     private static void SwitchGasIfRicher(BuhlmannState state,
         double depthMeter,
         IReadOnlyList<Cylinder> cylinders,
@@ -628,11 +686,14 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Holds at a stop, in increments of the settings' stop time rounding, until every
-    /// compartment tolerates the next target depth at the given gradient factor,
-    /// inserting oxygen breaks when the settings enable them. Consecutive increments on
-    /// the same gas are emitted as a single stop segment.
+    /// Holds at a stop until every compartment tolerates the next target depth at the specified
+    /// gradient factor.
     /// </summary>
+    /// <remarks>
+    /// The stop is held in increments of the settings' stop time rounding, with oxygen breaks
+    /// inserted when the settings enable them. Consecutive increments on the same gas are emitted
+    /// as a single stop segment.
+    /// </remarks>
     private static void HoldUntilClear(BuhlmannState state,
         double stopMeter,
         double targetMeter,
@@ -705,10 +766,12 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Returns the richest gas with an oxygen fraction below one that is breathable
-    /// within the decompression oxygen limit at the given depth, or <see langword="null" />
-    /// when no such gas is carried.
+    /// Returns the richest gas with an oxygen fraction below one that is breathable within the
+    /// decompression oxygen limit at the specified depth.
     /// </summary>
+    /// <remarks>
+    /// The result is <see langword="null"/> when no such gas is carried.
+    /// </remarks>
     private static GasMixture? RichestNonOxygenGas(IReadOnlyList<Cylinder> cylinders,
         DivePlanSettings settings,
         double depthMeter,
@@ -741,9 +804,12 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Ascends from the current depth to the target, split at the settings' rate-band
-    /// boundaries: 75% and 50% of the average depth, and the final six meters.
+    /// Ascends from the current depth to the target.
     /// </summary>
+    /// <remarks>
+    /// The ascent is split at the settings' rate-band boundaries: 75% and 50% of the average depth,
+    /// and the final six meters.
+    /// </remarks>
     private static void AscendTo(BuhlmannState state,
         double targetMeter,
         double averageDepthMeter,
@@ -794,9 +860,11 @@ public sealed class BuhlmannZhl16cAlgorithm : IDecompressionAlgorithm
     }
 
     /// <summary>
-    /// Returns the gradient factor at the given depth on the slope anchored at the first
-    /// stop: the low factor at the anchor, the high factor at the surface.
+    /// Returns the gradient factor at the specified depth on the slope anchored at the first stop.
     /// </summary>
+    /// <remarks>
+    /// The low factor applies at the anchor and the high factor at the surface.
+    /// </remarks>
     private double GradientFactorAt(double depthMeter, double anchorMeter)
     {
         var fraction = Math.Clamp(depthMeter / anchorMeter, 0.0, 1.0);

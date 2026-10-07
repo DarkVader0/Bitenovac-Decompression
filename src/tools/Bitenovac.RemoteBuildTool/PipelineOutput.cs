@@ -1,22 +1,26 @@
 namespace Bitenovac.RemoteBuildTool;
 
 /// <summary>
-/// Where a command reports progress and failures. Passed in rather than reached for through
-/// <see cref="System.Console"/> so two runs in one process — which is what a parallel test suite
-/// is — cannot write into each other's output.
+/// Represents the writers that a command reports progress and failures to.
 /// </summary>
-/// <param name="Out">Progress, decisions, and results.</param>
-/// <param name="Error">Anything that makes the run fail.</param>
+/// <param name="Out">The writer for progress, decisions and results.</param>
+/// <param name="Error">The writer for anything that makes the run fail.</param>
 internal sealed record PipelineOutput(TextWriter Out, TextWriter Error)
 {
-    /// <summary>The process console, which is what RemoteBuildTool writes to when it runs for real.</summary>
+    /// <summary>
+    /// Gets an output that writes to the process console.
+    /// </summary>
     public static PipelineOutput Console => new(System.Console.Out, System.Console.Error);
 
-    /// <summary>Reports one line of progress.</summary>
+    /// <summary>
+    /// Writes one line of progress.
+    /// </summary>
     /// <param name="message">The line to write.</param>
     public void WriteLine(string message) => Out.WriteLine(message);
 
-    /// <summary>Reports one line of failure.</summary>
+    /// <summary>
+    /// Writes one line of failure.
+    /// </summary>
     /// <param name="message">The line to write.</param>
     public void WriteError(string message) => Error.WriteLine(message);
 }

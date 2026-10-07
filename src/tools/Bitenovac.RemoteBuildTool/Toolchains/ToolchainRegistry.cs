@@ -2,7 +2,12 @@ using Bitenovac.RemoteBuildTool.Toolchains.DotNet;
 
 namespace Bitenovac.RemoteBuildTool.Toolchains;
 
-/// <summary>Every toolchain the pipeline drives. Supporting another language means adding it to <see cref="Create"/>.</summary>
+/// <summary>
+/// Represents the set of toolchains that the pipeline drives.
+/// </summary>
+/// <remarks>
+/// <see cref="Create"/> returns every supported toolchain.
+/// </remarks>
 internal sealed class ToolchainRegistry : IDisposable
 {
     private readonly IReadOnlyList<IToolchain> _toolchains;
@@ -21,7 +26,12 @@ internal sealed class ToolchainRegistry : IDisposable
 
     public IReadOnlyList<IToolchain> All => _toolchains;
 
-    /// <exception cref="InvalidOperationException">No toolchain has this name.</exception>
+    /// <summary>
+    /// Returns the toolchain with the specified name.
+    /// </summary>
+    /// <param name="name">The name of the toolchain.</param>
+    /// <returns>The toolchain named <paramref name="name"/>.</returns>
+    /// <exception cref="InvalidOperationException">No toolchain is named <paramref name="name"/>.</exception>
     public IToolchain For(string name) =>
         _toolchains.FirstOrDefault(toolchain => toolchain.Name == name)
         ?? throw new InvalidOperationException($"The plan names toolchain '{name}', which this RemoteBuildTool does not have. Re-run 'plan'.");

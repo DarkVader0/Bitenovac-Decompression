@@ -1,9 +1,8 @@
 namespace Bitenovac.RemoteBuildTool;
 
 /// <summary>
-/// Where this run's inputs and volumes are, read from environment variables so the same binary
-/// behaves identically whether launched by <c>runner/in-container.sh</c>, by
-/// <c>docker/ci-local.sh</c>, or directly for local debugging.
+/// Represents the locations of this run's inputs and artifact volumes, and the switches that
+/// change its behavior.
 /// </summary>
 internal sealed record PipelineOptions(
     string RepositoryRoot,
@@ -41,7 +40,13 @@ internal sealed record PipelineOptions(
 
     public string RestoreOutputsRoot => Path.Combine(PrStoreRoot, "restore");
 
-    /// <summary>Processes and MSBuild nodes one job may run at once: <c>REMOTEBUILDTOOL_MAX_CPU</c>, else every core.</summary>
+    /// <summary>
+    /// Returns the number of processes and MSBuild nodes that one job may run at once.
+    /// </summary>
+    /// <returns>
+    /// The value of <c>REMOTEBUILDTOOL_MAX_CPU</c> if it is a positive integer; otherwise, the
+    /// number of processors.
+    /// </returns>
     public static int MaxParallelism() =>
         int.TryParse(Environment.GetEnvironmentVariable("REMOTEBUILDTOOL_MAX_CPU"), out var maxCpu) && maxCpu > 0
             ? maxCpu

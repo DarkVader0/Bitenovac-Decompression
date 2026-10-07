@@ -1,14 +1,16 @@
 namespace Bitenovac.RemoteBuildTool.MsBuild;
 
 /// <summary>
-/// Carries what restore wrote into each project's <c>obj/</c> from <c>plan</c> to the stages
-/// after it, which start from a clean checkout.
+/// Provides methods for carrying what restore wrote into each project's <c>obj/</c> directory from
+/// <c>plan</c> to the later stages, which start from a clean checkout.
 /// </summary>
 internal static class RestoreOutputs
 {
     private const string AssetsFileName = "project.assets.json";
 
-    /// <summary>Copies the top level of every project's <c>obj/</c> under <paramref name="root"/>.</summary>
+    /// <summary>
+    /// Copies the top level of every project's <c>obj/</c> directory under <paramref name="root"/>.
+    /// </summary>
     public static void Save(string repositoryRoot, IEnumerable<string> projectFullPaths, string root)
     {
         foreach (var projectFullPath in projectFullPaths)
@@ -26,9 +28,12 @@ internal static class RestoreOutputs
     }
 
     /// <summary>
-    /// Puts back what <see cref="Save"/> kept for a project whose <c>obj/</c> holds no restore
-    /// output, and reports whether the project is restored afterwards.
+    /// Copies back what <see cref="Save"/> kept for a project whose <c>obj/</c> directory holds no
+    /// restore output.
     /// </summary>
+    /// <returns>
+    /// <see langword="true"/> if the project is restored afterwards; otherwise, <see langword="false"/>.
+    /// </returns>
     public static bool Materialise(string repositoryRoot, string projectFullPath, string root)
     {
         var objDirectory = ObjDirectory(projectFullPath);

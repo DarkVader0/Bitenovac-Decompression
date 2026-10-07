@@ -6,10 +6,12 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.Zhl16c.Integration.Tests;
 
 /// <summary>
-/// Builds the valid, fully specified inputs shared by the planner integration tests.
-/// Fresh water and a surface pressure of exactly one bar are used so that every ambient
-/// pressure, and therefore the generated schedule, is exactly reproducible.
+/// Provides the valid, fully specified inputs shared by the planner integration tests.
 /// </summary>
+/// <remarks>
+/// Settings use fresh water and a surface pressure of exactly one bar, so every ambient pressure
+/// is exactly reproducible.
+/// </remarks>
 internal static class TestFactory
 {
     public static DivePlanSettings CreateSettings(bool safetyStop = false) =>
@@ -50,15 +52,17 @@ internal static class TestFactory
         new(levels.Select(static level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
             TimeSpan.FromMinutes(level.Minutes), GasMixture.Air, SegmentKind.Bottom)));
 
-    /// <summary>Builds a profile whose every level is breathed through the same apparatus.</summary>
+    /// <summary>
+    /// Creates a profile whose every level is breathed through the same apparatus.
+    /// </summary>
     public static DiveProfile CreateProfile(BreathingLoop loop,
         params (double DepthMeter, double Minutes)[] levels) =>
         new(levels.Select(level => new DiveSegment(Depth.FromMeter(level.DepthMeter),
             TimeSpan.FromMinutes(level.Minutes), GasMixture.Air, SegmentKind.Bottom, loop)));
 
     /// <summary>
-    /// Builds a profile whose levels are breathed through different apparatus, so that a
-    /// bailout onto open circuit part way through a dive can be planned.
+    /// Creates a profile whose levels are breathed through different apparatus, such as a bailout
+    /// onto open circuit part way through a dive.
     /// </summary>
     public static DiveProfile CreateProfile(
         params (double DepthMeter, double Minutes, BreathingLoop Loop)[] levels) =>

@@ -6,11 +6,12 @@ using Bitenovac.DecompressionAlgorithms.Units;
 namespace Bitenovac.DecompressionAlgorithms.Zhl16c.Unit.Tests;
 
 /// <summary>
-/// Builds the valid, fully specified inputs shared by the algorithm tests. Fresh water
-/// and a surface pressure of exactly one bar are used so that the ambient pressure at a
-/// given depth, and therefore every expected value derived from it, is exactly
-/// reproducible: ambient(mbar) = 1000 + 98.0665 x depth(m).
+/// Provides the valid, fully specified inputs shared by the algorithm tests.
 /// </summary>
+/// <remarks>
+/// Settings use fresh water and a surface pressure of exactly one bar, so the ambient pressure at
+/// a depth is exactly reproducible: ambient(mbar) = 1000 + 98.0665 x depth(m).
+/// </remarks>
 internal static class TestFactory
 {
     public const double SurfacePressureMillibar = 1000.0;

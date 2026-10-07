@@ -7,33 +7,28 @@ using Bitenovac.RemoteBuildTool.Core.Storage;
 namespace Bitenovac.RemoteBuildTool.Storage;
 
 /// <summary>
-/// An <see cref="IArtifactStore"/> backed by a directory on disk — a Docker volume in CI, any
-/// directory locally. One instance serves either <c>main</c> or a single run's own volume; the
-/// caller decides which by pointing two instances at two different roots.
+/// Represents an <see cref="IArtifactStore"/> backed by a directory on disk.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Content-addressed at the <em>file</em> level, not the entry level:
+/// One instance serves either <c>main</c> or a single run's own volume, depending on its root.
+/// </para>
+/// <para>
+/// The store is content-addressed at the file level, so each distinct file is stored once and
+/// every entry that holds it records a reference:
 /// </para>
 /// <code>
-/// &lt;root&gt;/blobs/&lt;ab&gt;/&lt;sha256 of content&gt;          one copy of each distinct file, ever
+/// &lt;root&gt;/blobs/&lt;ab&gt;/&lt;sha256 of content&gt;          one copy of each distinct file
 /// &lt;root&gt;/&lt;project path&gt;/&lt;Configuration&gt;/
 ///     entries/&lt;fullHash&gt;/manifest.json          relative path -> blob, plus both hashes
 ///     current                                     names the live entry
 /// </code>
 /// <para>
-/// Every test project's <c>bin</c> contains its whole dependency closure, so the same
-/// <c>Core.dll</c>, <c>xunit.dll</c> and so on are otherwise stored once per entry: measured on
-/// this repository, 73% of the store was duplicate content — 553 MB of 753 MB. Keyed by content
-/// hash instead, each distinct file is written once and every entry that needs it records a
-/// reference.
-/// </para>
-/// <para>
-/// Publishing stays atomic. A blob is written to a temporary name and renamed into place, so a
-/// reader either sees a complete blob or none. The manifest is written inside the entry
-/// directory, which is renamed in whole, and only then does <c>current</c> flip — itself a
-/// single atomic file rename. A reader that resolves <c>current</c> before the flip sees the
-/// previous entry, complete; never a half-written one.
+/// Publishing is atomic. A blob is written to a temporary name and renamed into place, so a reader
+/// sees either a complete blob or none. The manifest is written inside the entry directory, which
+/// is renamed as a whole, and only then is <c>current</c> replaced by a single file rename. A
+/// reader that resolves <c>current</c> before the rename sees the complete previous entry, never a
+/// partially written one.
 /// </para>
 /// </remarks>
 public sealed class LocalVolumeArtifactStore : IArtifactStore
@@ -44,9 +39,14 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
 
     private readonly string _root;
 
-    /// <summary>Creates a store rooted at <paramref name="root"/>, creating the directory if it does not exist.</summary>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="LocalVolumeArtifactStore"/> class rooted at the
+    /// specified directory, creating the directory if it does not exist.
+    /// </summary>
     /// <param name="root">The directory this store reads and writes.</param>
-    /// <exception cref="ArgumentException"><paramref name="root"/> is null, empty, or white space.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="root"/> is <see langword="null"/>, empty or white space.
+    /// </exception>
     public LocalVolumeArtifactStore(string root)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
@@ -67,20 +67,26 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
         TryGet(project, configuration, destinationDirectory, out hash, includePrefixes: null);
 
     /// <summary>
-    /// As <see cref="TryGet(ProjectId, string, string, out StoredTargetHash)"/>, but writes only
-    /// the entry's files whose path starts with one of <paramref name="includePrefixes"/>.
+    /// Copies the files of the entry for the specified project and configuration whose paths start
+    /// with one of the specified prefixes into a directory.
     /// </summary>
-    /// <remarks>
-    /// Lets a caller write straight into the project directory instead of unpacking the whole
-    /// entry to a temporary directory and copying the wanted parts out — which was a second full
-    /// copy of everything, on the hot path. An entry holds <c>tests/</c> as well as <c>bin/</c>
-    /// and <c>obj/</c>, and only the latter two belong in a source tree.
-    /// </remarks>
-    /// <param name="project">The project to materialise.</param>
+    /// <param name="project">The project to materialize.</param>
     /// <param name="configuration">The build configuration.</param>
-    /// <param name="destinationDirectory">An existing or creatable directory to write into.</param>
-    /// <param name="hash">The hash the entry was stored under, when the method returns true.</param>
-    /// <param name="includePrefixes">Path prefixes to include, or null for everything.</param>
+    /// <param name="destinationDirectory">The directory to copy the files into; it is created if it does not exist.</param>
+    /// <param name="hash">
+    /// When this method returns, contains the hashes the entry was stored under, if it was found
+    /// and copied; otherwise, the default value.
+    /// </param>
+    /// <param name="includePrefixes">
+    /// The path prefixes of the files to copy, or <see langword="null"/> to copy every file.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> if the entry was found and copied; otherwise, <see langword="false"/>.
+    /// </returns>
+    /// <remarks>
+    /// An entry holds <c>tests/</c> as well as <c>bin/</c> and <c>obj/</c>, so a caller can pass
+    /// prefixes to write only the build output directly into a project directory.
+    /// </remarks>
     public bool TryGet(
         ProjectId project,
         string configuration,
@@ -120,11 +126,8 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
 
     /// <inheritdoc/>
     /// <remarks>
-    /// Always replaces whatever this fullHash's entry currently holds — the store does not
-    /// merge. A build stage puts <c>bin/</c> and <c>obj/</c>; a later test stage for the same
-    /// project and fullHash wants to add <c>tests/</c> alongside them without losing what build
-    /// staged, so it is the caller's job to <see cref="TryGet"/> the existing entry, add its own
-    /// files into the same directory, and <see cref="Put"/> the merged result back.
+    /// The new entry replaces everything an existing entry under the same full hash holds; the
+    /// store does not merge. Use <see cref="AddFiles"/> to add files to an existing entry.
     /// </remarks>
     public void Put(ProjectId project, string configuration, string sourceDirectory, StoredTargetHash hash)
     {
@@ -133,18 +136,17 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
     }
 
     /// <summary>
-    /// Stores an entry from files named individually, so a caller can store directly from the
-    /// workspace instead of copying everything into a staging directory first.
+    /// Stores an entry for the specified project and configuration from individually named files,
+    /// replacing any existing entry.
     /// </summary>
-    /// <remarks>
-    /// The staging copy this replaces was a full copy of <c>bin</c> and <c>obj</c> per project,
-    /// paid before a single byte was hashed — on a cold run, the largest single cost in the
-    /// pipeline. Files are hashed where they lie; only genuinely new content is written.
-    /// </remarks>
     /// <param name="project">The project the artifact belongs to.</param>
     /// <param name="configuration">The build configuration.</param>
-    /// <param name="hash">The hash this artifact was produced from.</param>
-    /// <param name="files">The entry's files, as (path within the entry, file on disk) pairs.</param>
+    /// <param name="hash">The hashes the artifact was produced from.</param>
+    /// <param name="files">The entry's files, as pairs of a path within the entry and a file on disk.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="files"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// Files are hashed where they are, and only content the store does not already hold is written.
+    /// </remarks>
     public void Put(
         ProjectId project,
         string configuration,
@@ -161,9 +163,15 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
         WriteEntry(project, configuration, hash, manifest);
     }
 
-    /// <summary>Enumerates a directory as entry-relative (path, file) pairs under <paramref name="prefix"/>.</summary>
-    /// <param name="directory">The directory to enumerate; missing directories yield nothing.</param>
+    /// <summary>
+    /// Enumerates the files in a directory as pairs of a path within an entry and a file on disk.
+    /// </summary>
+    /// <param name="directory">The directory to enumerate.</param>
     /// <param name="prefix">The path prefix inside the entry, for example <c>"bin/"</c>.</param>
+    /// <returns>
+    /// One pair per file under <paramref name="directory"/>, or an empty sequence if the directory
+    /// does not exist.
+    /// </returns>
     public static IEnumerable<(string Path, string SourceFile)> EnumerateAsSources(string directory, string prefix)
     {
         if (!Directory.Exists(directory))
@@ -193,22 +201,22 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
     }
 
     /// <summary>
-    /// Adds files to the entry already stored for <paramref name="hash"/>, leaving everything it
-    /// holds in place.
+    /// Adds files to the entry stored for the specified hashes, keeping every file it already holds.
     /// </summary>
-    /// <remarks>
-    /// The alternative — re-<see cref="Put"/>ting the whole merged directory — costs a full
-    /// content hash of every file in <c>bin</c> and <c>obj</c> just to attach a handful of
-    /// coverage reports. Measured on this repository, that was most of the test stage's time.
-    /// Here only the new files are hashed and the existing manifest is extended.
-    /// </remarks>
-    /// <param name="project">The project whose entry is being extended.</param>
+    /// <param name="project">The project whose entry is extended.</param>
     /// <param name="configuration">The build configuration.</param>
-    /// <param name="hash">The hash whose entry to extend; must be the live one.</param>
+    /// <param name="hash">The hashes of the entry to extend; the entry must be the live one.</param>
     /// <param name="sourceDirectory">
-    /// A directory whose layout is merged into the entry — a <c>tests/</c> folder, for example.
+    /// The directory whose layout is merged into the entry, for example one holding a <c>tests/</c>
+    /// directory.
     /// </param>
-    /// <returns>False when no entry is stored for this hash, so there was nothing to extend.</returns>
+    /// <returns>
+    /// <see langword="true"/> if the live entry is stored under the full hash of
+    /// <paramref name="hash"/> and was extended; otherwise, <see langword="false"/>.
+    /// </returns>
+    /// <remarks>
+    /// A file whose path the entry already holds is replaced. Only the added files are hashed.
+    /// </remarks>
     public bool AddFiles(ProjectId project, string configuration, StoredTargetHash hash, string sourceDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceDirectory);
@@ -251,11 +259,9 @@ public sealed class LocalVolumeArtifactStore : IArtifactStore
     }
 
     /// <summary>
-    /// Deletes blobs no live entry references any more. Entries are replaced whenever a project's
-    /// hash moves, and the blobs their old manifests named stay behind; without this the store
-    /// only ever grows.
+    /// Deletes every blob that no stored manifest references.
     /// </summary>
-    /// <returns>How many blobs were removed.</returns>
+    /// <returns>The number of blobs deleted.</returns>
     public int Prune()
     {
         var blobsRoot = Path.Combine(_root, BlobsDirectoryName);

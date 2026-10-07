@@ -8,12 +8,13 @@ using Microsoft.Build.Evaluation;
 namespace Bitenovac.RemoteBuildTool.MsBuild;
 
 /// <summary>
-/// Evaluates every discovered project in-process, once per configuration, replacing the old
-/// <c>build/project-info.proj</c> + <c>CiProjectInfo</c> target: a plain MSBuild item or property
-/// is already queryable through the evaluation API without running any target, so nothing needs
-/// to be built or executed to read this information — only restored, for the resolved package
-/// closure (see <see cref="PackageClosureReader"/>).
+/// Represents an in-process MSBuild evaluator that reads each project's references, coverage
+/// policy and own-hash inputs, once per configuration.
 /// </summary>
+/// <remarks>
+/// No target is run. The project must be restored for its resolved package closure to be read by
+/// <see cref="PackageClosureReader"/>.
+/// </remarks>
 internal sealed class MsBuildProjectEvaluator : IDisposable
 {
     private readonly string _repositoryRoot;
@@ -26,7 +27,9 @@ internal sealed class MsBuildProjectEvaluator : IDisposable
         _shared = SharedHashInputs.Read(_repositoryRoot);
     }
 
-    /// <summary>Evaluates every project named in <paramref name="relativePaths"/> for one configuration.</summary>
+    /// <summary>
+    /// Evaluates every project named in <paramref name="relativePaths"/> for one configuration.
+    /// </summary>
     public IReadOnlyDictionary<ProjectId, EvaluatedProject> EvaluateAll(
         IReadOnlyList<string> relativePaths, string configuration)
     {
@@ -42,13 +45,13 @@ internal sealed class MsBuildProjectEvaluator : IDisposable
     }
 
     /// <summary>
-    /// Re-reads a project's resolved package closure and folds it back into its own-hash inputs,
-    /// without re-evaluating it through MSBuild — the package closure comes from
-    /// <c>obj/project.assets.json</c> on disk, not from anything the evaluation API resolves, so
-    /// there is nothing to re-evaluate. This is why <c>plan</c> can call this after restoring
-    /// instead of evaluating every project a second time: a second <c>new Project(...)</c> for
-    /// the same path and global properties throws — the collection already has one loaded.
+    /// Returns a copy of the specified project whose package entries in its own-hash inputs are
+    /// replaced with the resolved package closure read from disk.
     /// </summary>
+    /// <remarks>
+    /// The project is not evaluated again, so this method can be called after a restore. Evaluating
+    /// the same project a second time for the same configuration throws.
+    /// </remarks>
     public static EvaluatedProject RefreshPackageClosure(EvaluatedProject project)
     {
         var refreshedInputs = project.OwnHashInputs

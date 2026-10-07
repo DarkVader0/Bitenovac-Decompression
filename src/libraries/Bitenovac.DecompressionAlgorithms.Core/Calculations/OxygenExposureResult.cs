@@ -1,22 +1,24 @@
 ﻿namespace Bitenovac.DecompressionAlgorithms.Core.Calculations;
 
 /// <summary>
-/// Represents the total oxygen toxicity accrued over a dive: the central nervous system
-/// toxicity, as a fraction of the single-exposure limit, and the pulmonary toxicity, in
-/// oxygen tolerance units. Both are accumulated over the expanded profile and depend only
-/// on the partial pressure of oxygen and the time of exposure.
+/// Represents the total oxygen toxicity accrued over a dive.
 /// </summary>
-/// <remarks>Instances are immutable.</remarks>
+/// <remarks>
+/// The result holds the central nervous system toxicity, as a fraction of the single-exposure
+/// limit, and the pulmonary toxicity, in oxygen tolerance units. Both are accumulated over the
+/// expanded profile and depend only on the partial pressure of oxygen and the time of exposure.
+/// </remarks>
 public sealed class OxygenExposureResult
 {
-    /// <summary>Initializes a new instance of the <see cref="OxygenExposureResult" /> class.</summary>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OxygenExposureResult"/> class.
+    /// </summary>
     /// <param name="centralNervousSystemFraction">
-    /// The accrued central nervous system toxicity, as a fraction of the single-exposure
-    /// limit.
+    /// The accrued central nervous system toxicity, as a fraction of the single-exposure limit.
     /// </param>
     /// <param name="oxygenToleranceUnits">The accrued pulmonary toxicity, in oxygen tolerance units.</param>
     /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="centralNervousSystemFraction" /> or <paramref name="oxygenToleranceUnits" /> is negative.
+    /// <paramref name="centralNervousSystemFraction"/> or <paramref name="oxygenToleranceUnits"/> is negative.
     /// </exception>
     public OxygenExposureResult(double centralNervousSystemFraction, double oxygenToleranceUnits)
     {
@@ -36,9 +38,19 @@ public sealed class OxygenExposureResult
         OxygenToleranceUnits = oxygenToleranceUnits;
     }
 
-    /// <summary>Gets the accrued central nervous system toxicity, as a fraction of the single-exposure limit.</summary>
+    /// <summary>
+    /// Gets the accrued central nervous system toxicity.
+    /// </summary>
+    /// <value>
+    /// The toxicity, as a fraction of the single-exposure limit.
+    /// </value>
     public double CentralNervousSystemFraction { get; }
 
-    /// <summary>Gets the accrued pulmonary toxicity, in oxygen tolerance units.</summary>
+    /// <summary>
+    /// Gets the accrued pulmonary toxicity.
+    /// </summary>
+    /// <value>
+    /// The toxicity, in oxygen tolerance units.
+    /// </value>
     public double OxygenToleranceUnits { get; }
 }

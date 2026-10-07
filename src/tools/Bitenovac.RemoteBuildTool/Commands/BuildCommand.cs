@@ -7,11 +7,19 @@ using Bitenovac.RemoteBuildTool.Toolchains;
 namespace Bitenovac.RemoteBuildTool.Commands;
 
 /// <summary>
-/// Materialises every cache hit's output from <c>main</c>, then has each toolchain build only
-/// what is left — the misses, and any hit <c>main</c> could not supply — toolchain by toolchain
-/// in <see cref="ToolchainOrder"/>. Within a toolchain, a hit a miss references is already in
-/// place, and its up-to-date check (made trustworthy by <see cref="Touch"/>) skips it.
+/// Provides the <c>build</c> pipeline command.
 /// </summary>
+/// <remarks>
+/// <para>
+/// The command materializes the output of every cache hit from <c>main</c>, then has each
+/// toolchain build the misses and any hit that <c>main</c> could not supply. Toolchains run in
+/// the order returned by <see cref="ToolchainOrder.Resolve"/>.
+/// </para>
+/// <para>
+/// Materialized output files are given a current write time, so a toolchain's up-to-date check
+/// skips a hit that a miss references.
+/// </para>
+/// </remarks>
 internal static class BuildCommand
 {
     public static int Run(PipelineOptions options, string configuration, PipelineOutput output)
@@ -96,11 +104,11 @@ internal static class BuildCommand
     }
 
     /// <summary>
-    /// Stages only the projects this run actually rebuilt. A hit's bytes are already in
-    /// <c>main</c> under exactly this fullHash, so copying them into this run's own store would
-    /// be writing a second copy of something the next stage can read from main directly — on a
-    /// fully warm run, that was the entire staging cost for nothing.
+    /// Stages the output of every rebuilt project in this run's own store.
     /// </summary>
+    /// <remarks>
+    /// Cache hits are not staged, because later stages read them from <c>main</c>.
+    /// </remarks>
     private static int StageMisses(IReadOnlyList<PlanEntry> entries, string configuration, LocalVolumeArtifactStore prStore, ToolchainRegistry toolchains)
     {
         var staged = 0;

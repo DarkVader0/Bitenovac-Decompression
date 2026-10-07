@@ -3,34 +3,42 @@
 namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
 /// <summary>
-/// Represents the complete input to a decompression planning calculation: the planned
-/// dive profile, the cylinders available to the diver, the settings that govern how
-/// the plan is computed, and the prior dives of a repetitive series, if any. The prior
-/// dives describe everything a decompression model needs to reconstruct the residual
-/// tissue loading by replaying them, so the request is pure data and no model state is
-/// carried between dives.
+/// Represents the complete input to a decompression planning calculation: the planned dive
+/// profile, the cylinders available to the diver, the settings that govern how the plan is
+/// computed, and the prior dives of a repetitive series, if any.
 /// </summary>
-/// <remarks>Instances are immutable; the cylinders and prior dives are copied on construction.</remarks>
+/// <remarks>
+/// <para>
+/// The prior dives describe everything a decompression model needs to reconstruct the residual
+/// tissue loading by replaying them, so the request is pure data and no model state is carried
+/// between dives.
+/// </para>
+/// <para>
+/// The cylinders and prior dives are copied on construction.
+/// </para>
+/// </remarks>
 public sealed class DivePlanRequest
 {
     private readonly Cylinder[] _cylinders;
     private readonly PriorDive[] _priorDives;
 
-    /// <summary>Initializes a new instance of the <see cref="DivePlanRequest" /> class.</summary>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DivePlanRequest"/> class.
+    /// </summary>
     /// <param name="profile">The planned dive profile.</param>
     /// <param name="cylinders">The cylinders available to the diver.</param>
     /// <param name="settings">The settings that govern how the plan is computed.</param>
     /// <param name="priorDives">
-    /// The prior dives of a repetitive series, in chronological order, or <see langword="null" />
+    /// The prior dives of a repetitive series, in chronological order, or <see langword="null"/>
     /// when this is the first dive.
     /// </param>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="profile" />, <paramref name="cylinders" />, or <paramref name="settings" /> is
-    /// <see langword="null" />.
+    /// <paramref name="profile"/>, <paramref name="cylinders"/>, or <paramref name="settings"/> is
+    /// <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="cylinders" /> is empty, or <paramref name="priorDives" /> contains a
-    /// <see langword="null" /> entry.
+    /// <paramref name="cylinders"/> is empty, or <paramref name="priorDives"/> contains a
+    /// <see langword="null"/> entry.
     /// </exception>
     public DivePlanRequest(DiveProfile profile,
         IEnumerable<Cylinder> cylinders,
@@ -59,15 +67,26 @@ public sealed class DivePlanRequest
         Settings = settings;
     }
 
-    /// <summary>Gets the planned dive profile.</summary>
+    /// <summary>
+    /// Gets the planned dive profile.
+    /// </summary>
     public DiveProfile Profile { get; }
 
-    /// <summary>Gets the cylinders available to the diver.</summary>
+    /// <summary>
+    /// Gets the cylinders available to the diver.
+    /// </summary>
     public IReadOnlyList<Cylinder> Cylinders => _cylinders;
 
-    /// <summary>Gets the settings that govern how the plan is computed.</summary>
+    /// <summary>
+    /// Gets the settings that govern how the plan is computed.
+    /// </summary>
     public DivePlanSettings Settings { get; }
 
-    /// <summary>Gets the prior dives of a repetitive series, in chronological order; empty for a first dive.</summary>
+    /// <summary>
+    /// Gets the prior dives of a repetitive series.
+    /// </summary>
+    /// <value>
+    /// The prior dives in chronological order; empty for a first dive.
+    /// </value>
     public IReadOnlyList<PriorDive> PriorDives => _priorDives;
 }

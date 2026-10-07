@@ -1,8 +1,7 @@
 namespace Bitenovac.RemoteBuildTool.Integration.Tests;
 
 /// <summary>
-/// Collects what a command reported. Owned by the test that creates it, so tests running side by
-/// side never read each other's output.
+/// Represents the output a command reported to one test.
 /// </summary>
 internal sealed class CapturedOutput
 {

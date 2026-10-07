@@ -3,33 +3,45 @@ using Bitenovac.DecompressionAlgorithms.Core.Equipment;
 namespace Bitenovac.DecompressionAlgorithms.Core.Planning;
 
 /// <summary>
-/// Describes one dive that precedes the dive being planned, together with the surface
-/// interval that follows it: the planned profile, the cylinders carried, the settings
-/// under which it was planned, and the duration and breathing gas of the surface
-/// interval before the next dive. A decompression model replays prior dives from these
-/// inputs to reconstruct the residual tissue loading, so no model state has to be stored
-/// between dives; each prior dive carries its own settings so that a repetitive series
-/// can mix environments, gas rules, and equipment.
+/// Represents one dive that precedes the dive being planned, together with the surface interval
+/// that follows it.
 /// </summary>
-/// <remarks>Instances are immutable; the cylinders are copied on construction.</remarks>
+/// <remarks>
+/// <para>
+/// A prior dive holds the planned profile, the cylinders carried, the settings under which it was
+/// planned, and the duration and breathing gas of the surface interval before the next dive.
+/// </para>
+/// <para>
+/// A decompression model replays prior dives from these inputs to reconstruct the residual tissue
+/// loading, so no model state has to be stored between dives. Each prior dive carries its own
+/// settings, so a repetitive series can mix environments, gas rules, and equipment.
+/// </para>
+/// <para>
+/// The cylinders are copied on construction.
+/// </para>
+/// </remarks>
 public sealed class PriorDive
 {
     private readonly Cylinder[] _cylinders;
 
-    /// <summary>Initializes a new instance of the <see cref="PriorDive" /> class.</summary>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PriorDive"/> class.
+    /// </summary>
     /// <param name="profile">The planned profile of the prior dive.</param>
     /// <param name="cylinders">The cylinders that were available on the prior dive.</param>
     /// <param name="settings">The settings under which the prior dive was planned.</param>
     /// <param name="surfaceInterval">The time spent at the surface after the prior dive.</param>
     /// <param name="surfaceGas">The gas breathed during the surface interval, typically air.</param>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="profile" />, <paramref name="cylinders" />, or <paramref name="settings" /> is
-    /// <see langword="null" />.
+    /// <paramref name="profile"/>, <paramref name="cylinders"/>, or <paramref name="settings"/> is
+    /// <see langword="null"/>.
     /// </exception>
     /// <exception cref="ArgumentException">
-    /// <paramref name="cylinders" /> is empty, or <paramref name="surfaceGas" /> contains no oxygen.
+    /// <paramref name="cylinders"/> is empty, or <paramref name="surfaceGas"/> contains no oxygen.
     /// </exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="surfaceInterval" /> is not greater than zero.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="surfaceInterval"/> is not greater than zero.
+    /// </exception>
     public PriorDive(DiveProfile profile,
         IEnumerable<Cylinder> cylinders,
         DivePlanSettings settings,
@@ -64,18 +76,28 @@ public sealed class PriorDive
         SurfaceGas = surfaceGas;
     }
 
-    /// <summary>Gets the planned profile of the prior dive.</summary>
+    /// <summary>
+    /// Gets the planned profile of the prior dive.
+    /// </summary>
     public DiveProfile Profile { get; }
 
-    /// <summary>Gets the cylinders that were available on the prior dive.</summary>
+    /// <summary>
+    /// Gets the cylinders that were available on the prior dive.
+    /// </summary>
     public IReadOnlyList<Cylinder> Cylinders => _cylinders;
 
-    /// <summary>Gets the settings under which the prior dive was planned.</summary>
+    /// <summary>
+    /// Gets the settings under which the prior dive was planned.
+    /// </summary>
     public DivePlanSettings Settings { get; }
 
-    /// <summary>Gets the time spent at the surface after the prior dive.</summary>
+    /// <summary>
+    /// Gets the time spent at the surface after the prior dive.
+    /// </summary>
     public TimeSpan SurfaceInterval { get; }
 
-    /// <summary>Gets the gas breathed during the surface interval.</summary>
+    /// <summary>
+    /// Gets the gas breathed during the surface interval.
+    /// </summary>
     public GasMixture SurfaceGas { get; }
 }

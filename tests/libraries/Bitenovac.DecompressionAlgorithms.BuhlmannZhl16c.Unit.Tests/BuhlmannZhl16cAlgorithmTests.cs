@@ -36,7 +36,9 @@ public sealed class BuhlmannZhl16cAlgorithmTests
     private static double SurfaceEquilibriumNitrogenMillibar() =>
         (TestFactory.SurfacePressureMillibar - TestFactory.WaterVaporPressureMillibar) * GasMixture.Air.FractionN2;
 
-    /// <summary>The instantaneous exponential: P(t) = Palv + (P0 - Palv) * e^(-ln2 * t / halfTime).</summary>
+    /// <summary>
+    /// Returns the instantaneous exponential: P(t) = Palv + (P0 - Palv) * e^(-ln2 * t / halfTime).
+    /// </summary>
     private static double Haldane(double initial,
         double alveolar,
         double halfTimeMinutes,
