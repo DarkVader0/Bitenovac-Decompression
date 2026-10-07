@@ -113,6 +113,7 @@ internal sealed class MsBuildProjectEvaluator : IDisposable
             CacheTestResults: IsTrue(project.GetPropertyValue("CacheTestResults")),
             TargetPath: project.GetPropertyValue("TargetPath"),
             AssemblyName: project.GetPropertyValue("AssemblyName"),
+            RunCommand: project.GetPropertyValue("RunCommand"),
             HasTargetFrameworks: !string.IsNullOrEmpty(project.GetPropertyValue("TargetFrameworks")),
             OwnHashInputs: ownHashInputs);
     }

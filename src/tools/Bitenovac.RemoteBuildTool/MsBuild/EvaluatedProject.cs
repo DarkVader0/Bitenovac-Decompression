@@ -14,5 +14,6 @@ internal sealed record EvaluatedProject(
     bool CacheTestResults,
     string TargetPath,
     string AssemblyName,
+    string RunCommand,
     bool HasTargetFrameworks,
     IReadOnlyList<string> OwnHashInputs);

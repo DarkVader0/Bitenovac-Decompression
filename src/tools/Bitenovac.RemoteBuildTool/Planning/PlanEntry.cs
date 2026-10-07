@@ -10,6 +10,7 @@ internal sealed record PlanEntry(
     string ProjectPath,
     string FullPath,
     string AssemblyName,
+    string RunCommand,
     bool IsTestProject,
     bool ExcludeFromCoverage,
     double MinimumLineCoverage,

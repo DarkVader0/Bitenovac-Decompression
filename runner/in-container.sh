@@ -11,7 +11,7 @@
 # NuGet packages, main's artifact store, this run's own artifact store, and logs. The container
 # runs as the calling user, so the next checkout can delete what it leaves behind.
 #
-# RemoteBuildTool itself is not built from this checkout. It is the one published into the image (see
+# RemoteBuildTool itself is not built from this checkout. It is the release installed into the image (see
 # runner/build-image.sh), so a pull request cannot change the RemoteBuildTool that judges it.
 
 set -euo pipefail
@@ -88,5 +88,5 @@ exec docker run "${run_args[@]}" --entrypoint bash "${IMAGE}" -c '
     # reportgenerator, which only the coverage merge in "test" runs.
     [[ "$1" == "test" ]] && dotnet tool restore > /dev/null
 
-    exec /opt/remotebuildtool/Bitenovac.RemoteBuildTool "$@"
+    exec /opt/remotebuildtool/remotebuildtool "$@"
 ' ci "$@"

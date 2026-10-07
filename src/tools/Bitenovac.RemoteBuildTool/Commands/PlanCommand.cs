@@ -132,6 +132,7 @@ internal static class PlanCommand
                 ProjectPath: id.Value,
                 FullPath: project.FullPath,
                 AssemblyName: project.AssemblyName,
+                RunCommand: project.RunCommand,
                 IsTestProject: project.IsTestProject,
                 ExcludeFromCoverage: project.ExcludeFromCoverage,
                 MinimumLineCoverage: project.MinimumLineCoverage,

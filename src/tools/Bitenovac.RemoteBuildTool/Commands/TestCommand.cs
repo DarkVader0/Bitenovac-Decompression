@@ -55,7 +55,7 @@ internal static class TestCommand
 
         var failed = new List<string>();
         var noTestsRan = new List<string>();
-        var toRun = new List<(PlanEntry Entry, string Name, string AssemblyPath)>();
+        var toRun = new List<(PlanEntry Entry, string Name, string ExecutablePath)>();
 
         foreach (var entry in testEntries)
         {
@@ -67,7 +67,7 @@ internal static class TestCommand
                 continue;
             }
 
-            toRun.Add((entry, name, ResolveAssemblyPath(entry, configuration)));
+            toRun.Add((entry, name, ResolveExecutablePath(entry, configuration)));
         }
 
         var results = new TestRunResult[toRun.Count];
@@ -75,8 +75,8 @@ internal static class TestCommand
 
         Parallel.For(0, toRun.Count, new ParallelOptions { MaxDegreeOfParallelism = PipelineOptions.MaxParallelism() }, index =>
         {
-            var (_, name, assemblyPath) = toRun[index];
-            results[index] = TestRunner.Run(assemblyPath, name, coverageDirectory);
+            var (_, name, executablePath) = toRun[index];
+            results[index] = TestRunner.Run(executablePath, name, coverageDirectory);
 
             lock (outputGate)
             {
@@ -163,16 +163,10 @@ internal static class TestCommand
         return true;
     }
 
-    private static string ResolveAssemblyPath(PlanEntry entry, string configuration)
-    {
-        var binDirectory = Path.Combine(Path.GetDirectoryName(entry.FullPath)!, "bin", configuration);
-        var candidates = Directory.Exists(binDirectory)
-            ? Directory.EnumerateFiles(binDirectory, $"{entry.AssemblyName}.dll", SearchOption.AllDirectories)
-            : [];
-
-        return candidates.FirstOrDefault()
-            ?? throw new InvalidOperationException($"No built assembly found for {entry.ProjectPath} ({configuration}). Run 'build' first.");
-    }
+    private static string ResolveExecutablePath(PlanEntry entry, string configuration) =>
+        File.Exists(entry.RunCommand)
+            ? entry.RunCommand
+            : throw new InvalidOperationException($"No built test executable found for {entry.ProjectPath} ({configuration}) at '{entry.RunCommand}'. Run 'build' first.");
 
     private static bool ReuseCachedResult(ProjectId project, string configuration, string name, LocalVolumeArtifactStore mainStore, string coverageDirectory)
     {

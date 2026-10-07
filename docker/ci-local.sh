@@ -23,7 +23,7 @@
 #       --no-cache         Do not reuse the NuGet package cache between runs.
 #
 # The image is built from docker/ci-runner.Dockerfile with the SDK version read from global.json,
-# and is rebuilt when that version, a docker/ file or RemoteBuildTool changes.
+# and is rebuilt when that version, a docker/ file or the pinned RemoteBuildTool version changes.
 #
 # main here is a Docker volume local to this machine, not the shared one CI promotes into. It
 # persists between local runs so repeated local iteration stays warm, and 'docker volume rm
@@ -81,7 +81,7 @@ if [[ "${rebuild}" == true ]] || ! docker image inspect "${IMAGE}" > /dev/null 2
     log "Building ${IMAGE} (.NET SDK ${sdk_version})"
     bash "${REPO_ROOT}/runner/build-image.sh"
 else
-    # Mostly a cache hit. Re-running after editing the entrypoint or RemoteBuildTool must not run the old one.
+    # Mostly a cache hit. Re-running after editing the entrypoint or bumping RemoteBuildTool must not run the old one.
     log "Refreshing ${IMAGE}"
     bash "${REPO_ROOT}/runner/build-image.sh" --quiet > /dev/null
 fi

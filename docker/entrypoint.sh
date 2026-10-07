@@ -2,7 +2,7 @@
 #
 # Container entry point, reached only from docker/ci-local.sh. On the build server
 # runner/in-container.sh bypasses it: the workspace is already mounted read-write there, so there
-# is nothing to copy and each step invokes the published RemoteBuildTool directly.
+# is nothing to copy and each step invokes the installed RemoteBuildTool directly.
 #
 # Usage (as arguments to docker/ci-local.sh, or to 'docker run <image>'):
 #   <none>            Run the whole pull request pipeline: plan, then Debug and Release build+test
@@ -55,7 +55,7 @@ prepare_working_copy() {
     printf '  %s\n' "$(git rev-parse --short HEAD 2>/dev/null || echo 'no HEAD') $(git status --porcelain 2>/dev/null | wc -l) uncommitted path(s)"
 }
 
-readonly REMOTEBUILDTOOL="/opt/remotebuildtool/Bitenovac.RemoteBuildTool"
+readonly REMOTEBUILDTOOL="/opt/remotebuildtool/remotebuildtool"
 
 restore_local_tools() {
     dotnet tool restore > /dev/null

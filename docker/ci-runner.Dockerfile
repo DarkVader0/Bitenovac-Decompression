@@ -11,8 +11,9 @@
 # Only what the pipeline invokes is installed, so a tool the image lacks cannot pass here and
 # fail on a machine that has it.
 #
-# The build context is the repository root, narrowed by ci-runner.Dockerfile.dockerignore. The
-# RemoteBuildTool is published into /opt/remotebuildtool here, once, so a pull request only runs it.
+# The build context is the repository root, narrowed by ci-runner.Dockerfile.dockerignore.
+# RemoteBuildTool is installed into /opt/remotebuildtool from its published NuGet package, at
+# the version pinned below, so a pull request only runs it.
 
 FROM ubuntu:24.04 AS sdk
 
@@ -42,17 +43,18 @@ ENV DOTNET_ROOT=/usr/share/dotnet \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true \
     DOTNET_CLI_TELEMETRY_OPTOUT=true
 
-FROM sdk AS remotebuildtool
-
-WORKDIR /src
-COPY global.json nuget.config Directory.Build.props Directory.Build.targets Directory.Packages.props .editorconfig ./
-COPY src/tools/Bitenovac.RemoteBuildTool.Core/ src/tools/Bitenovac.RemoteBuildTool.Core/
-COPY src/tools/Bitenovac.RemoteBuildTool/ src/tools/Bitenovac.RemoteBuildTool/
-RUN dotnet publish src/tools/Bitenovac.RemoteBuildTool -c Release -o /opt/remotebuildtool --nologo
-
 FROM sdk
 
-COPY --from=remotebuildtool /opt/remotebuildtool /opt/remotebuildtool
+# The RemoteBuildTool release pull requests are judged by. Bump it after publishing a new one.
+ARG REMOTEBUILDTOOL_VERSION=1.0.0
+ARG REMOTEBUILDTOOL_SOURCE=https://api.nuget.org/v3/index.json
+
+RUN dotnet tool install Bitenovac.RemoteBuildTool \
+        --version "${REMOTEBUILDTOOL_VERSION}" \
+        --tool-path /opt/remotebuildtool \
+        --add-source "${REMOTEBUILDTOOL_SOURCE}"
+
+ENV PATH="/opt/remotebuildtool:${PATH}"
 
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

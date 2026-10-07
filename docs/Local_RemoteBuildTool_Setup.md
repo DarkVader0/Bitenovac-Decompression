@@ -5,7 +5,7 @@ Runs the GitHub pull request pipeline on your own PC, inside WSL.
 What you end up with:
 
 - 2 GitHub runners in Ubuntu (WSL), each job limited to 6 CPUs and 6 GB RAM
-- RemoteBuildTool already built into the runner image
+- the pinned RemoteBuildTool release already installed in the runner image
 - the build cache already filled from `master`
 
 Ubuntu commands go in the **Ubuntu** terminal. Windows commands go in **PowerShell**.
@@ -101,10 +101,22 @@ On GitHub, Settings → Actions → Runners must show `DESKTOP-...-1` and `DESKT
 
 ---
 
-## After changing RemoteBuildTool, Dockerfile or `global.json`
+## After releasing RemoteBuildTool, or changing the Dockerfile or `global.json`
 
-Pull requests use the RemoteBuildTool **inside the runner image**, not the one in the pull request. After
-such a change is merged into `master` (Ubuntu):
+Pull requests use the RemoteBuildTool release **installed in the runner image**, not the source in
+the pull request. To ship a change to RemoteBuildTool:
+
+1. Bump `<VersionPrefix>` in `src/tools/Bitenovac.RemoteBuildTool/Bitenovac.RemoteBuildTool.csproj`.
+2. Pack and publish it:
+
+   ```bash
+   dotnet pack src/tools/Bitenovac.RemoteBuildTool -c Release -o artifacts/package
+   dotnet nuget push artifacts/package/Bitenovac.RemoteBuildTool.<VERSION>.nupkg --source <FEED> --api-key <KEY>
+   ```
+
+3. Set the same version as `REMOTEBUILDTOOL_VERSION` in `docker/ci-runner.Dockerfile` and merge it.
+
+Then, and after any Dockerfile or `global.json` change merged into `master` (Ubuntu):
 
 ```bash
 cd ~/bitenovac
@@ -114,8 +126,9 @@ bash runner/build-image.sh
 sudo bash runner/seed-cache.sh
 ```
 
-`seed-cache.sh` is needed because a new RemoteBuildTool empties the cache: every project would build from
-zero on the next pull request.
+`seed-cache.sh` is needed because a new RemoteBuildTool release empties the cache: every project
+would build from zero on the next pull request. Set `REMOTEBUILDTOOL_SOURCE` before `build-image.sh`
+to install from a feed other than nuget.org.
 
 ---
 

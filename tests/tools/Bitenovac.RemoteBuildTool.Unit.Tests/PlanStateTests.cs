@@ -57,6 +57,7 @@ public sealed class PlanStateTests
             "src/A/A.csproj",
             fullPath: @"C:\repo\src\A\A.csproj",
             assemblyName: "A",
+            runCommand: @"C:\repo\src\A\bin\Release\net10.0\A.exe",
             isTestProject: true,
             excludeFromCoverage: true,
             minimumLineCoverage: 92.5,
@@ -76,6 +77,7 @@ public sealed class PlanStateTests
         Assert.Equal(saved.ProjectPath, loaded.ProjectPath);
         Assert.Equal(saved.FullPath, loaded.FullPath);
         Assert.Equal(saved.AssemblyName, loaded.AssemblyName);
+        Assert.Equal(saved.RunCommand, loaded.RunCommand);
         Assert.True(loaded.IsTestProject);
         Assert.True(loaded.ExcludeFromCoverage);
         Assert.Equal(92.5, loaded.MinimumLineCoverage, Precision);

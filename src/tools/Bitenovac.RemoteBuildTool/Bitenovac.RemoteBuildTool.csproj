@@ -7,6 +7,21 @@
         <MinimumBranchCoverage>90</MinimumBranchCoverage>
     </PropertyGroup>
 
+    <!-- Versioned independently of the repository: CI runs a published release, not this source. -->
+    <PropertyGroup>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>remotebuildtool</ToolCommandName>
+        <IsPackable>true</IsPackable>
+        <PackageId>Bitenovac.RemoteBuildTool</PackageId>
+        <VersionPrefix>1.0.0</VersionPrefix>
+        <Description>Content-hashed build, test and coverage pipeline for the Bitenovac repository.</Description>
+        <Authors>Radivoje Milutinovic</Authors>
+        <Company>Bitenovac</Company>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/DarkVader0/Bitenovac-Decompression</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\Bitenovac.RemoteBuildTool.Core\Bitenovac.RemoteBuildTool.Core.csproj"/>
     </ItemGroup>
