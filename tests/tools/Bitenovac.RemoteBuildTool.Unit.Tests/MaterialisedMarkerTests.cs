@@ -14,7 +14,7 @@ public sealed class MaterialisedMarkerTests
 
         // Act
         var matches = MaterialisedMarker.Matches(
-            repository.Path, TestFactory.Id("src/A/A.csproj"), "Debug", "hash", projectDirectory);
+            repository.Path, TestFactory.Id("src/A/A.csproj"), "Debug", "hash", Path.Combine(projectDirectory, "bin"));
 
         // Assert
         Assert.False(matches);
@@ -30,7 +30,7 @@ public sealed class MaterialisedMarkerTests
 
         // Act
         var matches = MaterialisedMarker.Matches(
-            repository.Path, project, "Debug", "hash", repository.Combine("src/A"));
+            repository.Path, project, "Debug", "hash", repository.Combine("src/A/bin"));
 
         // Assert
         Assert.False(matches);
@@ -47,7 +47,7 @@ public sealed class MaterialisedMarkerTests
         MaterialisedMarker.Write(repository.Path, project, "Debug", "old-hash");
 
         // Act
-        var matches = MaterialisedMarker.Matches(repository.Path, project, "Debug", "new-hash", projectDirectory);
+        var matches = MaterialisedMarker.Matches(repository.Path, project, "Debug", "new-hash", Path.Combine(projectDirectory, "bin"));
 
         // Assert
         Assert.False(matches);
@@ -64,7 +64,7 @@ public sealed class MaterialisedMarkerTests
         MaterialisedMarker.Write(repository.Path, project, "Debug", "hash");
 
         // Act
-        var matches = MaterialisedMarker.Matches(repository.Path, project, "Release", "hash", projectDirectory);
+        var matches = MaterialisedMarker.Matches(repository.Path, project, "Release", "hash", Path.Combine(projectDirectory, "bin"));
 
         // Assert
         Assert.False(matches);
@@ -81,7 +81,7 @@ public sealed class MaterialisedMarkerTests
         MaterialisedMarker.Write(repository.Path, project, "Debug", "hash");
 
         // Act
-        var matches = MaterialisedMarker.Matches(repository.Path, project, "Debug", "hash", projectDirectory);
+        var matches = MaterialisedMarker.Matches(repository.Path, project, "Debug", "hash", Path.Combine(projectDirectory, "bin"));
 
         // Assert
         Assert.True(matches);
@@ -116,6 +116,6 @@ public sealed class MaterialisedMarkerTests
         MaterialisedMarker.Write(repository.Path, project, "Debug", "new-hash");
 
         // Assert
-        Assert.True(MaterialisedMarker.Matches(repository.Path, project, "Debug", "new-hash", projectDirectory));
+        Assert.True(MaterialisedMarker.Matches(repository.Path, project, "Debug", "new-hash", Path.Combine(projectDirectory, "bin")));
     }
 }

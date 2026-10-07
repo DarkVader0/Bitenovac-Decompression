@@ -1,6 +1,6 @@
 namespace Bitenovac.RemoteBuildTool.Testing;
 
-/// <summary>The outcome of running one test assembly.</summary>
+/// <summary>The outcome of running one test project.</summary>
 internal enum TestRunOutcome
 {
     /// <summary>Every test passed.</summary>

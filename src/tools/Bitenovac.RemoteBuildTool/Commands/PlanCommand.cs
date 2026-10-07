@@ -1,14 +1,14 @@
 using Bitenovac.RemoteBuildTool.Core.Graph;
 using Bitenovac.RemoteBuildTool.Core.Planning;
 using Bitenovac.RemoteBuildTool.Hashing;
-using Bitenovac.RemoteBuildTool.MsBuild;
 using Bitenovac.RemoteBuildTool.Planning;
 using Bitenovac.RemoteBuildTool.Storage;
+using Bitenovac.RemoteBuildTool.Toolchains;
 
 namespace Bitenovac.RemoteBuildTool.Commands;
 
 /// <summary>
-/// Discovers every project, verifies the one build-order invariant CI still enforces, restores,
+/// Discovers every project of every toolchain, lets each toolchain verify and restore its own,
 /// hashes, and decides hit or miss against <c>main</c> for both configurations. Everything later
 /// stages need is written to <see cref="PipelineOptions.PlanFile"/>.
 /// </summary>
@@ -16,38 +16,46 @@ internal static class PlanCommand
 {
     public static int Run(PipelineOptions options, PipelineOutput output)
     {
+        using var toolchains = ToolchainRegistry.Create(options.RepositoryRoot);
+
         output.WriteLine("==> Discovering projects");
-        var relativePaths = ProjectDiscovery.FindRelativePaths(options.RepositoryRoot);
-        if (relativePaths.Count == 0)
+        var discovered = toolchains.All
+            .Select(toolchain => (Toolchain: toolchain, RelativePaths: toolchain.Discover()))
+            .Where(found => found.RelativePaths.Count > 0)
+            .ToList();
+
+        var total = discovered.Sum(found => found.RelativePaths.Count);
+        if (total == 0)
         {
             output.WriteError("error: no projects found in the repository.");
             return 1;
         }
 
-        output.WriteLine($"Found {relativePaths.Count} project(s).");
+        output.WriteLine($"Found {total} project(s): {string.Join(", ", discovered.Select(found => $"{found.Toolchain.Name} {found.RelativePaths.Count}"))}.");
 
-        using var evaluator = new MsBuildProjectEvaluator(options.RepositoryRoot);
-        var evaluated = EvaluateAll(evaluator, relativePaths);
+        var evaluated = PipelineOptions.Configurations.ToDictionary(
+            configuration => configuration,
+            _ => new Dictionary<ProjectId, EvaluatedProject>());
 
-        var verifyExitCode = Verify(evaluated["Debug"].Values, output);
-        if (verifyExitCode != 0)
-            return verifyExitCode;
-
-        output.WriteLine("==> Restoring");
-        var restoreExitCode = Restore(options, evaluated["Debug"].Values);
-        if (restoreExitCode != 0)
+        foreach (var (toolchain, relativePaths) in discovered)
         {
-            output.WriteError($"error: restore failed (exit {restoreExitCode}).");
-            return restoreExitCode;
+            var byConfiguration = PipelineOptions.Configurations.ToDictionary(
+                configuration => configuration,
+                configuration => toolchain.Evaluate(relativePaths, configuration));
+
+            var prepared = toolchain.Prepare(options, byConfiguration, output);
+            if (!prepared.Succeeded)
+                return prepared.ExitCode;
+
+            foreach (var (configuration, projects) in prepared.ByConfiguration)
+            {
+                foreach (var project in projects)
+                    evaluated[configuration][project.Id] = project;
+            }
         }
 
-        evaluated = evaluated.ToDictionary(
-            byConfiguration => byConfiguration.Key,
-            byConfiguration => (IReadOnlyDictionary<ProjectId, EvaluatedProject>)byConfiguration.Value.ToDictionary(
-                entry => entry.Key,
-                entry => MsBuildProjectEvaluator.RefreshPackageClosure(entry.Value)));
-
-        RestoreOutputs.Save(options.RepositoryRoot, evaluated["Debug"].Values.Select(project => project.FullPath), options.RestoreOutputsRoot);
+        foreach (var projects in evaluated.Values)
+            ToolchainOrder.Resolve([.. projects.Values.Select(project => (project.Id, project.Toolchain, project.ProjectReferences))]);
 
         var remoteBuildToolHash = RemoteBuildToolVersion.Compute(AppContext.BaseDirectory);
         var mainStore = new LocalVolumeArtifactStore(options.MainStoreRoot);
@@ -67,40 +75,6 @@ internal static class PlanCommand
         return 0;
     }
 
-    private static Dictionary<string, IReadOnlyDictionary<ProjectId, EvaluatedProject>> EvaluateAll(
-        MsBuildProjectEvaluator evaluator, IReadOnlyList<string> relativePaths)
-    {
-        var result = new Dictionary<string, IReadOnlyDictionary<ProjectId, EvaluatedProject>>();
-        foreach (var configuration in PipelineOptions.Configurations)
-            result[configuration] = evaluator.EvaluateAll(relativePaths, configuration);
-
-        return result;
-    }
-
-    private static int Verify(IEnumerable<EvaluatedProject> projects, PipelineOutput output)
-    {
-        output.WriteLine("==> Verifying build assumptions");
-
-        var offenders = projects.Where(project => project.HasTargetFrameworks).ToList();
-        if (offenders.Count > 0)
-        {
-            output.WriteError("error: these projects declare <TargetFrameworks>. Set a single <TargetFramework>, or change RepositoryTargetFramework in Directory.Build.props.");
-            foreach (var project in offenders)
-                output.WriteError($"  {project.Id}");
-            return 1;
-        }
-
-        output.WriteLine("OK: every project targets a single framework.");
-        return 0;
-    }
-
-    private static int Restore(PipelineOptions options, IEnumerable<EvaluatedProject> projects) =>
-        MsBuildRunner.Restore(
-            options.RepositoryRoot,
-            projects.Select(project => project.FullPath),
-            configuration: "Debug",
-            options.SyntheticSolutionPath("restore"));
-
     private static List<PlanEntry> PlanConfiguration(
         string configuration,
         IReadOnlyDictionary<ProjectId, EvaluatedProject> evaluated,
@@ -112,7 +86,7 @@ internal static class PlanCommand
         var edges = evaluated.Values.SelectMany(project => project.ProjectReferences.Select(reference => new ProjectEdge(project.Id, reference)));
         var graph = new ProjectGraph(ids, edges);
 
-        var ownHashInputs = evaluated.ToDictionary(entry => entry.Key, entry => (IReadOnlyList<string>)entry.Value.OwnHashInputs);
+        var ownHashInputs = evaluated.ToDictionary(entry => entry.Key, entry => entry.Value.OwnHashInputs);
 
         var stored = new Dictionary<ProjectId, StoredTargetHash>();
         foreach (var id in ids)
@@ -131,8 +105,10 @@ internal static class PlanCommand
             return new PlanEntry(
                 ProjectPath: id.Value,
                 FullPath: project.FullPath,
-                AssemblyName: project.AssemblyName,
-                RunCommand: project.RunCommand,
+                Toolchain: project.Toolchain,
+                References: [.. project.ProjectReferences.Select(reference => reference.Value)],
+                CoverageName: project.CoverageName,
+                Properties: project.Properties,
                 IsTestProject: project.IsTestProject,
                 ExcludeFromCoverage: project.ExcludeFromCoverage,
                 MinimumLineCoverage: project.MinimumLineCoverage,

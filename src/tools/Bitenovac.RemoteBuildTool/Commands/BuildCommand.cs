@@ -1,22 +1,19 @@
 using Bitenovac.RemoteBuildTool.Core.Graph;
 using Bitenovac.RemoteBuildTool.Core.Planning;
-using Bitenovac.RemoteBuildTool.MsBuild;
 using Bitenovac.RemoteBuildTool.Planning;
 using Bitenovac.RemoteBuildTool.Storage;
+using Bitenovac.RemoteBuildTool.Toolchains;
 
 namespace Bitenovac.RemoteBuildTool.Commands;
 
 /// <summary>
-/// Materialises every cache hit's <c>bin/</c> and <c>obj/</c> from <c>main</c>, then compiles
-/// only what is left — the misses, and any hit <c>main</c> could not supply — in one
-/// dependency-ordered MSBuild graph. A hit a miss references is part of that graph, and
-/// MSBuild's up-to-date check (made trustworthy by <see cref="Touch"/>) skips it.
+/// Materialises every cache hit's output from <c>main</c>, then has each toolchain build only
+/// what is left — the misses, and any hit <c>main</c> could not supply — toolchain by toolchain
+/// in <see cref="ToolchainOrder"/>. Within a toolchain, a hit a miss references is already in
+/// place, and its up-to-date check (made trustworthy by <see cref="Touch"/>) skips it.
 /// </summary>
 internal static class BuildCommand
 {
-    /// <summary>The parts of a stored entry that belong in a source tree. <c>tests/</c> does not.</summary>
-    private static readonly string[] MaterialisedPrefixes = ["bin/", "obj/"];
-
     public static int Run(PipelineOptions options, string configuration, PipelineOutput output)
     {
         var plan = PlanState.Load(options.PlanFile);
@@ -27,22 +24,32 @@ internal static class BuildCommand
             return 0;
         }
 
+        using var toolchains = ToolchainRegistry.Create(options.RepositoryRoot);
         var mainStore = new LocalVolumeArtifactStore(options.MainStoreRoot);
         var prStore = new LocalVolumeArtifactStore(options.PrStoreRoot);
 
-        var (materialised, skipped, unavailable) = MaterialiseHits(options, entries, configuration, mainStore);
+        var (materialised, skipped, unavailable) = MaterialiseHits(options, entries, configuration, mainStore, toolchains);
         output.WriteLine($"{configuration}: materialised {materialised} cache hit(s) from main"
             + (skipped > 0 ? $", {skipped} already present" : "") + ".");
 
         var toBuild = entries.Where(entry => !entry.Hit || unavailable.Contains(entry)).ToList();
-        if (toBuild.Count > 0)
+        var order = ToolchainOrder.Resolve([.. entries.Select(entry => (
+            new ProjectId(entry.ProjectPath),
+            entry.Toolchain,
+            (IReadOnlyList<ProjectId>)[.. entry.References.Select(reference => new ProjectId(reference))]))]);
+
+        foreach (var name in order)
         {
-            var exitCode = Compile(options, configuration, toBuild, output);
+            var batch = toBuild.Where(entry => entry.Toolchain == name).ToList();
+            if (batch.Count == 0)
+                continue;
+
+            var exitCode = toolchains.For(name).Build(options, batch, configuration, output);
             if (exitCode != 0)
                 return exitCode;
         }
 
-        var staged = StageMisses(entries, configuration, prStore);
+        var staged = StageMisses(entries, configuration, prStore, toolchains);
 
         foreach (var entry in entries)
             MaterialisedMarker.Write(options.RepositoryRoot, new ProjectId(entry.ProjectPath), configuration, entry.FullHash);
@@ -51,43 +58,12 @@ internal static class BuildCommand
         return 0;
     }
 
-    private static int Compile(PipelineOptions options, string configuration, IReadOnlyList<PlanEntry> toBuild, PipelineOutput output)
-    {
-        var unrestored = toBuild
-            .Where(entry => !RestoreOutputs.Materialise(options.RepositoryRoot, entry.FullPath, options.RestoreOutputsRoot))
-            .ToList();
-
-        if (unrestored.Count > 0)
-        {
-            output.WriteLine($"==> Restoring {unrestored.Count} project(s) plan did not restore");
-            var restoreExitCode = MsBuildRunner.Restore(
-                options.RepositoryRoot,
-                unrestored.Select(entry => entry.FullPath),
-                configuration,
-                options.SyntheticSolutionPath($"restore-{configuration}"));
-
-            if (restoreExitCode != 0)
-            {
-                output.WriteError($"error: restore failed (exit {restoreExitCode}).");
-                return restoreExitCode;
-            }
-        }
-
-        output.WriteLine($"==> Building {toBuild.Count} project(s) ({configuration})");
-        var exitCode = MsBuildRunner.Build(
-            options.RepositoryRoot,
-            toBuild.Select(entry => entry.FullPath),
-            configuration,
-            options.SyntheticSolutionPath($"build-{configuration}"));
-
-        if (exitCode != 0)
-            output.WriteError($"error: build failed (exit {exitCode}).");
-
-        return exitCode;
-    }
-
     private static (int Materialised, int Skipped, HashSet<PlanEntry> Unavailable) MaterialiseHits(
-        PipelineOptions options, IReadOnlyList<PlanEntry> entries, string configuration, LocalVolumeArtifactStore mainStore)
+        PipelineOptions options,
+        IReadOnlyList<PlanEntry> entries,
+        string configuration,
+        LocalVolumeArtifactStore mainStore,
+        ToolchainRegistry toolchains)
     {
         var materialised = 0;
         var skipped = 0;
@@ -97,21 +73,22 @@ internal static class BuildCommand
         {
             var project = new ProjectId(entry.ProjectPath);
             var projectDirectory = Path.GetDirectoryName(entry.FullPath)!;
+            var outputDirectories = toolchains.For(entry.Toolchain).OutputDirectories;
 
-            if (MaterialisedMarker.Matches(options.RepositoryRoot, project, configuration, entry.FullHash, projectDirectory))
+            if (MaterialisedMarker.Matches(options.RepositoryRoot, project, configuration, entry.FullHash, Path.Combine(projectDirectory, outputDirectories[0])))
             {
                 skipped++;
                 continue;
             }
 
-            if (!mainStore.TryGet(project, configuration, projectDirectory, out _, MaterialisedPrefixes))
+            if (!mainStore.TryGet(project, configuration, projectDirectory, out _, [.. outputDirectories.Select(directory => directory + "/")]))
             {
                 unavailable.Add(entry);
                 continue;
             }
 
-            Touch(Path.Combine(projectDirectory, "bin"));
-            Touch(Path.Combine(projectDirectory, "obj"));
+            foreach (var directory in outputDirectories)
+                Touch(Path.Combine(projectDirectory, directory));
             materialised++;
         }
 
@@ -124,7 +101,7 @@ internal static class BuildCommand
     /// be writing a second copy of something the next stage can read from main directly — on a
     /// fully warm run, that was the entire staging cost for nothing.
     /// </summary>
-    private static int StageMisses(IReadOnlyList<PlanEntry> entries, string configuration, LocalVolumeArtifactStore prStore)
+    private static int StageMisses(IReadOnlyList<PlanEntry> entries, string configuration, LocalVolumeArtifactStore prStore, ToolchainRegistry toolchains)
     {
         var staged = 0;
 
@@ -132,8 +109,8 @@ internal static class BuildCommand
         {
             var projectDirectory = Path.GetDirectoryName(entry.FullPath)!;
 
-            var files = LocalVolumeArtifactStore.EnumerateAsSources(Path.Combine(projectDirectory, "bin"), "bin/")
-                .Concat(LocalVolumeArtifactStore.EnumerateAsSources(Path.Combine(projectDirectory, "obj"), "obj/"));
+            var files = toolchains.For(entry.Toolchain).OutputDirectories
+                .SelectMany(directory => LocalVolumeArtifactStore.EnumerateAsSources(Path.Combine(projectDirectory, directory), directory + "/"));
 
             prStore.Put(
                 new ProjectId(entry.ProjectPath),

@@ -3,7 +3,7 @@ using Bitenovac.RemoteBuildTool.Core.Coverage;
 
 namespace Bitenovac.RemoteBuildTool.Testing;
 
-/// <summary>Reads a merged cobertura report into a measurement per assembly.</summary>
+/// <summary>Reads a merged cobertura report into a measurement per package — the name a toolchain reports a project's code under.</summary>
 internal static class CoverageReportReader
 {
     public static IReadOnlyDictionary<string, CoverageMeasurement> Read(string mergedReportPath)

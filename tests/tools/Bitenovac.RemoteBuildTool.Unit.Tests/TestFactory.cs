@@ -1,5 +1,6 @@
 using Bitenovac.RemoteBuildTool.Core.Graph;
 using Bitenovac.RemoteBuildTool.Planning;
+using Bitenovac.RemoteBuildTool.Toolchains.DotNet;
 
 namespace Bitenovac.RemoteBuildTool.Unit.Tests;
 
@@ -36,8 +37,10 @@ internal static class TestFactory
     public static PlanEntry Entry(
         string projectPath,
         string fullPath = @"C:\repo\Project.csproj",
-        string assemblyName = "Project",
-        string runCommand = @"C:\repo\bin\Debug\net10.0\Project.exe",
+        string toolchain = DotNetToolchain.ToolchainName,
+        IReadOnlyList<string>? references = null,
+        string coverageName = "Project",
+        IReadOnlyDictionary<string, string>? properties = null,
         bool isTestProject = false,
         bool excludeFromCoverage = false,
         double minimumLineCoverage = 100,
@@ -51,8 +54,10 @@ internal static class TestFactory
         new(
             projectPath,
             fullPath,
-            assemblyName,
-            runCommand,
+            toolchain,
+            references ?? [],
+            coverageName,
+            properties ?? new Dictionary<string, string>(),
             isTestProject,
             excludeFromCoverage,
             minimumLineCoverage,

@@ -1,22 +1,22 @@
 using Bitenovac.RemoteBuildTool.Core.Graph;
-using Bitenovac.RemoteBuildTool.MsBuild;
+using Bitenovac.RemoteBuildTool.Toolchains;
 
 namespace Bitenovac.RemoteBuildTool.Commands;
 
-/// <summary>Diagnostic: prints the project reference graph for both configurations.</summary>
+/// <summary>Diagnostic: prints the project reference graph across every toolchain, for both configurations.</summary>
 internal static class GraphCommand
 {
     public static int Run(PipelineOptions options, PipelineOutput output)
     {
-        var relativePaths = ProjectDiscovery.FindRelativePaths(options.RepositoryRoot);
-        using var evaluator = new MsBuildProjectEvaluator(options.RepositoryRoot);
+        using var toolchains = ToolchainRegistry.Create(options.RepositoryRoot);
+        var discovered = toolchains.All.Select(toolchain => (Toolchain: toolchain, RelativePaths: toolchain.Discover())).ToList();
 
         foreach (var configuration in PipelineOptions.Configurations)
         {
             output.WriteLine($"=== {configuration} ===");
-            var evaluated = evaluator.EvaluateAll(relativePaths, configuration);
-            var edges = evaluated.Values.SelectMany(project => project.ProjectReferences.Select(reference => new ProjectEdge(project.Id, reference)));
-            var graph = new ProjectGraph(evaluated.Keys, edges);
+            var evaluated = discovered.SelectMany(found => found.Toolchain.Evaluate(found.RelativePaths, configuration)).ToList();
+            var edges = evaluated.SelectMany(project => project.ProjectReferences.Select(reference => new ProjectEdge(project.Id, reference)));
+            var graph = new ProjectGraph(evaluated.Select(project => project.Id), edges);
 
             foreach (var project in graph.Projects)
             {

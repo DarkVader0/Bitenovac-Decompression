@@ -4,6 +4,7 @@ using Bitenovac.RemoteBuildTool.Core.Planning;
 using Bitenovac.RemoteBuildTool.Planning;
 using Bitenovac.RemoteBuildTool.Storage;
 using Bitenovac.RemoteBuildTool.Testing;
+using Bitenovac.RemoteBuildTool.Toolchains;
 
 namespace Bitenovac.RemoteBuildTool.Commands;
 
@@ -17,9 +18,6 @@ namespace Bitenovac.RemoteBuildTool.Commands;
 /// </summary>
 internal static class TestCommand
 {
-    /// <summary>The parts of a stored entry that belong in a source tree. <c>tests/</c> does not.</summary>
-    private static readonly string[] MaterialisedPrefixes = ["bin/", "obj/"];
-
     /// <summary>The part of a stored entry holding a cached test result.</summary>
     private static readonly string[] TestResultPrefixes = ["tests/"];
 
@@ -33,10 +31,11 @@ internal static class TestCommand
             return 0;
         }
 
+        using var toolchains = ToolchainRegistry.Create(options.RepositoryRoot);
         var prStore = new LocalVolumeArtifactStore(options.PrStoreRoot);
         var mainStore = new LocalVolumeArtifactStore(options.MainStoreRoot);
 
-        if (!MaterialiseBuildOutputs(output, options, entries, configuration, prStore, mainStore))
+        if (!MaterialiseBuildOutputs(output, options, entries, configuration, prStore, mainStore, toolchains))
             return 1;
 
         var testEntries = entries.Where(entry => entry.IsTestProject).ToList();
@@ -55,7 +54,7 @@ internal static class TestCommand
 
         var failed = new List<string>();
         var noTestsRan = new List<string>();
-        var toRun = new List<(PlanEntry Entry, string Name, string ExecutablePath)>();
+        var toRun = new List<(PlanEntry Entry, string Name)>();
 
         foreach (var entry in testEntries)
         {
@@ -67,7 +66,7 @@ internal static class TestCommand
                 continue;
             }
 
-            toRun.Add((entry, name, ResolveExecutablePath(entry, configuration)));
+            toRun.Add((entry, name));
         }
 
         var results = new TestRunResult[toRun.Count];
@@ -75,8 +74,15 @@ internal static class TestCommand
 
         Parallel.For(0, toRun.Count, new ParallelOptions { MaxDegreeOfParallelism = PipelineOptions.MaxParallelism() }, index =>
         {
-            var (_, name, executablePath) = toRun[index];
-            results[index] = TestRunner.Run(executablePath, name, coverageDirectory);
+            var (entry, name) = toRun[index];
+            try
+            {
+                results[index] = toolchains.For(entry.Toolchain).RunTests(entry, configuration, name, coverageDirectory);
+            }
+            catch (InvalidOperationException exception)
+            {
+                results[index] = new TestRunResult(TestRunOutcome.Failed, -1, coverageDirectory, exception.Message + Environment.NewLine);
+            }
 
             lock (outputGate)
             {
@@ -87,7 +93,7 @@ internal static class TestCommand
 
         for (var index = 0; index < toRun.Count; index++)
         {
-            var (entry, name, _) = toRun[index];
+            var (entry, name) = toRun[index];
             var result = results[index];
 
             switch (result.Outcome)
@@ -128,7 +134,8 @@ internal static class TestCommand
         IReadOnlyList<PlanEntry> entries,
         string configuration,
         LocalVolumeArtifactStore prStore,
-        LocalVolumeArtifactStore mainStore)
+        LocalVolumeArtifactStore mainStore,
+        ToolchainRegistry toolchains)
     {
         var materialised = 0;
         var skipped = 0;
@@ -137,8 +144,9 @@ internal static class TestCommand
         {
             var project = new ProjectId(entry.ProjectPath);
             var projectDirectory = Path.GetDirectoryName(entry.FullPath)!;
+            var outputDirectories = toolchains.For(entry.Toolchain).OutputDirectories;
 
-            if (MaterialisedMarker.Matches(options.RepositoryRoot, project, configuration, entry.FullHash, projectDirectory))
+            if (MaterialisedMarker.Matches(options.RepositoryRoot, project, configuration, entry.FullHash, Path.Combine(projectDirectory, outputDirectories[0])))
             {
                 skipped++;
                 continue;
@@ -146,7 +154,7 @@ internal static class TestCommand
 
             var source = entry.Hit ? mainStore : prStore;
 
-            if (!source.TryGet(project, configuration, projectDirectory, out _, MaterialisedPrefixes))
+            if (!source.TryGet(project, configuration, projectDirectory, out _, [.. outputDirectories.Select(directory => directory + "/")]))
             {
                 output.WriteError($"error: no build output available for {entry.ProjectPath}. Run 'build {configuration}' first.");
                 return false;
@@ -162,11 +170,6 @@ internal static class TestCommand
 
         return true;
     }
-
-    private static string ResolveExecutablePath(PlanEntry entry, string configuration) =>
-        File.Exists(entry.RunCommand)
-            ? entry.RunCommand
-            : throw new InvalidOperationException($"No built test executable found for {entry.ProjectPath} ({configuration}) at '{entry.RunCommand}'. Run 'build' first.");
 
     private static bool ReuseCachedResult(ProjectId project, string configuration, string name, LocalVolumeArtifactStore mainStore, string coverageDirectory)
     {
@@ -232,12 +235,12 @@ internal static class TestCommand
         output.WriteLine("==> Merging coverage reports");
         var reportDirectory = options.CoverageReportDirectory("Debug");
         var merged = CoverageReportGenerator.Merge(options.RepositoryRoot, coverageDirectory, reportDirectory, options.CoverageHtml);
-        var measuredByAssembly = CoverageReportReader.Read(merged);
+        var measuredByName = CoverageReportReader.Read(merged);
 
-        var assemblyByProject = entries.ToDictionary(entry => new ProjectId(entry.ProjectPath), entry => entry.AssemblyName);
+        var coverageNameByProject = entries.ToDictionary(entry => new ProjectId(entry.ProjectPath), entry => entry.CoverageName);
         var measured = gated.Keys
-            .Where(project => measuredByAssembly.ContainsKey(assemblyByProject[project]))
-            .ToDictionary(project => project, project => measuredByAssembly[assemblyByProject[project]]);
+            .Where(project => measuredByName.ContainsKey(coverageNameByProject[project]))
+            .ToDictionary(project => project, project => measuredByName[coverageNameByProject[project]]);
 
         var results = CoverageGate.Evaluate(gated, measured);
         var failures = results.Where(result => !result.Passed).ToList();

@@ -80,6 +80,36 @@ public sealed class TestCommandTests
     }
 
     [Fact]
+    public void Run_ShouldFailTheProject_WhenItsTestExecutableWasNeverBuilt()
+    {
+        // Arrange
+        using var directory = TestFactory.Directory();
+        var options = TestFactory.Options(directory.Path, directory.Combine("main"), directory.Combine("pr"));
+        var project = TestFactory.Id("tests/A/A.Tests.csproj");
+        var staged = directory.Combine("staged");
+        TestFactory.WriteFile(staged, "bin/Debug/A.Tests.dll", "assembly");
+        new LocalVolumeArtifactStore(options.PrStoreRoot)
+            .Put(project, "Debug", staged, new StoredTargetHash("own", "full"));
+        var entry = TestFactory.Entry(
+            project.Value,
+            fullPath: directory.Combine("tests/A/A.Tests.csproj"),
+            properties: new Dictionary<string, string> { ["RunCommand"] = directory.Combine("tests/A/bin/Debug/A.Tests") },
+            isTestProject: true,
+            ownHash: "own",
+            fullHash: "full");
+        TestFactory.Plan("Debug", entry).Save(options.PlanFile);
+        var output = new CapturedOutput();
+
+        // Act
+        var exitCode = TestCommand.Run(options, "Debug", output.Pipeline);
+
+        // Assert
+        Assert.Equal(1, exitCode);
+        Assert.Contains("No built test executable found for tests/A/A.Tests.csproj", output.Out, StringComparison.Ordinal);
+        Assert.Contains("A.Tests (exit -1)", output.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Run_ShouldTakeAHitFromMainRatherThanTheRunStore_WhenTheEntryWasNeverStaged()
     {
         // Arrange

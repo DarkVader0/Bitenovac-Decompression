@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using Bitenovac.RemoteBuildTool.Core.Graph;
 using Bitenovac.RemoteBuildTool.Hashing;
+using Bitenovac.RemoteBuildTool.Toolchains;
+using Bitenovac.RemoteBuildTool.Toolchains.DotNet;
 using Microsoft.Build.Evaluation;
 
 namespace Bitenovac.RemoteBuildTool.MsBuild;
@@ -105,16 +107,19 @@ internal sealed class MsBuildProjectEvaluator : IDisposable
         return new EvaluatedProject(
             Id: id,
             FullPath: fullPath,
+            Toolchain: DotNetToolchain.ToolchainName,
             ProjectReferences: projectReferences,
             IsTestProject: IsTrue(project.GetPropertyValue("IsTestProject")),
             ExcludeFromCoverage: IsTrue(project.GetPropertyValue("ExcludeFromCoverage")),
             MinimumLineCoverage: double.Parse(project.GetPropertyValue("MinimumLineCoverage")),
             MinimumBranchCoverage: double.Parse(project.GetPropertyValue("MinimumBranchCoverage")),
             CacheTestResults: IsTrue(project.GetPropertyValue("CacheTestResults")),
-            TargetPath: project.GetPropertyValue("TargetPath"),
-            AssemblyName: project.GetPropertyValue("AssemblyName"),
-            RunCommand: project.GetPropertyValue("RunCommand"),
-            HasTargetFrameworks: !string.IsNullOrEmpty(project.GetPropertyValue("TargetFrameworks")),
+            CoverageName: project.GetPropertyValue("AssemblyName"),
+            Properties: new Dictionary<string, string>
+            {
+                [DotNetToolchain.RunCommandProperty] = project.GetPropertyValue("RunCommand"),
+                [DotNetToolchain.TargetFrameworksProperty] = project.GetPropertyValue("TargetFrameworks"),
+            },
             OwnHashInputs: ownHashInputs);
     }
 

@@ -18,8 +18,8 @@ namespace Bitenovac.RemoteBuildTool.Storage;
 /// its own checkout is empty. A workspace marker is simply absent there, so it materialises.
 /// </item>
 /// <item>
-/// Outside <c>bin/</c> and <c>obj/</c>, so it is never swept into a store entry and cannot come
-/// back as a stale claim attached to some other hash.
+/// Outside every toolchain's output directories, so it is never swept into a store entry and
+/// cannot come back as a stale claim attached to some other hash.
 /// </item>
 /// <item>
 /// Under <c>artifacts/</c>, which is already in <c>.gitignore</c>, so it never shows up as an
@@ -34,14 +34,14 @@ internal static class MaterialisedMarker
     /// <param name="project">The project to check.</param>
     /// <param name="configuration">The build configuration.</param>
     /// <param name="fullHash">The hash the workspace would need to hold.</param>
-    /// <param name="projectDirectory">The project's directory, checked for actual output.</param>
-    public static bool Matches(string repositoryRoot, ProjectId project, string configuration, string fullHash, string projectDirectory)
+    /// <param name="outputDirectory">The project's primary output directory, checked for actual output.</param>
+    public static bool Matches(string repositoryRoot, ProjectId project, string configuration, string fullHash, string outputDirectory)
     {
         var marker = MarkerPath(repositoryRoot, project, configuration);
         if (!File.Exists(marker))
             return false;
 
-        if (!Directory.Exists(Path.Combine(projectDirectory, "bin")))
+        if (!Directory.Exists(outputDirectory))
             return false;
 
         return File.ReadAllText(marker).Trim() == fullHash;
