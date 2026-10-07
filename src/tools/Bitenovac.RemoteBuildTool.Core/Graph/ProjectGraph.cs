@@ -1,19 +1,23 @@
 namespace Bitenovac.RemoteBuildTool.Core.Graph;
 
 /// <summary>
-/// The project reference graph for one repository snapshot: every project, and the projects
-/// each one directly references. Immutable once built.
+/// Represents the reference graph of every project in one repository snapshot.
 /// </summary>
 public sealed class ProjectGraph
 {
     private readonly IReadOnlyDictionary<ProjectId, IReadOnlyList<ProjectId>> _dependencies;
 
-    /// <summary>Builds a graph from the discovered projects and their <c>ProjectReference</c> edges.</summary>
-    /// <param name="projects">Every project in the repository.</param>
-    /// <param name="edges">Every <c>ProjectReference</c> edge between them.</param>
-    /// <exception cref="ArgumentNullException"><paramref name="projects"/> or <paramref name="edges"/> is null.</exception>
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ProjectGraph"/> class from a set of projects
+    /// and the references between them.
+    /// </summary>
+    /// <param name="projects">Every project in the graph.</param>
+    /// <param name="edges">Every reference between the projects in <paramref name="projects"/>.</param>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="projects"/> or <paramref name="edges"/> is <see langword="null"/>.
+    /// </exception>
     /// <exception cref="ArgumentException">
-    /// An edge names a project that does not appear in <paramref name="projects"/>.
+    /// An edge names a project that is not in <paramref name="projects"/>.
     /// </exception>
     public ProjectGraph(IEnumerable<ProjectId> projects, IEnumerable<ProjectEdge> edges)
     {
@@ -40,26 +44,32 @@ public sealed class ProjectGraph
             kvp => (IReadOnlyList<ProjectId>)kvp.Value.OrderBy(p => p.Value, StringComparer.Ordinal).ToList());
     }
 
-    /// <summary>Every project in the graph, ordered by path.</summary>
+    /// <summary>
+    /// Gets every project in the graph.
+    /// </summary>
+    /// <value>
+    /// The projects, ordered ordinally by path.
+    /// </value>
     public IReadOnlyList<ProjectId> Projects { get; }
 
-    /// <summary>The projects <paramref name="project"/> directly references, ordered by path.</summary>
-    /// <param name="project">A project known to this graph.</param>
+    /// <summary>
+    /// Returns the projects that the specified project directly references.
+    /// </summary>
+    /// <param name="project">A project in the graph.</param>
+    /// <returns>The directly referenced projects, ordered ordinally by path.</returns>
     /// <exception cref="ArgumentException"><paramref name="project"/> is not in the graph.</exception>
-    public IReadOnlyList<ProjectId> GetDependencies(ProjectId project)
-    {
-        if (!_dependencies.TryGetValue(project, out var dependencies))
-            throw new ArgumentException($"Unknown project: '{project}'.", nameof(project));
-
-        return dependencies;
-    }
+    public IReadOnlyList<ProjectId> GetDependencies(ProjectId project) 
+        => !_dependencies.TryGetValue(project, out var dependencies) 
+            ? throw new ArgumentException($"Unknown project: '{project}'.", nameof(project)) 
+            : dependencies;
 
     /// <summary>
-    /// Every project in dependency order: a project always appears after everything it
-    /// references, directly or transitively. Folding a Merkle hash over this order needs no
-    /// recursion — by the time a project is reached, every dependency's hash is already known.
+    /// Returns every project in dependency order.
     /// </summary>
-    /// <exception cref="ProjectGraphCycleException">The graph contains a cycle.</exception>
+    /// <returns>
+    /// The projects, each one after every project it references, directly or transitively.
+    /// </returns>
+    /// <exception cref="ProjectGraphCycleException">The references in the graph form a cycle.</exception>
     public IReadOnlyList<ProjectId> GetBuildOrder()
     {
         var visiting = new HashSet<ProjectId>();

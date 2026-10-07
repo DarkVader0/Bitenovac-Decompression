@@ -1,11 +1,16 @@
 namespace Bitenovac.RemoteBuildTool.Core.Planning;
 
-/// <summary>Whether a target's current hash matches what the artifact store holds.</summary>
+/// <summary>
+/// Specifies whether a project's computed hash matches the hash stored for it.
+/// </summary>
 public enum CacheOutcome
 {
-    /// <summary>The computed hash matches the store; the cached artifact can be reused.</summary>
+    /// <summary>
+    /// The computed hash matches the stored hash, so the stored artifact can be reused.
+    /// </summary>
     Hit,
-
-    /// <summary>The computed hash does not match the store, or nothing is stored yet.</summary>
+    /// <summary>
+    /// The computed hash differs from the stored hash, or no hash is stored.
+    /// </summary>
     Miss,
 }

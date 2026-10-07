@@ -4,24 +4,23 @@ using System.Text;
 namespace Bitenovac.RemoteBuildTool.Core.Hashing;
 
 /// <summary>
-/// Combines already-gathered, already-normalised inputs into the two hashes a caching decision
-/// needs. Reads nothing itself: collecting file contents, resolved package versions and build
-/// properties is the caller's job, so this type has no filesystem or process dependency and is
-/// exercised with plain strings.
+/// Provides methods for computing the hashes in a <see cref="TargetHash"/>.
 /// </summary>
 public static class TargetHasher
 {
     /// <summary>
-    /// Hashes a project's own inputs: everything that affects its compilation independent of
-    /// any project it references. Entries are sorted before hashing, so the result depends on
-    /// the set of inputs, never the order the caller gathered them in.
+    /// Computes a project's own hash from its inputs.
     /// </summary>
     /// <param name="inputs">
-    /// One entry per input, each already rendered to a stable string, for example
-    /// <c>"path=&lt;content hash&gt;"</c> for a source file or <c>"package:Id/Version"</c> for a
-    /// resolved package.
+    /// One stable string per input, for example <c>"source:path=&lt;content hash&gt;"</c> for a
+    /// source file or <c>"package:Id/Version"</c> for a resolved package.
     /// </param>
-    /// <exception cref="ArgumentNullException"><paramref name="inputs"/> is null.</exception>
+    /// <returns>The lowercase hexadecimal SHA-256 hash of the inputs.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="inputs"/> is <see langword="null"/>.</exception>
+    /// <remarks>
+    /// The inputs are sorted before hashing, so the result depends on the set of inputs and not on
+    /// the order they are supplied in.
+    /// </remarks>
     public static string ComputeOwnHash(IEnumerable<string> inputs)
     {
         ArgumentNullException.ThrowIfNull(inputs);
@@ -29,16 +28,18 @@ public static class TargetHasher
     }
 
     /// <summary>
-    /// Folds a project's own hash together with the full hash of every project it directly
-    /// depends on, producing a Merkle hash over its whole dependency closure.
+    /// Computes a project's full hash from its own hash and the full hashes of the projects it references.
     /// </summary>
-    /// <param name="ownHash">The project's own hash, from <see cref="ComputeOwnHash"/>.</param>
+    /// <param name="ownHash">The project's own hash, as returned by <see cref="ComputeOwnHash"/>.</param>
     /// <param name="dependencyFullHashes">
-    /// The <see cref="TargetHash.FullHash"/> of every project this one directly references.
-    /// Order does not matter.
+    /// The <see cref="TargetHash.FullHash"/> of every project this one directly references, in any order.
     /// </param>
+    /// <returns>
+    /// The lowercase hexadecimal SHA-256 hash of <paramref name="ownHash"/> and
+    /// <paramref name="dependencyFullHashes"/>.
+    /// </returns>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="ownHash"/> or <paramref name="dependencyFullHashes"/> is null.
+    /// <paramref name="ownHash"/> or <paramref name="dependencyFullHashes"/> is <see langword="null"/>.
     /// </exception>
     public static string ComputeFullHash(string ownHash, IEnumerable<string> dependencyFullHashes)
     {

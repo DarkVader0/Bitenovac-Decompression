@@ -1,7 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
     <PropertyGroup>
         <IsLibrary>true</IsLibrary>
     </PropertyGroup>
-
 </Project>

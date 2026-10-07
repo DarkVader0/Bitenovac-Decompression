@@ -3,23 +3,18 @@ using Bitenovac.RemoteBuildTool.Core.Graph;
 namespace Bitenovac.RemoteBuildTool.Core.Coverage;
 
 /// <summary>
-/// Checks every gated project's measured coverage against its policy. Pure: it reads no report
-/// itself, so the caller is responsible for deciding which projects are gated this run (see
-/// <c>Bitenovac.RemoteBuildTool.Core.Planning.TargetDecision.ShouldGateCoverage</c>) and for merging and
-/// parsing the coverage report into <see cref="CoverageMeasurement"/> values.
+/// Provides methods for checking measured coverage against each project's <see cref="CoveragePolicy"/>.
 /// </summary>
 public static class CoverageGate
 {
     /// <summary>
-    /// Evaluates every gated project. A project with no measurement fails: it is under the gate
-    /// but nothing exercised it, which never happens for a project whose test dependents are
-    /// correctly identified upstream.
+    /// Evaluates every gated project against its policy.
     /// </summary>
-    /// <param name="gated">The projects under the gate this run, with their policy.</param>
-    /// <param name="measured">The measured coverage of every project a test run touched.</param>
-    /// <returns>One result per entry in <paramref name="gated"/>, ordered by project path.</returns>
+    /// <param name="gated">The projects under the gate, each with the policy it must meet.</param>
+    /// <param name="measured">The measured coverage of every project a test run exercised.</param>
+    /// <returns>One result for each project in <paramref name="gated"/>, ordered by project path.</returns>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="gated"/> or <paramref name="measured"/> is null.
+    /// <paramref name="gated"/> or <paramref name="measured"/> is <see langword="null"/>.
     /// </exception>
     public static IReadOnlyList<CoverageGateResult> Evaluate(
         IReadOnlyDictionary<ProjectId, CoveragePolicy> gated,
