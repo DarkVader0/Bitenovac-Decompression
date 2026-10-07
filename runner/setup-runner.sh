@@ -58,6 +58,7 @@ readonly NUGET_VOLUME="bitenovac-runner-nuget"
 readonly MAIN_VOLUME="bitenovac-main"
 #TODO: make this useful
 readonly LOGS_VOLUME="bitenovac-logs"
+readonly OFFICIAL_VOLUME="bitenovac-official"
 
 # Every agent lives in its own directory under RUNNER_HOME. The glob is what uninstall and
 # reinstall sweep, so it must match every layout this script has ever produced.
@@ -155,6 +156,8 @@ if [[ "${uninstall}" == true ]]; then
         warn "kept ${NUGET_VOLUME}, ${MAIN_VOLUME} and ${LOGS_VOLUME}; pass --purge to delete them"
     fi
 
+    warn "kept ${OFFICIAL_VOLUME}, which holds the Official drops; remove it with: docker volume rm ${OFFICIAL_VOLUME}"
+
     log "Uninstalled."
     exit 0
 fi
@@ -243,6 +246,7 @@ bash "${REPO_ROOT}/runner/build-image.sh"
 docker volume create "${NUGET_VOLUME}" > /dev/null
 docker volume create "${MAIN_VOLUME}" > /dev/null
 docker volume create "${LOGS_VOLUME}" > /dev/null
+docker volume create "${OFFICIAL_VOLUME}" > /dev/null
 # A new volume is owned by root, and the job containers run as the agent's user. Without this
 # they cannot write to it, and for the NuGet cache specifically every restore downloads
 # everything again.
@@ -250,8 +254,9 @@ docker run --rm --user 0 --entrypoint chown \
     --volume "${NUGET_VOLUME}:/cache" \
     --volume "${MAIN_VOLUME}:/mnt/main" \
     --volume "${LOGS_VOLUME}:/mnt/logs" \
-    "bitenovac-remotebuildtool-runner:${sdk_version}" -R "${RUN_UID}:${RUN_GID}" /cache /mnt/main /mnt/logs
-ok "volumes ready: ${NUGET_VOLUME}, ${MAIN_VOLUME}, ${LOGS_VOLUME} — owned by ${run_as}"
+    --volume "${OFFICIAL_VOLUME}:/mnt/official" \
+    "bitenovac-remotebuildtool-runner:${sdk_version}" -R "${RUN_UID}:${RUN_GID}" /cache /mnt/main /mnt/logs /mnt/official
+ok "volumes ready: ${NUGET_VOLUME}, ${MAIN_VOLUME}, ${LOGS_VOLUME}, ${OFFICIAL_VOLUME} — owned by ${run_as}"
 
 # ------------------------------------------------------------------------------------- agent ----
 
@@ -356,9 +361,11 @@ cat <<EOF
   docker ps                              The containers holding the current steps
   docker volume ls --filter 'name=bitenovac-'   Every volume this setup owns
 
-  Jobs build in throwaway containers; ${NUGET_VOLUME}, ${MAIN_VOLUME} and ${LOGS_VOLUME} persist.
+  Jobs build in throwaway containers; ${NUGET_VOLUME}, ${MAIN_VOLUME}, ${LOGS_VOLUME} and
+  ${OFFICIAL_VOLUME} persist. The Official workflow drops one directory per release into
+  ${OFFICIAL_VOLUME}, named yyyy.MM.dd.NNN.
   A per-run store (bitenovac-pr-<run id>) is created and dropped by the workflow itself — see
-  .github/workflows/pr.yml and official.yml.
+  .github/workflows/pr.yml, cache-refresh.yml and official.yml.
 
   Pull requests run the RemoteBuildTool release installed in the image. After bumping its
   version in docker/ci-runner.Dockerfile, update it without

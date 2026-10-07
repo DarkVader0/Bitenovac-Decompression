@@ -8,8 +8,14 @@ namespace Bitenovac.RemoteBuildTool.Toolchains.DotNet;
 /// Represents the toolchain for MSBuild projects.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Projects are evaluated in-process, restored and built through one synthetic solution, and
 /// tested by running the executable of each Microsoft.Testing.Platform test project.
+/// </para>
+/// <para>
+/// On release, an executable that is not a .NET tool is published under <c>apps/</c>, and any
+/// other packable project is packed under <c>packages/</c>.
+/// </para>
 /// </remarks>
 internal sealed class DotNetToolchain(string repositoryRoot) : IToolchain
 {
@@ -22,6 +28,12 @@ internal sealed class DotNetToolchain(string repositoryRoot) : IToolchain
     public const string RunCommandProperty = "RunCommand";
 
     public const string TargetFrameworksProperty = "TargetFrameworks";
+
+    public const string OutputTypeProperty = "OutputType";
+
+    public const string IsPackableProperty = "IsPackable";
+
+    public const string PackAsToolProperty = "PackAsTool";
 
     private MsBuildProjectEvaluator? _evaluator;
 
@@ -70,7 +82,52 @@ internal sealed class DotNetToolchain(string repositoryRoot) : IToolchain
         return new ToolchainPreparation(0, refreshed);
     }
 
-    public int Build(PipelineOptions options, IReadOnlyList<PlanEntry> entries, string configuration, PipelineOutput output)
+    public int Build(PipelineOptions options, IReadOnlyList<PlanEntry> entries, string configuration, PipelineOutput output) =>
+        Build(options, entries, configuration, new Dictionary<string, string>(), output);
+
+    public int Publish(PipelineOptions options, IReadOnlyList<PlanEntry> entries, string version, string dropDirectory, PipelineOutput output)
+    {
+        var properties = new Dictionary<string, string> { ["Version"] = version };
+
+        var exitCode = Build(options, entries, "Release", properties, output);
+        if (exitCode != 0)
+            return exitCode;
+
+        foreach (var entry in entries.Where(entry => !entry.IsTestProject))
+        {
+            var name = Path.GetFileNameWithoutExtension(entry.ProjectPath);
+
+            switch (DeploymentOf(entry))
+            {
+                case Deployment.Publish:
+                    output.WriteLine($"--- {name}: publish");
+                    exitCode = MsBuildRunner.Publish(options.RepositoryRoot, entry.FullPath, properties, Path.Combine(dropDirectory, "apps", name));
+                    break;
+                case Deployment.Pack:
+                    output.WriteLine($"--- {name}: pack");
+                    exitCode = MsBuildRunner.Pack(options.RepositoryRoot, entry.FullPath, properties, Path.Combine(dropDirectory, "packages"));
+                    break;
+                default:
+                    output.WriteLine($"--- {name}: nothing to deploy");
+                    continue;
+            }
+
+            if (exitCode != 0)
+            {
+                output.WriteError($"error: could not deploy {entry.ProjectPath} (exit {exitCode}).");
+                return exitCode;
+            }
+        }
+
+        return 0;
+    }
+
+    private int Build(
+        PipelineOptions options,
+        IReadOnlyList<PlanEntry> entries,
+        string configuration,
+        IReadOnlyDictionary<string, string> properties,
+        PipelineOutput output)
     {
         var unrestored = entries
             .Where(entry => !RestoreOutputs.Materialise(options.RepositoryRoot, entry.FullPath, options.RestoreOutputsRoot))
@@ -97,7 +154,8 @@ internal sealed class DotNetToolchain(string repositoryRoot) : IToolchain
             options.RepositoryRoot,
             entries.Select(entry => entry.FullPath),
             configuration,
-            options.SyntheticSolutionPath($"build-{configuration}"));
+            options.SyntheticSolutionPath($"build-{configuration}"),
+            properties);
 
         if (exitCode != 0)
             output.WriteError($"error: build failed (exit {exitCode}).");
@@ -115,6 +173,20 @@ internal sealed class DotNetToolchain(string repositoryRoot) : IToolchain
     }
 
     public void Dispose() => _evaluator?.Dispose();
+
+    private static Deployment DeploymentOf(PlanEntry entry)
+    {
+        var outputType = entry.Properties.GetValueOrDefault(OutputTypeProperty, "");
+        var isExecutable = outputType.Equals("Exe", StringComparison.OrdinalIgnoreCase)
+            || outputType.Equals("WinExe", StringComparison.OrdinalIgnoreCase);
+
+        if (isExecutable && !IsTrue(entry.Properties.GetValueOrDefault(PackAsToolProperty)))
+            return Deployment.Publish;
+
+        return IsTrue(entry.Properties.GetValueOrDefault(IsPackableProperty)) ? Deployment.Pack : Deployment.None;
+    }
+
+    private static bool IsTrue(string? value) => string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
 
     private static int Verify(IReadOnlyList<EvaluatedProject> projects, PipelineOutput output)
     {
@@ -134,5 +206,12 @@ internal sealed class DotNetToolchain(string repositoryRoot) : IToolchain
 
         output.WriteLine("OK: every project targets a single framework.");
         return 0;
+    }
+
+    private enum Deployment
+    {
+        None,
+        Pack,
+        Publish,
     }
 }

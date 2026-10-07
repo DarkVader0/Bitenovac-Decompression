@@ -41,10 +41,7 @@ internal static class BuildCommand
             + (skipped > 0 ? $", {skipped} already present" : "") + ".");
 
         var toBuild = entries.Where(entry => !entry.Hit || unavailable.Contains(entry)).ToList();
-        var order = ToolchainOrder.Resolve([.. entries.Select(entry => (
-            new ProjectId(entry.ProjectPath),
-            entry.Toolchain,
-            (IReadOnlyList<ProjectId>)[.. entry.References.Select(reference => new ProjectId(reference))]))]);
+        var order = ToolchainOrder.Resolve(entries);
 
         foreach (var name in order)
         {

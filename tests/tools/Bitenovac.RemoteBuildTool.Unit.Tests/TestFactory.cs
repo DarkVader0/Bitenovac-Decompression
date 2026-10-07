@@ -40,7 +40,7 @@ internal static class TestFactory
         string prStoreRoot,
         bool cacheless = false,
         bool coverageHtml = false) =>
-        new(repositoryRoot, mainStoreRoot, prStoreRoot, cacheless, coverageHtml);
+        new(repositoryRoot, mainStoreRoot, prStoreRoot, Path.Combine(repositoryRoot, "artifacts", "official"), cacheless, coverageHtml);
 
     public static PlanEntry Entry(
         string projectPath,
@@ -97,6 +97,7 @@ internal sealed class EnvironmentVariables : IDisposable
         "REMOTEBUILDTOOL_REPO_ROOT",
         "REMOTEBUILDTOOL_MAIN_STORE",
         "REMOTEBUILDTOOL_PR_STORE",
+        "REMOTEBUILDTOOL_DROP_ROOT",
         "REMOTEBUILDTOOL_CACHELESS",
         "REMOTEBUILDTOOL_COVERAGE_HTML",
         "REMOTEBUILDTOOL_MAX_CPU",

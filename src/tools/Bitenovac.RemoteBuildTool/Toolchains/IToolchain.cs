@@ -90,6 +90,22 @@ internal interface IToolchain : IDisposable
     int Build(PipelineOptions options, IReadOnlyList<PlanEntry> entries, string configuration, PipelineOutput output);
 
     /// <summary>
+    /// Builds the specified plan entries in Release, stamped with a release version, and copies the
+    /// deployable output of every non-test project into a drop directory.
+    /// </summary>
+    /// <param name="options">The options of this run.</param>
+    /// <param name="entries">Every Release plan entry this toolchain owns.</param>
+    /// <param name="version">The release version to stamp, for example <c>2026.10.07.001</c>.</param>
+    /// <param name="dropDirectory">The directory to copy the deployable output into.</param>
+    /// <param name="output">The output to report progress to.</param>
+    /// <returns>The process exit code.</returns>
+    /// <remarks>
+    /// Every project of another toolchain that <paramref name="entries"/> reference has already been
+    /// built. The cache is not used, because cached output does not carry the release version.
+    /// </remarks>
+    int Publish(PipelineOptions options, IReadOnlyList<PlanEntry> entries, string version, string dropDirectory, PipelineOutput output);
+
+    /// <summary>
     /// Runs one built test project, collecting coverage into <paramref name="resultsDirectory"/>.
     /// </summary>
     /// <exception cref="InvalidOperationException">The project's test executable has not been built.</exception>

@@ -20,6 +20,7 @@ readonly REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly NUGET_VOLUME="${REMOTEBUILDTOOL_NUGET_VOLUME:-bitenovac-runner-nuget}"
 readonly MAIN_VOLUME="${REMOTEBUILDTOOL_MAIN_VOLUME:-bitenovac-main}"
 readonly LOGS_VOLUME="${REMOTEBUILDTOOL_LOGS_VOLUME:-bitenovac-logs}"
+readonly OFFICIAL_VOLUME="${REMOTEBUILDTOOL_OFFICIAL_VOLUME:-bitenovac-official}"
 # Keyed on the run id, not the PR number, so a re-run of the same PR gets a clean volume instead
 # of reading stale state a cancelled attempt left behind.
 readonly PR_VOLUME="${REMOTEBUILDTOOL_PR_VOLUME:-bitenovac-pr-${GITHUB_RUN_ID:-local}}"
@@ -39,8 +40,8 @@ docker image inspect "${IMAGE}" > /dev/null 2>&1 \
     || fail "The image ${IMAGE} is missing. Run runner/build-image.sh on this machine; it builds the image from global.json."
 
 # main is read-only everywhere except 'promote': a PR run must not be able to write to it no
-# matter what RemoteBuildTool does, and the only thing that ever calls 'promote' is an Official run
-# that already passed every other stage — see .github/workflows/official.yml.
+# matter what RemoteBuildTool does, and the only thing that ever calls 'promote' is a Cache refresh
+# run that already passed every other stage — see .github/workflows/cache-refresh.yml.
 main_mount="${MAIN_VOLUME}:/mnt/main:ro"
 [[ "${1}" == "promote" ]] && main_mount="${MAIN_VOLUME}:/mnt/main"
 
@@ -69,7 +70,11 @@ run_args=(
     --env REMOTEBUILDTOOL_REPO_ROOT=/repo
     --env REMOTEBUILDTOOL_MAIN_STORE=/mnt/main
     --env REMOTEBUILDTOOL_PR_STORE=/mnt/pr
+    --env REMOTEBUILDTOOL_DROP_ROOT=/mnt/official
 )
+
+# Only 'release' writes the drops, so no other command can touch them.
+[[ "${1}" == "release" ]] && run_args+=(--volume "${OFFICIAL_VOLUME}:/mnt/official")
 
 # The agent's share of the machine, from its .env (see runner/setup-runner.sh). Swap is capped to
 # the same value, so a job over its memory is killed rather than paging the host.

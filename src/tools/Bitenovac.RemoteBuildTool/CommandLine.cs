@@ -24,6 +24,7 @@ internal static class CommandLine
                 "build" => WithConfiguration(args, output, configuration => BuildCommand.Run(options, configuration, output)),
                 "test" => WithConfiguration(args, output, configuration => TestCommand.Run(options, configuration, output)),
                 "promote" => PromoteCommand.Run(options, output),
+                "release" => ReleaseCommand.Run(options, output),
                 "graph" => GraphCommand.Run(options, output),
                 "--help" or "-h" => Usage(output),
                 _ => Fail(output, $"Unknown command '{args[0]}'."),
@@ -64,16 +65,19 @@ internal static class CommandLine
             Bitenovac RemoteBuildTool
 
             Usage:
-              bitenovac-ci plan                 Discover, verify, restore, hash, decide hit/miss
-              bitenovac-ci build <Config>        Materialise hits, compile misses
-              bitenovac-ci test <Config>         Restore or run tests, gate coverage on Debug
-              bitenovac-ci promote                Copy this run's qualifying entries into main
-              bitenovac-ci graph                  Print the graph with each target's hashes
+              remotebuildtool plan              Discover, verify, restore, hash, decide hit/miss
+              remotebuildtool build <Config>    Materialise hits, compile misses
+              remotebuildtool test <Config>     Restore or run tests, gate coverage on Debug
+              remotebuildtool promote           Copy this run's qualifying entries into main
+              remotebuildtool release           Build every project in Release under the next release
+                                                version and drop its deployable output
+              remotebuildtool graph             Print the graph with each target's hashes
 
             Environment:
               REMOTEBUILDTOOL_REPO_ROOT       Repository root (default: current directory)
               REMOTEBUILDTOOL_MAIN_STORE      main's artifact volume (default: artifacts/ci-main)
               REMOTEBUILDTOOL_PR_STORE        This run's own artifact volume (default: artifacts/ci-pr)
+              REMOTEBUILDTOOL_DROP_ROOT       Where 'release' drops each version (default: artifacts/official)
               REMOTEBUILDTOOL_CACHELESS       true/1 to ignore main and rebuild everything (PR runs only;
                                  never promotes)
               REMOTEBUILDTOOL_COVERAGE_HTML   0 to skip the HTML coverage report (default: on locally, off in CI)

@@ -18,6 +18,7 @@ internal sealed class FixtureRepository : IDisposable
             RepositoryRoot: root,
             MainStoreRoot: Path.Combine(root, "artifacts", "ci-main"),
             PrStoreRoot: Path.Combine(root, "artifacts", "ci-pr"),
+            DropRoot: Path.Combine(root, "artifacts", "official"),
             Cacheless: false,
             CoverageHtml: false);
     }

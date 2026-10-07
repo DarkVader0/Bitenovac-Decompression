@@ -134,7 +134,7 @@ to install from a feed other than nuget.org.
 
 ## Fill the cache again
 
-Every hour the **Official** workflow fills the cache by itself: it builds, tests and
+Every hour the **Cache refresh** workflow fills the cache by itself: it builds, tests and
 promotes what changed. Run this only when pull requests are slower than they should be (Ubuntu):
 
 ```bash
@@ -148,6 +148,29 @@ It must end with `Promoted 38 entries into main.`
 
 ---
 
+## Official builds
+
+Every day at 01:00 UTC the **Official** workflow builds every project in Release from scratch, with
+no tests and no cache, and drops what can be deployed into the `bitenovac-official` volume:
+
+```
+2026.10.07.001/
+    packages/   one .nupkg per library and .NET tool
+    apps/       one published folder per app
+```
+
+The number is the date (UTC) and a counter for that day, so a second build on the same day is
+`2026.10.07.002`. A build that fails drops nothing and does not use up a number. Run one by hand
+from GitHub, Actions → Official → Run workflow.
+
+To see the drops (Ubuntu):
+
+```bash
+sudo ls /var/lib/docker/volumes/bitenovac-official/_data
+```
+
+---
+
 ## Remove everything
 
 **1.** On GitHub, Settings → Actions → Runners: remove both runners.
@@ -157,10 +180,12 @@ It must end with `Promoted 38 entries into main.`
 ```bash
 cd ~/bitenovac
 sudo bash runner/setup-runner.sh --uninstall --purge --token unused
+docker volume rm bitenovac-official
 docker image rm bitenovac-remotebuildtool-runner:10.0.400
 ```
 
-Use the SDK version from `global.json` in the image name.
+`--purge` keeps the Official drops; the `docker volume rm` deletes them. Use the SDK version from
+`global.json` in the image name.
 
 **3.** Check that nothing is left:
 

@@ -2,11 +2,11 @@ name: Official
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 1 * * *'
   workflow_dispatch: {}
 
 concurrency:
-  group: master
+  group: official
   cancel-in-progress: false
 
 permissions:
@@ -15,62 +15,22 @@ permissions:
 env:
   DOTNET_NOLOGO: "true"
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
-  REMOTEBUILDTOOL_PR_VOLUME: bitenovac-pr-master-${{ github.run_id }}
+  REMOTEBUILDTOOL_PR_VOLUME: bitenovac-pr-official-${{ github.run_id }}
 
 jobs:
-  plan:
-    name: Plan
-    runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v7
-
-      - run: bash runner/in-container.sh plan
-
-  debug:
-    name: Debug
-    needs: plan
-    runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Build
-        run: bash runner/in-container.sh build Debug
-
-      - name: Test + coverage gate
-        run: bash runner/in-container.sh test Debug
-
   release:
     name: Release
-    needs: plan
     runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
-      - name: Build
-        run: bash runner/in-container.sh build Release
+      - name: Plan
+        run: bash runner/in-container.sh plan
 
-      - name: Test
-        run: bash runner/in-container.sh test Release
+      - name: Build and drop
+        run: bash runner/in-container.sh release
 
-  promote:
-    name: Promote
-    needs: [debug, release]
-    runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v7
-
-      - run: bash runner/in-container.sh promote
-
-  cleanup:
-    name: Cleanup
-    needs: [promote]
-    if: always()
-    runs-on: [self-hosted, linux, x64, bitenovac]
-    timeout-minutes: 2
-    steps:
       - name: Drop this run's volume
+        if: always()
         run: docker volume rm -f "${REMOTEBUILDTOOL_PR_VOLUME}"

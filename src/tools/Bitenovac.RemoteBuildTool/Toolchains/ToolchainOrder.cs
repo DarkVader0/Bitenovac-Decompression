@@ -1,4 +1,5 @@
 using Bitenovac.RemoteBuildTool.Core.Graph;
+using Bitenovac.RemoteBuildTool.Planning;
 
 namespace Bitenovac.RemoteBuildTool.Toolchains;
 
@@ -12,6 +13,18 @@ namespace Bitenovac.RemoteBuildTool.Toolchains;
 /// </remarks>
 internal static class ToolchainOrder
 {
+    /// <summary>
+    /// Returns the names of the toolchains of the specified plan entries in build order.
+    /// </summary>
+    /// <param name="entries">Every plan entry of one configuration.</param>
+    /// <returns>The toolchain names, each one after every toolchain its projects reference.</returns>
+    /// <exception cref="InvalidOperationException">Two or more toolchains reference each other in a cycle.</exception>
+    public static IReadOnlyList<string> Resolve(IReadOnlyList<PlanEntry> entries) =>
+        Resolve([.. entries.Select(entry => (
+            new ProjectId(entry.ProjectPath),
+            entry.Toolchain,
+            (IReadOnlyList<ProjectId>)[.. entry.References.Select(reference => new ProjectId(reference))]))]);
+
     /// <summary>
     /// Returns the names of the toolchains of the specified projects in build order.
     /// </summary>

@@ -50,6 +50,34 @@ public sealed class PipelineOptionsTests : IDisposable
     }
 
     [Fact]
+    public void FromEnvironment_ShouldDeriveTheDropRootFromTheRepositoryRoot_WhenItIsNotSet()
+    {
+        // Arrange
+        _environment.Clear();
+        _environment.Set("REMOTEBUILDTOOL_REPO_ROOT", "repo");
+
+        // Act
+        var options = PipelineOptions.FromEnvironment();
+
+        // Assert
+        Assert.Equal(Path.Combine("repo", "artifacts", "official"), options.DropRoot);
+    }
+
+    [Fact]
+    public void FromEnvironment_ShouldUseTheDeclaredDropRoot_WhenItIsSet()
+    {
+        // Arrange
+        _environment.Clear();
+        _environment.Set("REMOTEBUILDTOOL_DROP_ROOT", "/mnt/official");
+
+        // Act
+        var options = PipelineOptions.FromEnvironment();
+
+        // Assert
+        Assert.Equal("/mnt/official", options.DropRoot);
+    }
+
+    [Fact]
     public void FromEnvironment_ShouldUseTheDeclaredStores_WhenBothAreSet()
     {
         // Arrange

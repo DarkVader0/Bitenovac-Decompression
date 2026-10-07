@@ -8,6 +8,7 @@ internal sealed record PipelineOptions(
     string RepositoryRoot,
     string MainStoreRoot,
     string PrStoreRoot,
+    string DropRoot,
     bool Cacheless,
     bool CoverageHtml)
 {
@@ -27,10 +28,14 @@ internal sealed record PipelineOptions(
             ? pr
             : Path.Combine(repositoryRoot, "artifacts", "ci-pr");
 
+        var dropRoot = Environment.GetEnvironmentVariable("REMOTEBUILDTOOL_DROP_ROOT") is { Length: > 0 } drop
+            ? drop
+            : Path.Combine(repositoryRoot, "artifacts", "official");
+
         var cacheless = IsTrue(Environment.GetEnvironmentVariable("REMOTEBUILDTOOL_CACHELESS"));
         var coverageHtml = Environment.GetEnvironmentVariable("REMOTEBUILDTOOL_COVERAGE_HTML") != "0";
 
-        return new PipelineOptions(repositoryRoot, mainStoreRoot, prStoreRoot, cacheless, coverageHtml);
+        return new PipelineOptions(repositoryRoot, mainStoreRoot, prStoreRoot, dropRoot, cacheless, coverageHtml);
     }
 
     public string PlanFile => Path.Combine(PrStoreRoot, "plan.json");

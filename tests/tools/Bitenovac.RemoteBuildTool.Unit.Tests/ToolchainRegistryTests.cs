@@ -84,6 +84,9 @@ public sealed class ToolchainRegistryTests
         public int Build(PipelineOptions options, IReadOnlyList<PlanEntry> entries, string configuration, PipelineOutput output) =>
             throw new NotSupportedException();
 
+        public int Publish(PipelineOptions options, IReadOnlyList<PlanEntry> entries, string version, string dropDirectory, PipelineOutput output) =>
+            throw new NotSupportedException();
+
         public TestRunResult RunTests(PlanEntry entry, string configuration, string resultsFilePrefix, string resultsDirectory) =>
             throw new NotSupportedException();
 

@@ -13,7 +13,7 @@
         <ToolCommandName>remotebuildtool</ToolCommandName>
         <IsPackable>true</IsPackable>
         <PackageId>Bitenovac.RemoteBuildTool</PackageId>
-        <VersionPrefix>0.0.1</VersionPrefix>
+        <VersionPrefix>0.0.2</VersionPrefix>
         <Description>Content-hashed build, test and coverage pipeline for the Bitenovac repository.</Description>
         <Authors>Radivoje Milutinovic</Authors>
         <Company>Bitenovac</Company>
